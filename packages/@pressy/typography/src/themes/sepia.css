@@ -1,0 +1,49 @@
+/* Pressy Sepia Theme - Classic book reading feel */
+
+[data-theme="sepia"] {
+  /* Background colors - warm paper tones */
+  --color-bg: #f4ecd8;
+  --color-bg-subtle: #ebe3cf;
+  --color-bg-muted: #e2d9c5;
+
+  /* Text colors - warm brown tones */
+  --color-text: #433422;
+  --color-text-muted: #6b5a47;
+  --color-heading: #2d2418;
+
+  /* Accent colors - muted brown/orange */
+  --color-accent: #8b4513;
+  --color-link: #8b4513;
+  --color-link-hover: #a0522d;
+
+  /* UI colors */
+  --color-border: #d4c9b5;
+  --color-code-bg: #ebe3cf;
+
+  /* Selection - warm highlight */
+  --color-selection-bg: rgba(139, 69, 19, 0.2);
+  --color-selection-text: inherit;
+
+  /* Shadows - warm tinted */
+  --shadow-sm: 0 1px 2px rgba(67, 52, 34, 0.08);
+  --shadow-md: 0 4px 6px rgba(67, 52, 34, 0.1);
+  --shadow-lg: 0 10px 15px rgba(67, 52, 34, 0.15);
+
+  /* Apply to element */
+  background-color: var(--color-bg);
+  color: var(--color-text);
+}
+
+[data-theme="sepia"] ::selection {
+  background-color: var(--color-selection-bg);
+  color: var(--color-selection-text);
+}
+
+/* Warm filter for images in sepia mode */
+[data-theme="sepia"] img {
+  filter: sepia(10%);
+}
+
+[data-theme="sepia"] img:hover {
+  filter: sepia(0%);
+}

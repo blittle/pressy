@@ -1,0 +1,23 @@
+/*
+ * Flatland Example — Custom Theme
+ * Demonstrates how to override Pressy's typography defaults.
+ */
+
+@import url('https://fonts.googleapis.com/css2?family=Crimson+Pro:ital,wght@0,400;0,600;1,400&display=swap');
+
+:root {
+  /* Custom body font */
+  --pressy-font-body: 'Crimson Pro', Georgia, 'Times New Roman', serif;
+
+  /* Custom drop cap styling */
+  --pressy-dropcap-color: #8b5cf6;
+  --pressy-dropcap-font-size: 3.5em;
+
+  /* Custom accent color */
+  --pressy-accent: #6d28d9;
+}
+
+[data-theme='dark'] {
+  --pressy-dropcap-color: #a78bfa;
+  --pressy-accent: #a78bfa;
+}

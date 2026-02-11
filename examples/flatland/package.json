@@ -1,0 +1,16 @@
+{
+  "name": "flatland-example",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "pressy dev",
+    "build": "pressy build",
+    "preview": "pressy preview"
+  },
+  "dependencies": {
+    "pressy": "workspace:*",
+    "@pressy/components": "workspace:*",
+    "@pressy/typography": "workspace:*"
+  }
+}

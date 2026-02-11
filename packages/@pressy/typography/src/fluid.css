@@ -1,0 +1,85 @@
+/* Pressy Fluid Typography - Responsive type scale */
+
+:root {
+  /* Fluid type scale using clamp() */
+  /* Base size scales from 16px (1rem) to 20px (1.25rem) */
+  --font-size-base: clamp(1rem, 0.875rem + 0.5vw, 1.25rem);
+
+  /* Scale ratio: 1.2 (minor third) */
+  --font-size-xs: clamp(0.694rem, 0.625rem + 0.35vw, 0.868rem);
+  --font-size-sm: clamp(0.833rem, 0.75rem + 0.4vw, 1.042rem);
+  --font-size-lg: clamp(1.2rem, 1.05rem + 0.6vw, 1.5rem);
+  --font-size-xl: clamp(1.44rem, 1.26rem + 0.72vw, 1.8rem);
+  --font-size-2xl: clamp(1.728rem, 1.512rem + 0.86vw, 2.16rem);
+  --font-size-3xl: clamp(2.074rem, 1.815rem + 1.03vw, 2.592rem);
+  --font-size-4xl: clamp(2.488rem, 2.177rem + 1.24vw, 3.11rem);
+
+  /* Line heights */
+  --line-height-tight: 1.25;
+  --line-height-snug: 1.375;
+  --line-height-normal: 1.5;
+  --line-height-prose: 1.6;
+  --line-height-relaxed: 1.75;
+  --line-height-loose: 2;
+
+  /* Letter spacing */
+  --letter-spacing-tighter: -0.05em;
+  --letter-spacing-tight: -0.025em;
+  --letter-spacing-normal: 0em;
+  --letter-spacing-wide: 0.025em;
+  --letter-spacing-wider: 0.05em;
+  --letter-spacing-widest: 0.1em;
+
+  /* Font stacks */
+  --font-prose: Georgia, 'Times New Roman', Times, serif;
+  --font-heading: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'SF Mono', SFMono-Regular, ui-monospace, Menlo, Monaco, Consolas, monospace;
+
+  /* Spacing scale based on font size */
+  --space-xs: calc(var(--font-size-base) * 0.25);
+  --space-sm: calc(var(--font-size-base) * 0.5);
+  --space-md: calc(var(--font-size-base) * 1);
+  --space-lg: calc(var(--font-size-base) * 1.5);
+  --space-xl: calc(var(--font-size-base) * 2);
+  --space-2xl: calc(var(--font-size-base) * 3);
+  --space-3xl: calc(var(--font-size-base) * 4);
+}
+
+/* Apply base font size to html */
+html {
+  font-size: var(--font-size-base);
+}
+
+/* Prevent font size changes on orientation change in iOS */
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+/* Improve text rendering */
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* Responsive adjustments for very small screens */
+@media (max-width: 320px) {
+  :root {
+    --font-size-base: 0.9375rem; /* 15px minimum */
+  }
+}
+
+/* Increase base size for large displays */
+@media (min-width: 1920px) {
+  :root {
+    --font-size-base: 1.25rem; /* Cap at 20px */
+  }
+}
+
+/* Print styles */
+@media print {
+  :root {
+    --font-size-base: 12pt;
+    --line-height-prose: 1.5;
+  }
+}

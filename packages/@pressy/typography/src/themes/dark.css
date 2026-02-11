@@ -1,0 +1,49 @@
+/* Pressy Dark Theme */
+
+[data-theme="dark"] {
+  /* Background colors */
+  --color-bg: #1a1a1a;
+  --color-bg-subtle: #242424;
+  --color-bg-muted: #2d2d2d;
+
+  /* Text colors */
+  --color-text: #e0e0e0;
+  --color-text-muted: #a0a0a0;
+  --color-heading: #ffffff;
+
+  /* Accent colors */
+  --color-accent: #66b3ff;
+  --color-link: #66b3ff;
+  --color-link-hover: #99ccff;
+
+  /* UI colors */
+  --color-border: #404040;
+  --color-code-bg: #2d2d2d;
+
+  /* Selection */
+  --color-selection-bg: rgba(102, 179, 255, 0.3);
+  --color-selection-text: inherit;
+
+  /* Shadows (more subtle in dark mode) */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.4);
+
+  /* Apply to element */
+  background-color: var(--color-bg);
+  color: var(--color-text);
+}
+
+[data-theme="dark"] ::selection {
+  background-color: var(--color-selection-bg);
+  color: var(--color-selection-text);
+}
+
+/* Reduce image brightness in dark mode for less eye strain */
+[data-theme="dark"] img {
+  opacity: 0.9;
+}
+
+[data-theme="dark"] img:hover {
+  opacity: 1;
+}

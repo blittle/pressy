@@ -1,0 +1,26 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "strict": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "jsx": "react-jsx",
+    "jsxImportSource": "preact",
+    "paths": {
+      "pressy": ["./packages/pressy/src/index.ts"],
+      "@pressy/components": ["./packages/@pressy/components/src/index.ts"],
+      "@pressy/typography": ["./packages/@pressy/typography/src/index.ts"],
+      "@pressy/shopify": ["./packages/@pressy/shopify/src/index.ts"]
+    }
+  },
+  "exclude": ["node_modules", "dist", "**/dist"]
+}
