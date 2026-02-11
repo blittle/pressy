@@ -2,7 +2,9 @@
 import { cac } from 'cac'
 import { createServer, build, preview } from 'vite'
 import { resolve } from 'path'
-import { existsSync } from 'fs'
+import { existsSync, writeFileSync, rmSync } from 'fs'
+import { transform } from 'esbuild'
+import { readFileSync } from 'fs'
 import { pressyPlugin } from '../vite/plugin.js'
 import type { PressyConfig } from '../config.js'
 
@@ -30,7 +32,23 @@ async function loadConfig(root: string): Promise<PressyConfig> {
     }
   }
 
-  // Dynamic import of config
+  // For .ts configs, strip types with esbuild and write adjacent temp file
+  if (configFile.endsWith('.ts')) {
+    const tempFile = configFile.replace(/\.ts$/, '.pressy-tmp.mjs')
+    try {
+      const source = readFileSync(configFile, 'utf-8')
+      const result = await transform(source, {
+        loader: 'ts',
+        format: 'esm',
+      })
+      writeFileSync(tempFile, result.code)
+      const mod = await import(`file://${tempFile}?t=${Date.now()}`)
+      return mod.default
+    } finally {
+      rmSync(tempFile, { force: true })
+    }
+  }
+
   const mod = await import(`file://${configFile}`)
   return mod.default
 }
@@ -69,6 +87,7 @@ cli
 
     await build({
       root: cwd,
+      base: './',
       plugins: [pressyPlugin(config)],
       build: {
         outDir: options.outDir || config.outDir || 'dist',
