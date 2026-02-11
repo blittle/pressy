@@ -106,3 +106,103 @@ Exit status 1
 
 So should the flow be `pnpm install` -> `pnpm build` -> `pnpm install`? That seems a bit odd, but maybe okay. Should the gh action also be updated to do that?
 
+### Prompt 17
+
+Okay! Now it properly executes the CLI, but I think there is a totall different problem with the build:
+
+### Prompt 18
+
+[Request interrupted by user]
+
+### Prompt 19
+
+Okay! Now it properly executes the CLI, but I think there is a totall different problem with the build:
+```
+pnpm --filter flatland-example build                        
+
+> flatland-example@0.1.0 build /Users/blittle/dev/pressy/examples/flatland
+> pressy build
+
+Building for production...
+
+vite v5.4.21 building for production...
+✓ 0 modules transformed.
+x Build failed in 21ms
+node:internal/process/promises:394
+    triggerUncaughtException(err, true /* fromPromise */);
+    ^
+
+Could not resolve en...
+
+### Prompt 20
+
+[Request interrupted by user for tool use]
+
+### Prompt 21
+
+The build now works, but attempting to load the app, I see errors loading all the static resources:
+```
+10:4:34 [404]: /@pressy/typography/fluid.css
+10:4:34 [404]: /@pressy/typography/themes/light.css
+10:4:34 [404]: /@pressy/client
+10:4:34 [404]: /@pressy/typography/prose.css
+10:4:34 [404]: /@pressy/typography/fluid.css
+10:4:34 [404]: /@pressy/typography/themes/light.css
+10:4:34 [404]: /@pressy/client
+10:4:34 [404]: /@pressy/typography/prose.css
+10:4:34 [404]: /@pressy/typography/fluid.css
+10:4:...
+
+### Prompt 22
+
+[Request interrupted by user for tool use]
+
+### Prompt 23
+
+Now it loads those resources, but in the browser I see these errors:
+```
+
+﻿
+(index):15 Uncaught SyntaxError: The requested module '/assets/_virtual_pressy-entry-jafklEId.js' does not provide an export named 'hydrate' (at (index):15:14)
+icon-192.png:1 
+ GET http://127.0.0.1:8080/icon-192.png 404 (Not Found)
+```
+
+### Prompt 24
+
+The home page now loads, but the child pages do not:
+```
+GET http://127.0.0.1:8080/content/books/flatland/00-preface.mdx net::ERR_ABORTED 404 (Not Found)
+```
+
+### Prompt 25
+
+[Request interrupted by user for tool use]
+
+### Prompt 26
+
+Building flatland fails with:
+```
+x Build failed in 85ms
+node:internal/process/promises:394
+    triggerUncaughtException(err, true /* fromPromise */);
+    ^
+
+[vite]: Rollup failed to resolve import "preact/jsx-runtime" from "/Users/blittle/dev/pressy/examples/flatland/content/books/flatland/00-preface.mdx".
+This is most likely unintended because it can break your application at runtime.
+If you do want to externalize this module explicitly add it to
+`build.rollupOptions.external`
+    at viteWarn ...
+
+### Prompt 27
+
+Okay, now let's go back and fix the 404 icon loading `/icon-192.png`
+
+### Prompt 28
+
+[Request interrupted by user for tool use]
+
+### Prompt 29
+
+I'll wait to solve it instead
+

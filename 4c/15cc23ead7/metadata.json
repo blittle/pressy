@@ -3,10 +3,12 @@
   "checkpoint_id": "4c15cc23ead7",
   "strategy": "manual-commit",
   "branch": "bl-fix-pages",
-  "checkpoints_count": 1,
+  "checkpoints_count": 2,
   "files_touched": [
     ".github/workflows/deploy-pages.yml",
-    "examples/flatland/package.json"
+    "examples/flatland/package.json",
+    "package.json",
+    "packages/pressy/src/vite/plugin.ts"
   ],
   "sessions": [
     {
@@ -18,10 +20,10 @@
     }
   ],
   "token_usage": {
-    "input_tokens": 11,
-    "cache_creation_tokens": 2669,
-    "cache_read_tokens": 240579,
-    "output_tokens": 348,
-    "api_call_count": 7
+    "input_tokens": 50,
+    "cache_creation_tokens": 47465,
+    "cache_read_tokens": 2377716,
+    "output_tokens": 3805,
+    "api_call_count": 37
   }
 }

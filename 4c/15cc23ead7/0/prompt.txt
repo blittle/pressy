@@ -116,3 +116,162 @@ Exit status 1
 ---
 
 So should the flow be `pnpm install` -> `pnpm build` -> `pnpm install`? That seems a bit odd, but maybe okay. Should the gh action also be updated to do that?
+
+---
+
+Okay! Now it properly executes the CLI, but I think there is a totall different problem with the build:
+
+---
+
+[Request interrupted by user]
+
+---
+
+Okay! Now it properly executes the CLI, but I think there is a totall different problem with the build:
+```
+pnpm --filter flatland-example build                        
+
+> flatland-example@0.1.0 build /Users/blittle/dev/pressy/examples/flatland
+> pressy build
+
+Building for production...
+
+vite v5.4.21 building for production...
+✓ 0 modules transformed.
+x Build failed in 21ms
+node:internal/process/promises:394
+    triggerUncaughtException(err, true /* fromPromise */);
+    ^
+
+Could not resolve entry module "index.html".
+    at getRollupError (file:///Users/blittle/dev/pressy/node_modules/.pnpm/rollup@4.57.1/node_modules/rollup/dist/es/shared/parseAst.js:402:41)
+    at error (file:///Users/blittle/dev/pressy/node_modules/.pnpm/rollup@4.57.1/node_modules/rollup/dist/es/shared/parseAst.js:398:42)
+    at ModuleLoader.loadEntryModule (file:///Users/blittle/dev/pressy/node_modules/.pnpm/rollup@4.57.1/node_modules/rollup/dist/es/shared/node-entry.js:21708:20)
+    at async Promise.all (index 0) {
+  code: 'UNRESOLVED_ENTRY'
+}
+
+Node.js v22.20.0
+/Users/blittle/dev/pressy/examples/flatland:
+ ERR_PNPM_RECURSIVE_RUN_FIRAIL  flatland-example@0.1.0 build: `pressy build`
+```
+
+---
+
+[Request interrupted by user for tool use]
+
+---
+
+The build now works, but attempting to load the app, I see errors loading all the static resources:
+```
+10:4:34 [404]: /@pressy/typography/fluid.css
+10:4:34 [404]: /@pressy/typography/themes/light.css
+10:4:34 [404]: /@pressy/client
+10:4:34 [404]: /@pressy/typography/prose.css
+10:4:34 [404]: /@pressy/typography/fluid.css
+10:4:34 [404]: /@pressy/typography/themes/light.css
+10:4:34 [404]: /@pressy/client
+10:4:34 [404]: /@pressy/typography/prose.css
+10:4:34 [404]: /@pressy/typography/fluid.css
+10:4:34 [404]: /@pressy/typography/themes/light.css
+10:4:34 [404]: /@pressy/client
+10:4:35 [404]: /@pressy/typography/prose.css
+10:4:35 [404]: /@pressy/typography/fluid.css
+10:4:35 [404]: /@pressy/typography/themes/light.css
+10:4:35 [404]: /@pressy/client
+10:4:49 [200]: /
+10:4:49 [404]: /@pressy/typography/prose.css
+10:4:49 [404]: /@pressy/typography/fluid.css
+10:4:49 [404]: /@pressy/typography/themes/light.css
+10:4:49 [404]: /@pressy/client
+10:4:49 [200]: /manifest.webmanifest
+10:4:49 [404]: /favicon.ico
+10:4:49 [404]: /icon-192.png
+10:4:51 [404]: /@pressy/typography/prose.css
+10:4:51 [404]: /@pressy/typography/fluid.css
+10:4:51 [404]: /@pressy/typography/themes/light.css
+10:4:51 [404]: /.well-known/appspecific/com.chrome.devtools.json
+```
+
+---
+
+[Request interrupted by user for tool use]
+
+---
+
+Now it loads those resources, but in the browser I see these errors:
+```
+
+﻿
+(index):15 Uncaught SyntaxError: The requested module '/assets/_virtual_pressy-entry-jafklEId.js' does not provide an export named 'hydrate' (at (index):15:14)
+icon-192.png:1 
+ GET http://127.0.0.1:8080/icon-192.png 404 (Not Found)
+```
+
+---
+
+The home page now loads, but the child pages do not:
+```
+GET http://127.0.0.1:8080/content/books/flatland/00-preface.mdx net::ERR_ABORTED 404 (Not Found)
+```
+
+---
+
+[Request interrupted by user for tool use]
+
+---
+
+Building flatland fails with:
+```
+x Build failed in 85ms
+node:internal/process/promises:394
+    triggerUncaughtException(err, true /* fromPromise */);
+    ^
+
+[vite]: Rollup failed to resolve import "preact/jsx-runtime" from "/Users/blittle/dev/pressy/examples/flatland/content/books/flatland/00-preface.mdx".
+This is most likely unintended because it can break your application at runtime.
+If you do want to externalize this module explicitly add it to
+`build.rollupOptions.external`
+    at viteWarn (file:///Users/blittle/dev/pressy/node_modules/.pnpm/vite@5.4.21_@types+node@20.19.33/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:65855:17)
+    at onRollupWarning (file:///Users/blittle/dev/pressy/node_modules/.pnpm/vite@5.4.21_@types+node@20.19.33/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:65887:5)
+    at onwarn (file:///Users/blittle/dev/pressy/node_modules/.pnpm/vite@5.4.21_@types+node@20.19.33/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:65550:7)
+    at file:///Users/blittle/dev/pressy/node_modules/.pnpm/rollup@4.57.1/node_modules/rollup/dist/es/shared/node-entry.js:20972:13
+    at Object.logger [as onLog] (file:///Users/blittle/dev/pressy/node_modules/.pnpm/rollup@4.57.1/node_modules/rollup/dist/es/shared/node-entry.js:22945:9)
+    at ModuleLoader.handleInvalidResolvedId (file:///Users/blittle/dev/pressy/node_modules/.pnpm/rollup@4.57.1/node_modules/rollup/dist/es/shared/node-entry.js:21689:26)
+    at file:///Users/blittle/dev/pressy/node_modules/.pnpm/rollup@4.57.1/node_modules/rollup/dist/es/shared/node-entry.js:21647:26 {
+  watchFiles: [
+    'package.json',
+    '/Users/blittle/dev/pressy/packages/@pressy/typography/package.json',
+    '/Users/blittle/dev/pressy/packages/pressy/dist/runtime/client.js',
+    '/Users/blittle/dev/pressy/examples/flatland/content/books/flatland/00-preface.mdx',
+    '/Users/blittle/dev/pressy/examples/flatland/content/books/flatland/01-of-the-nature-of-flatland.mdx',
+    '/Users/blittle/dev/pressy/examples/flatland/content/books/flatland/03-concerning-the-inhabitants.mdx',
+    '/Users/blittle/dev/pressy/examples/flatland/content/books/flatland/04-concerning-the-women.mdx',
+    '/Users/blittle/dev/pressy/examples/flatland/content/books/flatland/02-of-the-climate-and-houses.mdx',
+    '/Users/blittle/dev/pressy/examples/flatland/content/books/flatland/05-of-our-methods-of-recognizing.mdx',
+    '/Users/blittle/dev/pressy/examples/flatland/content/books/flatland/06-of-recognition-by-sight.mdx',
+    '/Users/blittle/dev/pressy/examples/flatland/content/books/flatland/07-concerning-a-stranger.mdx',
+    '/Users/blittle/dev/pressy/examples/flatland/content/articles/about-flatland/index.mdx',
+    '/Users/blittle/dev/pressy/packages/pressy/package.json',
+    '/Users/blittle/dev/pressy/packages/@pressy/components/package.json',
+    '/Users/blittle/dev/pressy/examples/flatland/package.json'
+  ]
+}
+
+Node.js v22.20.0
+/Users/blittle/dev/pressy/examples/flatland:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  flatland-example@0.1.0 build: `pressy build`
+Exit status 1
+```
+
+---
+
+Okay, now let's go back and fix the 404 icon loading `/icon-192.png`
+
+---
+
+[Request interrupted by user for tool use]
+
+---
+
+I'll wait to solve it instead
