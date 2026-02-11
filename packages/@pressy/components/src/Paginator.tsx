@@ -1,6 +1,6 @@
 import { ComponentChildren } from 'preact'
-import { useSignal, useEffect, useComputed } from '@preact/signals'
-import { useRef } from 'preact/hooks'
+import { useSignal, useComputed } from '@preact/signals'
+import { useRef, useEffect } from 'preact/hooks'
 
 export interface PaginatorProps {
   children: ComponentChildren

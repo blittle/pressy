@@ -33,6 +33,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@pressy/components": "workspace:*",
     "@mdx-js/mdx": "^3.0.0",
     "@preact/signals": "^1.2.0",
     "cac": "^6.7.14",

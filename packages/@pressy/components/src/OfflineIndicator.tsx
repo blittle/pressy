@@ -1,4 +1,5 @@
-import { useSignal, useEffect } from '@preact/signals'
+import { useSignal } from '@preact/signals'
+import { useEffect } from 'preact/hooks'
 
 export function OfflineIndicator() {
   const isOffline = useSignal(!navigator.onLine)

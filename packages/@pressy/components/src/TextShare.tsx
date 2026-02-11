@@ -1,5 +1,5 @@
-import { useSignal, useEffect } from '@preact/signals'
-import { useRef } from 'preact/hooks'
+import { useSignal } from '@preact/signals'
+import { useRef, useEffect } from 'preact/hooks'
 
 export function TextShare() {
   const isVisible = useSignal(false)

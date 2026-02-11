@@ -80,7 +80,7 @@ export function Paywall({
     try {
       // This would integrate with @pressy/shopify
       // For now, just show that it would redirect
-      const { createCheckout } = await import('@pressy/shopify')
+      const { createCheckout } = await import('@pressy/shopify' as string)
       const checkoutUrl = await createCheckout(shopifyProductId)
       window.location.href = checkoutUrl
     } catch (err) {

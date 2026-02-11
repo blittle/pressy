@@ -17,9 +17,8 @@ export async function compileMDX(
   // Extract frontmatter
   const { content, data: frontmatter } = matter(source)
 
-  // Compile MDX
+  // Compile MDX — jsx: false outputs valid JS with _jsx() calls
   const result = await compile(content, {
-    jsx: true,
     jsxImportSource: 'preact',
     remarkPlugins: [remarkGfm],
     rehypePlugins: [
@@ -34,22 +33,15 @@ export async function compileMDX(
         },
       ],
     ],
-    development: process.env.NODE_ENV !== 'production',
+    development: false,
   })
 
-  // Generate code that exports the compiled component
-  const code = `
-import { jsx as _jsx, jsxs as _jsxs, Fragment as _Fragment } from 'preact/jsx-runtime';
-import * as runtime from 'preact/jsx-runtime';
-import { useMDXComponents } from '@pressy/components/content';
-
-${result.value}
-
+  // With jsx: false (default), the compiled output is valid JS
+  // with its own JSX runtime imports and default export.
+  // We just append the frontmatter as a named export.
+  const compiled = String(result)
+  const code = `${compiled}
 export const frontmatter = ${JSON.stringify(frontmatter)};
-export default function MDXContent(props) {
-  const components = useMDXComponents();
-  return _MDXContent({ ...props, components });
-}
 `
 
   return {

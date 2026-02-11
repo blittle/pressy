@@ -1,6 +1,8 @@
-import { render, hydrate as preactHydrate } from 'preact'
+import { h, render, ComponentType } from 'preact'
 import { signal, effect } from '@preact/signals'
-import type { ContentManifest, Route, ReadingProgress } from '../types.js'
+import { Reader } from '@pressy/components'
+import { useMDXComponents } from '@pressy/components/content'
+import type { ContentManifest, Route, Book, Chapter, Article, ReadingProgress } from '../types.js'
 
 // State signals
 export const currentRoute = signal<string>('/')
@@ -151,8 +153,187 @@ function setupOfflineDetection(): void {
   })
 }
 
-// Main hydration function
-export function hydrate(data: { route: string; manifest: ContentManifest }): void {
+// ── Page renderers ──────────────────────────────────────────
+
+function renderHomePage(manifest: ContentManifest) {
+  const siteTitle = manifest.books[0]?.metadata.title || 'Library'
+
+  return h('div', { class: 'pressy-home' },
+    h('header', { class: 'pressy-home-header' },
+      h('h1', null, siteTitle),
+      manifest.books[0]?.metadata.description &&
+        h('p', { class: 'pressy-home-desc' }, manifest.books[0].metadata.description),
+    ),
+    manifest.books.length > 0 && h('section', { class: 'pressy-home-section' },
+      h('h2', null, 'Chapters'),
+      h('nav', { class: 'pressy-chapter-list' },
+        ...manifest.books.flatMap((book: Book) =>
+          book.chapters.map((ch: Chapter) =>
+            h('a', {
+              href: `/books/${book.slug}/${ch.slug}`,
+              class: 'pressy-chapter-link',
+            },
+              h('span', { class: 'pressy-chapter-order' }, `${ch.order}.`),
+              h('span', null, ch.title),
+            )
+          )
+        )
+      ),
+    ),
+    manifest.articles.length > 0 && h('section', { class: 'pressy-home-section' },
+      h('h2', null, 'Articles'),
+      h('nav', { class: 'pressy-chapter-list' },
+        ...manifest.articles.map((article: Article) =>
+          h('a', {
+            href: `/articles/${article.slug}`,
+            class: 'pressy-chapter-link',
+          }, article.metadata.title)
+        ),
+      ),
+    ),
+    h('style', null, HOME_STYLES),
+  )
+}
+
+function renderBookPage(book: Book) {
+  return h('div', { class: 'pressy-home' },
+    h('header', { class: 'pressy-home-header' },
+      h('h1', null, book.metadata.title),
+      h('p', { class: 'pressy-home-author' }, `by ${book.metadata.author}`),
+      book.metadata.description &&
+        h('p', { class: 'pressy-home-desc' }, book.metadata.description),
+    ),
+    h('section', { class: 'pressy-home-section' },
+      h('h2', null, 'Chapters'),
+      h('nav', { class: 'pressy-chapter-list' },
+        ...book.chapters.map((ch: Chapter) =>
+          h('a', {
+            href: `/books/${book.slug}/${ch.slug}`,
+            class: 'pressy-chapter-link',
+          },
+            h('span', { class: 'pressy-chapter-order' }, `${ch.order}.`),
+            h('span', null, ch.title),
+          )
+        ),
+      ),
+    ),
+    h('style', null, HOME_STYLES),
+  )
+}
+
+function renderChapterPage(
+  manifest: ContentManifest,
+  route: string,
+  Content: ComponentType,
+) {
+  const parts = route.split('/')
+  const bookSlug = parts[2]
+  const chapterSlug = parts[3]
+  const book = manifest.books.find((b: Book) => b.slug === bookSlug)
+  const chapterIdx = book ? book.chapters.findIndex((c: Chapter) => c.slug === chapterSlug) : -1
+  const chapter = book?.chapters[chapterIdx]
+  const chapterPath = (ch: Chapter) => `books/${bookSlug}/${ch.slug}`
+  const prevChapter = book && chapterIdx > 0
+    ? { slug: chapterPath(book.chapters[chapterIdx - 1]), title: book.chapters[chapterIdx - 1].title }
+    : undefined
+  const nextChapter = book && chapterIdx >= 0 && chapterIdx < book.chapters.length - 1
+    ? { slug: chapterPath(book.chapters[chapterIdx + 1]), title: book.chapters[chapterIdx + 1].title }
+    : undefined
+
+  return h(Reader, {
+    title: chapter?.title || chapterSlug,
+    bookTitle: book?.metadata.title,
+    prevChapter,
+    nextChapter,
+    mode: paginationMode.value as 'scroll' | 'paginated',
+    children: h(Content, { components: useMDXComponents() } as Record<string, unknown>),
+  })
+}
+
+function renderArticlePage(
+  manifest: ContentManifest,
+  route: string,
+  Content: ComponentType,
+) {
+  const articleSlug = route.split('/')[2]
+  const article = manifest.articles.find((a: Article) => a.slug === articleSlug)
+
+  return h(Reader, {
+    title: article?.metadata.title || articleSlug,
+    mode: 'scroll',
+    children: h(Content, { components: useMDXComponents() } as Record<string, unknown>),
+  })
+}
+
+// ── Styles ──────────────────────────────────────────────────
+
+const HOME_STYLES = `
+  .pressy-home {
+    max-width: 65ch;
+    margin: 0 auto;
+    padding: 2rem 1.5rem;
+    font-family: var(--font-body, Georgia, 'Times New Roman', serif);
+    color: var(--color-text, #1a1a1a);
+  }
+  .pressy-home-header {
+    margin-bottom: 3rem;
+    text-align: center;
+  }
+  .pressy-home-header h1 {
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+  }
+  .pressy-home-author {
+    font-style: italic;
+    color: var(--color-text-muted, #666);
+  }
+  .pressy-home-desc {
+    color: var(--color-text-muted, #666);
+    line-height: 1.6;
+    max-width: 50ch;
+    margin: 0.5rem auto 0;
+  }
+  .pressy-home-section {
+    margin-bottom: 2rem;
+  }
+  .pressy-home-section h2 {
+    font-size: 1.25rem;
+    margin-bottom: 1rem;
+    border-bottom: 1px solid var(--color-border, #e5e5e5);
+    padding-bottom: 0.5rem;
+  }
+  .pressy-chapter-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+  .pressy-chapter-link {
+    display: flex;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    text-decoration: none;
+    color: var(--color-text, #1a1a1a);
+    border-radius: 0.5rem;
+    transition: background 0.15s;
+  }
+  .pressy-chapter-link:hover {
+    background: var(--color-bg-subtle, #f5f5f5);
+  }
+  .pressy-chapter-order {
+    color: var(--color-text-muted, #666);
+    min-width: 2ch;
+  }
+`
+
+// ── Main hydration function ─────────────────────────────────
+
+interface HydrateData {
+  route: string
+  routeType: string
+  manifest: ContentManifest
+}
+
+export function hydrate(data: HydrateData, Content?: ComponentType): void {
   currentRoute.value = data.route
 
   // Initialize
@@ -168,16 +349,65 @@ export function hydrate(data: { route: string; manifest: ContentManifest }): voi
   })
 
   // Handle client-side link clicks
+  // For now, allow normal browser navigation for cross-page links
+  // so each page loads its own HTML with the correct MDX content.
+  // Only intercept hash links for in-page navigation.
   document.addEventListener('click', (e) => {
     const link = (e.target as HTMLElement).closest('a')
     if (!link) return
 
     const href = link.getAttribute('href')
-    if (!href || href.startsWith('http') || href.startsWith('#')) return
+    if (!href) return
 
-    e.preventDefault()
-    navigate(href)
+    // Let external and full-page links navigate normally
+    if (href.startsWith('http') || href.startsWith('#')) return
+
+    // Same-path hash links: handle client-side
+    if (href.startsWith(data.route + '#')) {
+      e.preventDefault()
+      const hash = href.slice(href.indexOf('#'))
+      const target = document.querySelector(hash)
+      if (target) target.scrollIntoView({ behavior: 'smooth' })
+      return
+    }
+
+    // Cross-page links: let the browser navigate normally
+    // (each page is a full server-rendered HTML document)
   })
+
+  // Render the app
+  let page
+  switch (data.routeType) {
+    case 'home':
+      page = renderHomePage(data.manifest)
+      break
+    case 'book': {
+      const bookSlug = data.route.split('/')[2]
+      const book = data.manifest.books.find((b: Book) => b.slug === bookSlug)
+      page = book ? renderBookPage(book) : h('div', null, 'Book not found')
+      break
+    }
+    case 'chapter':
+      page = Content
+        ? renderChapterPage(data.manifest, data.route, Content)
+        : h('div', null, 'Loading...')
+      break
+    case 'article':
+      page = Content
+        ? renderArticlePage(data.manifest, data.route, Content)
+        : h('div', null, 'Loading...')
+      break
+    case 'books':
+      page = renderHomePage(data.manifest)
+      break
+    case 'articles':
+      page = renderHomePage(data.manifest)
+      break
+    default:
+      page = h('div', null, 'Page not found')
+  }
+
+  render(page, document.getElementById('app')!)
 }
 
 // Export for use in components

@@ -51,7 +51,7 @@ export function pressyPlugin(config: PressyConfig): Plugin[] {
         })
 
         const chapters: Chapter[] = chapterFiles
-          .map((file) => {
+          .map((file): Chapter | null => {
             const match = file.match(/^(\d+)-(.+)\.mdx$/)
             if (!match) return null
 
@@ -173,6 +173,22 @@ export function pressyPlugin(config: PressyConfig): Plugin[] {
     const title = getRouteTitle(route, config)
     const description = getRouteDescription(route, config)
 
+    let contentImport = ''
+    let contentArg = ''
+    if (route.type === 'chapter') {
+      const chapter = route.content as Chapter
+      const importPath = '/' + relative(root, chapter.filePath).split('\\').join('/')
+      contentImport = `import Content from '${importPath}';\n    `
+      contentArg = ', Content'
+    } else if (route.type === 'article') {
+      const article = route.content as Article
+      const importPath = '/' + relative(root, article.filePath).split('\\').join('/')
+      contentImport = `import Content from '${importPath}';\n    `
+      contentArg = ', Content'
+    }
+
+    const dataJson = JSON.stringify({ route: route.path, routeType: route.type, manifest })
+
     return `<!DOCTYPE html>
 <html lang="${config.site.language || 'en'}">
 <head>
@@ -183,15 +199,14 @@ export function pressyPlugin(config: PressyConfig): Plugin[] {
   <link rel="stylesheet" href="/@pressy/typography/prose.css">
   <link rel="stylesheet" href="/@pressy/typography/fluid.css">
   <link rel="stylesheet" href="/@pressy/typography/themes/light.css" id="theme-light">
-  <link rel="manifest" href="/manifest.webmanifest">
   <meta name="theme-color" content="#ffffff">
 </head>
 <body>
   <div id="app"></div>
-  <script type="module" src="/@pressy/client"></script>
   <script type="module">
     import { hydrate } from '/@pressy/client';
-    hydrate(${JSON.stringify({ route: route.path, manifest })});
+    ${contentImport}const data = ${dataJson};
+    hydrate(data${contentArg});
   </script>
 </body>
 </html>`
@@ -230,6 +245,9 @@ export function pressyPlugin(config: PressyConfig): Plugin[] {
   return [
     {
       name: 'pressy:config',
+      config() {
+        return { appType: 'custom' as const }
+      },
       configResolved(resolvedConfig) {
         root = resolvedConfig.root
         contentDir = resolve(root, config.contentDir || 'content')
@@ -276,22 +294,41 @@ export const config = ${JSON.stringify(config)};`
     {
       name: 'pressy:html',
       configureServer(server: ViteDevServer) {
-        return () => {
-          server.middlewares.use(async (req, res, next) => {
-            const url = req.url || '/'
-            const route = routes.find((r) => r.path === url)
+        server.middlewares.use(async (req, res, next) => {
+          const url = req.url || '/'
 
-            if (route) {
-              const html = generateHTML(route)
-              const transformed = await server.transformIndexHtml(url, html)
-              res.setHeader('Content-Type', 'text/html')
-              res.end(transformed)
-              return
-            }
+          // Suppress missing favicon/manifest requests in dev
+          if (url === '/favicon.ico' || url === '/manifest.webmanifest') {
+            res.statusCode = 204
+            res.end()
+            return
+          }
 
+          // Resolve virtual /@pressy/ URLs to real file paths
+          if (url.startsWith('/@pressy/')) {
+            const bareImport = url.slice(1) // e.g. '@pressy/typography/prose.css'
+            try {
+              const result = await server.pluginContainer.resolveId(bareImport)
+              if (result && !result.external) {
+                req.url = '/@fs' + result.id
+              }
+            } catch {}
             next()
-          })
-        }
+            return
+          }
+
+          const route = routes.find((r) => r.path === url)
+
+          if (route) {
+            const html = generateHTML(route)
+            const transformed = await server.transformIndexHtml(url, html)
+            res.setHeader('Content-Type', 'text/html')
+            res.end(transformed)
+            return
+          }
+
+          next()
+        })
       },
     },
     {
@@ -299,7 +336,10 @@ export const config = ${JSON.stringify(config)};`
       async generateBundle(_, bundle) {
         // Generate HTML files for each route during build
         for (const route of routes) {
-          const html = generateHTML(route)
+          const html = generateHTML(route).replace(
+            '</head>',
+            '  <link rel="manifest" href="/manifest.webmanifest">\n</head>'
+          )
           const fileName = route.path === '/' ? 'index.html' : `${route.path.slice(1)}/index.html`
 
           this.emitFile({

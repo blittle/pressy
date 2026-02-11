@@ -4,7 +4,11 @@
       "Bash(npm run)",
       "Bash(pnpm list:*)",
       "Bash(find:*)",
-      "Bash(pnpm run build:*)"
+      "Bash(pnpm run build:*)",
+      "Bash(pnpm install:*)",
+      "Bash(pnpm --filter @pressy/components build:*)",
+      "Bash(pnpm --filter @pressy/typography build:*)",
+      "Bash(pnpm --filter pressy build:*)"
     ]
   }
 }
