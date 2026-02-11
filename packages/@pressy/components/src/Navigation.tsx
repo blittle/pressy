@@ -1,17 +1,16 @@
 export interface NavigationProps {
   prev?: { slug: string; title: string }
   next?: { slug: string; title: string }
-  basePath?: string
 }
 
-export function Navigation({ prev, next, basePath = '' }: NavigationProps) {
+export function Navigation({ prev, next }: NavigationProps) {
   if (!prev && !next) return null
 
   return (
     <nav class="pressy-navigation" aria-label="Chapter navigation">
       <div class="pressy-nav-inner">
         {prev ? (
-          <a href={`${basePath}/${prev.slug}`} class="pressy-nav-link pressy-nav-prev">
+          <a href={prev.slug} class="pressy-nav-link pressy-nav-prev">
             <span class="pressy-nav-direction">Previous</span>
             <span class="pressy-nav-title">{prev.title}</span>
           </a>
@@ -20,7 +19,7 @@ export function Navigation({ prev, next, basePath = '' }: NavigationProps) {
         )}
 
         {next ? (
-          <a href={`${basePath}/${next.slug}`} class="pressy-nav-link pressy-nav-next">
+          <a href={next.slug} class="pressy-nav-link pressy-nav-next">
             <span class="pressy-nav-direction">Next</span>
             <span class="pressy-nav-title">{next.title}</span>
           </a>

@@ -7,3 +7,4 @@ packages/@pressy/typography/dist/**/*
 packages/@pressy/typography/dist/*
 packages/@pressy/shopify/dist/**/*
 packages/@pressy/shopify/dist/*
+**/dist/**/*

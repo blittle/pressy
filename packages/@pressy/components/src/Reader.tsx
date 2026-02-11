@@ -38,7 +38,7 @@ export function Reader({
       <header class="pressy-reader-header">
         <div class="pressy-reader-header-left">
           {bookTitle && (
-            <a href={`/books/${bookTitle.toLowerCase().replace(/\s+/g, '-')}`} class="pressy-book-link">
+            <a href="../" class="pressy-book-link">
               {bookTitle}
             </a>
           )}

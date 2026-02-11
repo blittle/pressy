@@ -170,7 +170,7 @@ function renderHomePage(manifest: ContentManifest) {
         ...manifest.books.flatMap((book: Book) =>
           book.chapters.map((ch: Chapter) =>
             h('a', {
-              href: `/books/${book.slug}/${ch.slug}`,
+              href: `${basePath}/books/${book.slug}/${ch.slug}`,
               class: 'pressy-chapter-link',
             },
               h('span', { class: 'pressy-chapter-order' }, `${ch.order}.`),
@@ -185,7 +185,7 @@ function renderHomePage(manifest: ContentManifest) {
       h('nav', { class: 'pressy-chapter-list' },
         ...manifest.articles.map((article: Article) =>
           h('a', {
-            href: `/articles/${article.slug}`,
+            href: `${basePath}/articles/${article.slug}`,
             class: 'pressy-chapter-link',
           }, article.metadata.title)
         ),
@@ -208,7 +208,7 @@ function renderBookPage(book: Book) {
       h('nav', { class: 'pressy-chapter-list' },
         ...book.chapters.map((ch: Chapter) =>
           h('a', {
-            href: `/books/${book.slug}/${ch.slug}`,
+            href: `${basePath}/books/${book.slug}/${ch.slug}`,
             class: 'pressy-chapter-link',
           },
             h('span', { class: 'pressy-chapter-order' }, `${ch.order}.`),
@@ -232,7 +232,7 @@ function renderChapterPage(
   const book = manifest.books.find((b: Book) => b.slug === bookSlug)
   const chapterIdx = book ? book.chapters.findIndex((c: Chapter) => c.slug === chapterSlug) : -1
   const chapter = book?.chapters[chapterIdx]
-  const chapterPath = (ch: Chapter) => `books/${bookSlug}/${ch.slug}`
+  const chapterPath = (ch: Chapter) => `${basePath}/books/${bookSlug}/${ch.slug}`
   const prevChapter = book && chapterIdx > 0
     ? { slug: chapterPath(book.chapters[chapterIdx - 1]), title: book.chapters[chapterIdx - 1].title }
     : undefined
@@ -333,7 +333,29 @@ interface HydrateData {
   manifest: ContentManifest
 }
 
+// Compute the base path by comparing the known route to the actual URL
+// e.g. URL="/pressy/pr-preview/pr-4/books/flatland" with route="/books/flatland"
+// yields basePath="/pressy/pr-preview/pr-4"
+function getBasePath(route: string): string {
+  const pathname = window.location.pathname
+  // Remove trailing slash for comparison
+  const cleanPath = pathname.endsWith('/') ? pathname.slice(0, -1) : pathname
+  const cleanRoute = route.endsWith('/') ? route.slice(0, -1) : route
+  if (cleanRoute === '' || cleanRoute === '/') {
+    // Home page: strip /index.html or trailing slash
+    return cleanPath.replace(/\/index\.html$/, '') || ''
+  }
+  const idx = cleanPath.indexOf(cleanRoute)
+  if (idx > 0) {
+    return cleanPath.slice(0, idx)
+  }
+  return ''
+}
+
+let basePath = ''
+
 export function hydrate(data: HydrateData, Content?: ComponentType): void {
+  basePath = getBasePath(data.route)
   currentRoute.value = data.route
 
   // Initialize
