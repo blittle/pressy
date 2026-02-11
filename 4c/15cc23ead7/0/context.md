@@ -83,3 +83,26 @@ spawn ENOENT
 
 But this also needs to be done in the gh action script?
 
+### Prompt 14
+
+That still didn't work:
+```
+pnpm --filter flatland-example build
+
+> flatland-example@0.1.0 build /Users/blittle/dev/pressy/examples/flatland
+> pnpm exec pressy build
+
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command "pressy" not found
+/Users/blittle/dev/pressy/examples/flatland:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  flatland-example@0.1.0 build: `pnpm exec pressy build`
+Exit status 1
+```
+
+### Prompt 15
+
+[Request interrupted by user for tool use]
+
+### Prompt 16
+
+So should the flow be `pnpm install` -> `pnpm build` -> `pnpm install`? That seems a bit odd, but maybe okay. Should the gh action also be updated to do that?
+

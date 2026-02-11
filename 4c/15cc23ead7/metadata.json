@@ -3,7 +3,7 @@
   "checkpoint_id": "4c15cc23ead7",
   "strategy": "manual-commit",
   "branch": "bl-fix-pages",
-  "checkpoints_count": 2,
+  "checkpoints_count": 1,
   "files_touched": [
     ".github/workflows/deploy-pages.yml",
     "examples/flatland/package.json"
@@ -18,10 +18,10 @@
     }
   ],
   "token_usage": {
-    "input_tokens": 14,
-    "cache_creation_tokens": 2272,
-    "cache_read_tokens": 255441,
-    "output_tokens": 191,
-    "api_call_count": 8
+    "input_tokens": 11,
+    "cache_creation_tokens": 2669,
+    "cache_read_tokens": 240579,
+    "output_tokens": 348,
+    "api_call_count": 7
   }
 }
