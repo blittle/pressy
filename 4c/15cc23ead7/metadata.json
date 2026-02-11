@@ -3,9 +3,10 @@
   "checkpoint_id": "4c15cc23ead7",
   "strategy": "manual-commit",
   "branch": "bl-fix-pages",
-  "checkpoints_count": 1,
+  "checkpoints_count": 2,
   "files_touched": [
-    ".github/workflows/deploy-pages.yml"
+    ".github/workflows/deploy-pages.yml",
+    "package.json"
   ],
   "sessions": [
     {
@@ -17,10 +18,10 @@
     }
   ],
   "token_usage": {
-    "input_tokens": 4,
-    "cache_creation_tokens": 693,
-    "cache_read_tokens": 52935,
-    "output_tokens": 3,
-    "api_call_count": 2
+    "input_tokens": 12,
+    "cache_creation_tokens": 3922,
+    "cache_read_tokens": 233465,
+    "output_tokens": 163,
+    "api_call_count": 8
   }
 }

@@ -32,3 +32,27 @@ Now I see this error in the action workflow:
       at readTarget (/home/runner/work/_actions/pnpm/action-setup/v4/dist/index.js:1:4977)
       at runSelfInstaller (/home/runner/work/_actions/pnpm/action-setup/v4/dis...
 
+### Prompt 6
+
+What's causing this error when running `pnpm build`:
+```
+
+### Prompt 7
+
+[Request interrupted by user]
+
+### Prompt 8
+
+What's causing this error when running `pnpm build`:
+```
+DTS Build start
+src/runtime/client.ts(3,24): error TS2307: Cannot find module '@pressy/components' or its corresponding type declarations.
+src/runtime/client.ts(4,34): error TS2307: Cannot find module '@pressy/components/content' or its corresponding type declarations.
+
+Error: error occurred in dts build
+    at Worker.<anonymous> (/Users/blittle/dev/pressy/node_modules/.pnpm/tsup@8.5.1_typescript@5.9.3_yaml@2.8.2/node_modules/tsup/dist/ind...
+
+### Prompt 9
+
+Should line 37 of @.github/workflows/deploy-pages.yml just do a `pnpm build`, so it's using the same script as me when I test?
+

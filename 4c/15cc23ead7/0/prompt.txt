@@ -32,3 +32,37 @@ Now I see this error in the action workflow:
     - version pnpm@8.12.0 in the package.json with the key "packageManager"
   Remove one of these versions to avoid version mismatch errors like ERR_PNPM_BAD_PM_VERSION
 ```
+
+---
+
+What's causing this error when running `pnpm build`:
+```
+
+---
+
+[Request interrupted by user]
+
+---
+
+What's causing this error when running `pnpm build`:
+```
+DTS Build start
+src/runtime/client.ts(3,24): error TS2307: Cannot find module '@pressy/components' or its corresponding type declarations.
+src/runtime/client.ts(4,34): error TS2307: Cannot find module '@pressy/components/content' or its corresponding type declarations.
+
+Error: error occurred in dts build
+    at Worker.<anonymous> (/Users/blittle/dev/pressy/node_modules/.pnpm/tsup@8.5.1_typescript@5.9.3_yaml@2.8.2/node_modules/tsup/dist/index.js:1545:26)
+    at Worker.emit (node:events:519:28)
+    at MessagePort.<anonymous> (node:internal/worker:270:53)
+    at [nodejs.internal.kHybridDispatch] (node:internal/event_target:827:20)
+    at MessagePort.<anonymous> (node:internal/per_context/messageport:23:28)
+DTS Build error
+/Users/blittle/dev/pressy/packages/pressy:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  pressy@0.1.0 build: `tsup`
+Exit status 1
+ ELIFECYCLE  Command failed with exit code 1.
+```
+
+---
+
+Should line 37 of @.github/workflows/deploy-pages.yml just do a `pnpm build`, so it's using the same script as me when I test?
