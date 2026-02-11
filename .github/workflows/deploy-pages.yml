@@ -1,0 +1,77 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: pages-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-deploy:
+    if: github.event.action != 'closed'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build packages
+        run: pnpm --filter './packages/*' build
+
+      - name: Build Flatland example
+        working-directory: examples/flatland
+        run: |
+          node ../../packages/pressy/dist/cli/index.js build --outDir dist
+        env:
+          NODE_ENV: production
+
+      - name: Deploy main site
+        if: github.event_name == 'push'
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: examples/flatland/dist
+          keep_files: true
+          destination_dir: .
+
+      - name: Deploy PR preview
+        if: github.event_name == 'pull_request'
+        uses: rossjrw/pr-preview-deploy-action@v1
+        with:
+          source-dir: examples/flatland/dist
+          umbrella-dir: pr-preview
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+  cleanup:
+    if: github.event.action == 'closed'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Clean up PR preview
+        uses: rossjrw/pr-preview-deploy-action@v1
+        with:
+          source-dir: examples/flatland/dist
+          umbrella-dir: pr-preview
+          token: ${{ secrets.GITHUB_TOKEN }}
+          action: remove
