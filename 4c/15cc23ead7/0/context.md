@@ -277,3 +277,11 @@ Error: Dynamic require of "os" is not supported
     at file:REDACTED.mjs:11:9
     at ../../node_mo...
 
+### Prompt 34
+
+Okay, it deploys, but all the paths are wrong because the preview deploys to pages look like `https://blittle.github.io/pressy/pr-preview/pr-4/`, but the problem is the asset loading starts with a root slash, so they fail to load `GET https://blittle.github.io/assets/index-gRa5PqJA.js net::ERR_ABORTED 404 (Not Found)`
+
+### Prompt 35
+
+Make sure the links all work too
+

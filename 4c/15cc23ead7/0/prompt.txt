@@ -405,3 +405,11 @@ Exit status 1
 ```
 
 Do we need to take a step back and reconsider hwo we are doing this?
+
+---
+
+Okay, it deploys, but all the paths are wrong because the preview deploys to pages look like `https://blittle.github.io/pressy/pr-preview/pr-4/`, but the problem is the asset loading starts with a root slash, so they fail to load `GET https://blittle.github.io/assets/index-gRa5PqJA.js net::ERR_ABORTED 404 (Not Found)`
+
+---
+
+Make sure the links all work too
