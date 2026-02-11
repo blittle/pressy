@@ -3,33 +3,30 @@
   "checkpoint_id": "4c15cc23ead7",
   "session_id": "7760d207-3d6e-416f-8944-7793cfe648ff",
   "strategy": "manual-commit",
-  "created_at": "2026-02-11T15:22:49.167572Z",
+  "created_at": "2026-02-11T15:33:26.332343Z",
   "branch": "bl-fix-pages",
-  "checkpoints_count": 2,
+  "checkpoints_count": 4,
   "files_touched": [
-    ".github/workflows/deploy-pages.yml",
-    "examples/flatland/package.json",
-    "package.json",
-    "packages/pressy/src/vite/plugin.ts"
+    "packages/pressy/src/cli/index.ts"
   ],
   "agent": "Claude Code",
-  "transcript_identifier_at_start": "63d7c406-f518-431e-be4a-efe66b7a6a4f",
-  "checkpoint_transcript_start": 200,
-  "transcript_lines_at_start": 200,
+  "transcript_identifier_at_start": "8e7ede18-19b8-4af5-9de3-0cb876c4f4ec",
+  "checkpoint_transcript_start": 443,
+  "transcript_lines_at_start": 443,
   "token_usage": {
-    "input_tokens": 50,
-    "cache_creation_tokens": 47465,
-    "cache_read_tokens": 2377716,
-    "output_tokens": 3805,
-    "api_call_count": 37
+    "input_tokens": 25,
+    "cache_creation_tokens": 11076,
+    "cache_read_tokens": 1509137,
+    "output_tokens": 616,
+    "api_call_count": 17
   },
   "initial_attribution": {
-    "calculated_at": "2026-02-11T15:22:49.104964Z",
-    "agent_lines": 0,
-    "human_added": 1156,
-    "human_modified": 51,
+    "calculated_at": "2026-02-11T15:33:26.261744Z",
+    "agent_lines": 20,
+    "human_added": 7,
+    "human_modified": 0,
     "human_removed": 0,
-    "total_committed": 1156,
-    "agent_percentage": 0
+    "total_committed": 27,
+    "agent_percentage": 74.07407407407408
   }
 }

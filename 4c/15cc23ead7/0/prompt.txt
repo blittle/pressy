@@ -275,3 +275,133 @@ Okay, now let's go back and fix the 404 icon loading `/icon-192.png`
 ---
 
 I'll wait to solve it instead
+
+---
+
+It works locally now, but in CI on the github action I get this error when trying to build flatland:
+
+```
+Run pnpm --filter flatland-example build
+  pnpm --filter flatland-example build
+  shell: /usr/bin/bash -e {0}
+  env:
+    PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+  
+> flatland-example@0.1.0 build /home/runner/work/pressy/pressy/examples/flatland
+> pressy build
+node:internal/modules/esm/get_format:189
+  throw new ERR_UNKNOWN_FILE_EXTENSION(ext, filepath);
+        ^
+TypeError [ERR_UNKNOWN_FILE_EXTENSION]: Unknown file extension ".ts" for /home/runner/work/pressy/pressy/examples/flatland/pressy.config.ts
+    at Object.getFileProtocolModuleFormat [as file:] (node:internal/modules/esm/get_format:189:9)
+    at defaultGetFormat (node:internal/modules/esm/get_format:232:36)
+    at defaultLoad (node:internal/modules/esm/load:145:22)
+    at async ModuleLoader.loadAndTranslate (node:internal/modules/esm/loader:543:45)
+    at async ModuleJob._link (node:internal/modules/esm/module_job:148:19) {
+  code: 'ERR_UNKNOWN_FILE_EXTENSION'
+}
+Node.js v20.20.0
+/home/runner/work/pressy/pressy/examples/flatland:
+�ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  flatland-example@0.1.0 build: `pressy build`
+Exit status 1
+Error: Process completed with exit code 1.
+```
+
+---
+
+Now the build breaks locally:
+
+```
+pnpm --filter flatland-example build
+
+> flatland-example@0.1.0 build /Users/blittle/dev/pressy/examples/flatland
+> pressy build
+
+file:REDACTED.mjs:11
+  throw Error('Dynamic require of "' + x + '" is not supported');
+        ^
+
+Error: Dynamic require of "os" is not supported
+    at file:REDACTED.mjs:11:9
+    at ../../node_modules/.pnpm/fast-glob@3.3.3/node_modules/fast-glob/out/utils/path.js (file:REDACTED.mjs:104:14)
+    at __require2 (file:REDACTED.mjs:14:50)
+    at ../../node_modules/.pnpm/fast-glob@3.3.3/node_modules/fast-glob/out/utils/index.js (file:REDACTED.mjs:3417:16)
+    at __require2 (file:REDACTED.mjs:14:50)
+    at ../../node_modules/.pnpm/fast-glob@3.3.3/node_modules/fast-glob/out/managers/tasks.js (file:REDACTED.mjs:3434:17)
+    at __require2 (file:REDACTED.mjs:14:50)
+    at ../../node_modules/.pnpm/fast-glob@3.3.3/node_modules/fast-glob/out/index.js (file:REDACTED.mjs:5448:23)
+    at __require2 (file:REDACTED.mjs:14:50)
+    at file:REDACTED.mjs:16330:32
+
+Node.js v22.20.0
+/Users/blittle/dev/pressy/examples/flatland:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  flatland-example@0.1.0 build: `pressy build`
+Exit status 1
+```
+
+---
+
+Still errors:
+
+```
+pnpm --filter flatland-example build
+
+> flatland-example@0.1.0 build /Users/blittle/dev/pressy/examples/flatland
+> pressy build
+
+node:internal/modules/package_json_reader:266
+  throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
+        ^
+
+Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'pressy' imported from REDACTED.mjs
+    at Object.getPackageJSONURL (node:internal/modules/package_json_reader:266:9)
+    at packageResolve (node:internal/modules/esm/resolve:767:81)
+    at moduleResolve (node:internal/modules/esm/resolve:853:18)
+    at defaultResolve (node:internal/modules/esm/resolve:983:11)
+    at #cachedDefaultResolve (node:internal/modules/esm/loader:731:20)
+    at ModuleLoader.resolve (node:internal/modules/esm/loader:708:38)
+    at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:310:38)
+    at ModuleJob._link (node:internal/modules/esm/module_job:183:49)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5) {
+  code: 'ERR_MODULE_NOT_FOUND'
+}
+
+Node.js v22.20.0
+/Users/blittle/dev/pressy/examples/flatland:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  flatland-example@0.1.0 build: `pressy build`
+Exit status 1
+```
+
+---
+
+Still broken:
+
+```
+pnpm --filter flatland-example build
+
+> flatland-example@0.1.0 build /Users/blittle/dev/pressy/examples/flatland
+> pressy build
+
+file:REDACTED.mjs:11
+  throw Error('Dynamic require of "' + x + '" is not supported');
+        ^
+
+Error: Dynamic require of "os" is not supported
+    at file:REDACTED.mjs:11:9
+    at ../../node_modules/.pnpm/fast-glob@3.3.3/node_modules/fast-glob/out/utils/path.js (file:REDACTED.mjs:104:14)
+    at __require2 (file:REDACTED.mjs:14:50)
+    at ../../node_modules/.pnpm/fast-glob@3.3.3/node_modules/fast-glob/out/utils/index.js (file:REDACTED.mjs:3417:16)
+    at __require2 (file:REDACTED.mjs:14:50)
+    at ../../node_modules/.pnpm/fast-glob@3.3.3/node_modules/fast-glob/out/managers/tasks.js (file:REDACTED.mjs:3434:17)
+    at __require2 (file:REDACTED.mjs:14:50)
+    at ../../node_modules/.pnpm/fast-glob@3.3.3/node_modules/fast-glob/out/index.js (file:REDACTED.mjs:5448:23)
+    at __require2 (file:REDACTED.mjs:14:50)
+    at file:REDACTED.mjs:16330:32
+
+Node.js v22.20.0
+/Users/blittle/dev/pressy/examples/flatland:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  flatland-example@0.1.0 build: `pressy build`
+Exit status 1
+```
+
+Do we need to take a step back and reconsider hwo we are doing this?

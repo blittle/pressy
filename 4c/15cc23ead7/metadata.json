@@ -3,9 +3,8 @@
   "checkpoint_id": "4c15cc23ead7",
   "strategy": "manual-commit",
   "branch": "bl-fix-pages",
-  "checkpoints_count": 3,
+  "checkpoints_count": 5,
   "files_touched": [
-    ".github/workflows/deploy-pages.yml",
     "examples/flatland/dist/assets/articles-ChpwJyJ_.js",
     "examples/flatland/dist/assets/articles-about-flatland-Bc-QUe19.js",
     "examples/flatland/dist/assets/books-BX7Vg0rY.js",
@@ -22,9 +21,7 @@
     "examples/flatland/dist/assets/index-Den-fWCv.js",
     "examples/flatland/dist/assets/pressy-entry-MLWaqUIs.js",
     "examples/flatland/dist/assets/pressy-entry-xg2G9h26.css",
-    "examples/flatland/package.json",
-    "package.json",
-    "packages/pressy/src/vite/plugin.ts"
+    "packages/pressy/src/cli/index.ts"
   ],
   "sessions": [
     {
@@ -43,10 +40,10 @@
     }
   ],
   "token_usage": {
-    "input_tokens": 54,
-    "cache_creation_tokens": 57498,
-    "cache_read_tokens": 2407545,
-    "output_tokens": 3818,
-    "api_call_count": 39
+    "input_tokens": 29,
+    "cache_creation_tokens": 21109,
+    "cache_read_tokens": 1538966,
+    "output_tokens": 629,
+    "api_call_count": 19
   }
 }

@@ -206,3 +206,74 @@ Okay, now let's go back and fix the 404 icon loading `/icon-192.png`
 
 I'll wait to solve it instead
 
+### Prompt 30
+
+It works locally now, but in CI on the github action I get this error when trying to build flatland:
+
+```
+Run pnpm --filter flatland-example build
+  pnpm --filter flatland-example build
+  shell: /usr/bin/bash -e {0}
+  env:
+    PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+  
+> flatland-example@0.1.0 build /home/runner/work/pressy/pressy/examples/flatland
+> pressy build
+node:internal/modules/esm/get_format:189
+  throw new ERR_UNKNOWN_FILE_EXTENSION(ext, filepath);
+        ^
+TypeError [ERR_...
+
+### Prompt 31
+
+Now the build breaks locally:
+
+```
+pnpm --filter flatland-example build
+
+> flatland-example@0.1.0 build /Users/blittle/dev/pressy/examples/flatland
+> pressy build
+
+file:REDACTED.mjs:11
+  throw Error('Dynamic require of "' + x + '" is not supported');
+        ^
+
+Error: Dynamic require of "os" is not supported
+    at file:REDACTED.mjs:11:9
+    ...
+
+### Prompt 32
+
+Still errors:
+
+```
+pnpm --filter flatland-example build
+
+> flatland-example@0.1.0 build /Users/blittle/dev/pressy/examples/flatland
+> pressy build
+
+node:internal/modules/package_json_reader:266
+  throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
+        ^
+
+Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'pressy' imported from REDACTED.mjs
+    at Object.getPackageJSONURL (node:internal/modules/pack...
+
+### Prompt 33
+
+Still broken:
+
+```
+pnpm --filter flatland-example build
+
+> flatland-example@0.1.0 build /Users/blittle/dev/pressy/examples/flatland
+> pressy build
+
+file:REDACTED.mjs:11
+  throw Error('Dynamic require of "' + x + '" is not supported');
+        ^
+
+Error: Dynamic require of "os" is not supported
+    at file:REDACTED.mjs:11:9
+    at ../../node_mo...
+
