@@ -1,0 +1,1 @@
+Why does running claude in cursor not allow me to shift+enter to make a new line? Instead shift+enter executes my command. To make a new line I have to use a backslash then enter. How do I fix this in cursor?
