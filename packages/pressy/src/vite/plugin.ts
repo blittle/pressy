@@ -1,5 +1,5 @@
 import { Plugin, ViteDevServer } from 'vite'
-import { resolve, join, relative, basename, dirname } from 'path'
+import { resolve, join, relative, dirname } from 'path'
 import { existsSync, readFileSync } from 'fs'
 import { createRequire } from 'module'
 
@@ -10,6 +10,7 @@ import matter from 'gray-matter'
 import type { PressyConfig } from '../config.js'
 import type { Book, Article, Chapter, ContentManifest, Route } from '../types.js'
 import { compileMDX } from '../mdx/processor.js'
+import { generateOfflinePage } from '../runtime/offline-page.js'
 
 const VIRTUAL_MODULE_ID = 'virtual:pressy'
 const RESOLVED_VIRTUAL_MODULE_ID = '\0' + VIRTUAL_MODULE_ID
@@ -23,6 +24,14 @@ export function pressyPlugin(config: PressyConfig): Plugin[] {
   let contentDir: string
   let manifest: ContentManifest = { books: [], articles: [] }
   let routes: Route[] = []
+
+  const pwaEnabled = config.pwa?.enabled !== false
+  const pwaConfig = {
+    themeColor: config.pwa?.themeColor || '#ffffff',
+    backgroundColor: config.pwa?.backgroundColor || '#ffffff',
+    display: config.pwa?.display || 'standalone',
+    shortName: config.pwa?.shortName || config.site.title,
+  }
 
   const contentDiscovery = {
     async discoverContent(): Promise<ContentManifest> {
@@ -196,6 +205,17 @@ export function pressyPlugin(config: PressyConfig): Plugin[] {
 
     const dataJson = JSON.stringify({ route: route.path, routeType: route.type, manifest })
 
+    const pwaTags = pwaEnabled
+      ? `
+  <link rel="manifest" href="/manifest.webmanifest">
+  <meta name="theme-color" content="${pwaConfig.themeColor}">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="${pwaConfig.shortName}">
+  <link rel="apple-touch-icon" href="/icon-192.png">`
+      : `
+  <meta name="theme-color" content="${pwaConfig.themeColor}">`
+
     return `<!DOCTYPE html>
 <html lang="${config.site.language || 'en'}">
 <head>
@@ -205,8 +225,7 @@ export function pressyPlugin(config: PressyConfig): Plugin[] {
   <meta name="description" content="${description}">
   <link rel="stylesheet" href="/@pressy/typography/prose.css">
   <link rel="stylesheet" href="/@pressy/typography/fluid.css">
-  <link rel="stylesheet" href="/@pressy/typography/themes/light.css" id="theme-light">
-  <meta name="theme-color" content="#ffffff">
+  <link rel="stylesheet" href="/@pressy/typography/themes/light.css" id="theme-light">${pwaTags}
 </head>
 <body>
   <div id="app"></div>
@@ -247,6 +266,15 @@ export function pressyPlugin(config: PressyConfig): Plugin[] {
       default:
         return config.site.description || ''
     }
+  }
+
+  /** Generate a simple SVG icon as a placeholder when no custom icon is provided. */
+  function generatePlaceholderIcon(size: number): string {
+    const initial = config.site.title.charAt(0).toUpperCase()
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+  <rect width="${size}" height="${size}" fill="${pwaConfig.themeColor === '#ffffff' ? '#1a1a1a' : pwaConfig.themeColor}" rx="${Math.round(size * 0.15)}"/>
+  <text x="50%" y="50%" dominant-baseline="central" text-anchor="middle" font-family="Georgia, serif" font-size="${Math.round(size * 0.45)}" fill="#ffffff">${initial}</text>
+</svg>`
   }
 
   return [
@@ -385,10 +413,59 @@ export const config = ${JSON.stringify(config)};`
         server.middlewares.use(async (req, res, next) => {
           const url = req.url || '/'
 
-          // Suppress missing favicon/manifest requests in dev
-          if (url === '/favicon.ico' || url === '/manifest.webmanifest') {
+          // Suppress missing favicon requests in dev
+          if (url === '/favicon.ico') {
             res.statusCode = 204
             res.end()
+            return
+          }
+
+          // Serve a no-op service worker in dev mode so registration succeeds
+          if (url === '/sw.js') {
+            res.setHeader('Content-Type', 'application/javascript')
+            res.setHeader('Service-Worker-Allowed', '/')
+            res.end([
+              '// Dev-mode service worker — no caching, passes everything through',
+              'self.addEventListener("install", () => self.skipWaiting());',
+              'self.addEventListener("activate", (e) => e.waitUntil(self.clients.claim()));',
+              'self.addEventListener("message", (e) => {',
+              '  if (e.data?.type === "SKIP_WAITING") self.skipWaiting();',
+              '});',
+            ].join('\n'))
+            return
+          }
+
+          // Serve a dev manifest
+          if (url === '/manifest.webmanifest') {
+            res.setHeader('Content-Type', 'application/manifest+json')
+            res.end(JSON.stringify({
+              name: config.site.title,
+              short_name: pwaConfig.shortName,
+              description: config.site.description,
+              start_url: '/',
+              display: pwaConfig.display,
+              background_color: pwaConfig.backgroundColor,
+              theme_color: pwaConfig.themeColor,
+              icons: [
+                { src: '/icon-192.png', sizes: '192x192', type: 'image/png' },
+                { src: '/icon-512.png', sizes: '512x512', type: 'image/png' },
+              ],
+            }, null, 2))
+            return
+          }
+
+          // Serve placeholder icons in dev
+          if (url === '/icon-192.png' || url === '/icon-512.png') {
+            const size = url.includes('192') ? 192 : 512
+            res.setHeader('Content-Type', 'image/svg+xml')
+            res.end(generatePlaceholderIcon(size))
+            return
+          }
+
+          // Serve offline page in dev
+          if (url === '/offline.html') {
+            res.setHeader('Content-Type', 'text/html')
+            res.end(generateOfflinePage(config.site.title))
             return
           }
 
@@ -421,6 +498,7 @@ export const config = ${JSON.stringify(config)};`
     },
     {
       name: 'pressy:build',
+      apply: 'build',
       async generateBundle(_, bundle) {
         // Collect CSS files and map route names to their bundled chunks
         const cssFiles: string[] = []
@@ -450,6 +528,17 @@ export const config = ${JSON.stringify(config)};`
 
           const cssLinks = cssFiles.map(f => `  <link rel="stylesheet" href="${assetPrefix}${f}">`).join('\n')
 
+          const buildPwaTags = pwaEnabled
+            ? `
+  <link rel="manifest" href="${assetPrefix}manifest.webmanifest">
+  <meta name="theme-color" content="${pwaConfig.themeColor}">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="${pwaConfig.shortName}">
+  <link rel="apple-touch-icon" href="${assetPrefix}icon-192.png">`
+            : `
+  <meta name="theme-color" content="${pwaConfig.themeColor}">`
+
           const html = `<!DOCTYPE html>
 <html lang="${config.site.language || 'en'}">
 <head>
@@ -457,16 +546,13 @@ export const config = ${JSON.stringify(config)};`
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${title}</title>
   <meta name="description" content="${description}">
-${cssLinks}
-  <link rel="manifest" href="${assetPrefix}manifest.webmanifest">
-  <meta name="theme-color" content="#ffffff">
+${cssLinks}${buildPwaTags}
 </head>
 <body>
   <div id="app"></div>
   <script type="module" src="${assetPrefix}${routeJsFile}"></script>
 </body>
 </html>`
-
           const fileName = route.path === '/' ? 'index.html' : `${route.path.slice(1)}/index.html`
 
           this.emitFile({
@@ -477,14 +563,16 @@ ${cssLinks}
         }
 
         // Generate manifest.webmanifest
+        const hasCustomIcons = config.pwa?.icon192 && config.pwa?.icon512
+
         const webManifest = {
           name: config.site.title,
-          short_name: config.site.title,
+          short_name: pwaConfig.shortName,
           description: config.site.description,
           start_url: '/',
-          display: 'standalone',
-          background_color: '#ffffff',
-          theme_color: '#ffffff',
+          display: pwaConfig.display,
+          background_color: pwaConfig.backgroundColor,
+          theme_color: pwaConfig.themeColor,
           icons: [
             {
               src: '/icon-192.png',
@@ -495,6 +583,7 @@ ${cssLinks}
               src: '/icon-512.png',
               sizes: '512x512',
               type: 'image/png',
+              purpose: 'any maskable',
             },
           ],
         }
@@ -504,6 +593,73 @@ ${cssLinks}
           fileName: 'manifest.webmanifest',
           source: JSON.stringify(webManifest, null, 2),
         })
+
+        // Emit offline fallback page
+        this.emitFile({
+          type: 'asset',
+          fileName: 'offline.html',
+          source: generateOfflinePage(config.site.title),
+        })
+
+        // Emit placeholder SVG icons if no custom icons provided
+        if (!hasCustomIcons) {
+          this.emitFile({
+            type: 'asset',
+            fileName: 'icon-192.png',
+            source: generatePlaceholderIcon(192),
+          })
+          this.emitFile({
+            type: 'asset',
+            fileName: 'icon-512.png',
+            source: generatePlaceholderIcon(512),
+          })
+        }
+
+        // Build service worker with precache manifest
+        if (pwaEnabled) {
+          const precacheEntries: Array<{ url: string; revision: string | null }> = []
+
+          // Add all HTML pages
+          for (const route of routes) {
+            precacheEntries.push({ url: route.path, revision: null })
+          }
+
+          // Add offline page
+          precacheEntries.push({ url: '/offline.html', revision: null })
+
+          // Add built JS/CSS chunks from the bundle
+          for (const [fileName] of Object.entries(bundle)) {
+            if (fileName.endsWith('.js') || fileName.endsWith('.css')) {
+              precacheEntries.push({
+                url: `/${fileName}`,
+                revision: null,
+              })
+            }
+          }
+
+          // Bundle the service worker into a self-contained IIFE using esbuild
+          // so that workbox imports are inlined (service workers can't use ES module imports)
+          const swSourcePath = resolve(__dirname, '../runtime/sw.js')
+          const manifestJson = JSON.stringify(precacheEntries)
+          const { build: esbuildBuild } = await import('esbuild')
+          const esbuildResult = await esbuildBuild({
+            entryPoints: [swSourcePath],
+            bundle: true,
+            format: 'iife',
+            write: false,
+            platform: 'browser',
+            define: {
+              'self.__WB_MANIFEST': manifestJson,
+            },
+          })
+          const swCode = esbuildResult.outputFiles![0].text
+
+          this.emitFile({
+            type: 'asset',
+            fileName: 'sw.js',
+            source: swCode,
+          })
+        }
       },
     },
   ]

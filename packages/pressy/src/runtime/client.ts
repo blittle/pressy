@@ -1,7 +1,14 @@
 import { h, render, ComponentType } from 'preact'
 import { signal, effect } from '@preact/signals'
-import { Reader } from '@pressy/components'
+import { Reader, DownloadBook } from '@pressy/components'
 import { useMDXComponents } from '@pressy/components/content'
+import {
+  registerServiceWorker,
+  downloadBookForOffline,
+  clearBookCache,
+  cachedBooks,
+  cacheProgress,
+} from './offline.js'
 import type { ContentManifest, Route, Book, Chapter, Article, ReadingProgress } from '../types.js'
 
 // State signals
@@ -196,6 +203,10 @@ function renderHomePage(manifest: ContentManifest) {
 }
 
 function renderBookPage(book: Book) {
+  const chapterUrls = book.chapters.map(
+    (ch: Chapter) => `/books/${book.slug}/${ch.slug}`
+  )
+
   return h('div', { class: 'pressy-home' },
     h('header', { class: 'pressy-home-header' },
       h('h1', null, book.metadata.title),
@@ -203,6 +214,15 @@ function renderBookPage(book: Book) {
       book.metadata.description &&
         h('p', { class: 'pressy-home-desc' }, book.metadata.description),
     ),
+    // Offline download button
+    h(DownloadBook, {
+      bookSlug: book.slug,
+      chapterUrls,
+      cachedBooks,
+      cacheProgress,
+      onDownload: downloadBookForOffline,
+      onRemove: clearBookCache,
+    }),
     h('section', { class: 'pressy-home-section' },
       h('h2', null, 'Chapters'),
       h('nav', { class: 'pressy-chapter-list' },
@@ -364,6 +384,9 @@ export function hydrate(data: HydrateData, Content?: ComponentType): void {
   setupKeyboardNav()
   setupOfflineDetection()
   initDB()
+
+  // Register service worker for PWA offline support
+  registerServiceWorker()
 
   // Handle popstate for back/forward navigation
   window.addEventListener('popstate', () => {

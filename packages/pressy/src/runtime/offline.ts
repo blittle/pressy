@@ -1,8 +1,9 @@
 import { signal } from '@preact/signals'
 
 export const offlineStatus = signal<'online' | 'offline'>('online')
-export const cacheProgress = signal<{ current: number; total: number } | null>(null)
+export const cacheProgress = signal<{ bookSlug: string; current: number; total: number } | null>(null)
 export const cachedBooks = signal<Set<string>>(new Set())
+export const swReady = signal<boolean>(false)
 
 // Initialize offline detection
 if (typeof window !== 'undefined') {
@@ -29,10 +30,29 @@ export async function registerServiceWorker(): Promise<ServiceWorkerRegistration
       scope: '/',
     })
 
-    console.log('Service worker registered:', registration.scope)
-
     // Listen for messages from service worker
     navigator.serviceWorker.addEventListener('message', handleSWMessage)
+
+    // Mark SW as ready when controller is available
+    if (navigator.serviceWorker.controller) {
+      swReady.value = true
+    } else {
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        swReady.value = true
+      })
+    }
+
+    // Handle updates
+    registration.addEventListener('updatefound', () => {
+      const newWorker = registration.installing
+      if (!newWorker) return
+
+      newWorker.addEventListener('statechange', () => {
+        if (newWorker.state === 'activated') {
+          swReady.value = true
+        }
+      })
+    })
 
     return registration
   } catch (err) {
@@ -42,13 +62,25 @@ export async function registerServiceWorker(): Promise<ServiceWorkerRegistration
 }
 
 function handleSWMessage(event: MessageEvent) {
-  const { type, urls, cached } = event.data
+  const { type } = event.data
+
+  if (type === 'CACHE_PROGRESS') {
+    const { bookSlug, current, total } = event.data
+    cacheProgress.value = { bookSlug, current, total }
+  }
 
   if (type === 'CACHE_COMPLETE') {
+    const { bookSlug } = event.data
     cacheProgress.value = null
-    // Update cached books set
     const newCached = new Set(cachedBooks.value)
-    for (const url of urls) {
+    newCached.add(bookSlug)
+    cachedBooks.value = newCached
+  }
+
+  if (type === 'CACHE_STATUS') {
+    const { cached } = event.data as { cached: string[] }
+    const newCached = new Set<string>()
+    for (const url of cached) {
       const match = url.match(/\/books\/([^/]+)/)
       if (match) {
         newCached.add(match[1])
@@ -57,14 +89,10 @@ function handleSWMessage(event: MessageEvent) {
     cachedBooks.value = newCached
   }
 
-  if (type === 'CACHE_STATUS') {
-    const newCached = new Set<string>()
-    for (const url of cached) {
-      const match = url.match(/\/books\/([^/]+)/)
-      if (match) {
-        newCached.add(match[1])
-      }
-    }
+  if (type === 'CACHE_CLEARED') {
+    const { bookSlug } = event.data
+    const newCached = new Set(cachedBooks.value)
+    newCached.delete(bookSlug)
     cachedBooks.value = newCached
   }
 }
@@ -84,7 +112,7 @@ export async function downloadBookForOffline(
     url.startsWith('http') ? url : `${window.location.origin}${url}`
   )
 
-  cacheProgress.value = { current: 0, total: urls.length }
+  cacheProgress.value = { bookSlug, current: 0, total: urls.length }
 
   // Send message to service worker
   navigator.serviceWorker.controller.postMessage({
@@ -97,7 +125,7 @@ export async function downloadBookForOffline(
 }
 
 // Check if a book is available offline
-export async function isBookCached(bookSlug: string): Promise<boolean> {
+export function isBookCached(bookSlug: string): boolean {
   return cachedBooks.value.has(bookSlug)
 }
 
@@ -117,23 +145,32 @@ export async function checkCacheStatus(urls: string[]): Promise<void> {
 
 // Clear cached book
 export async function clearBookCache(bookSlug: string): Promise<boolean> {
-  try {
-    const cache = await caches.open('pressy-offline-books')
-    const keys = await cache.keys()
+  if (!('serviceWorker' in navigator) || !navigator.serviceWorker.controller) {
+    // Fallback to direct cache API
+    try {
+      const cache = await caches.open('pressy-offline-books')
+      const keys = await cache.keys()
 
-    for (const request of keys) {
-      if (request.url.includes(`/books/${bookSlug}`)) {
-        await cache.delete(request)
+      for (const request of keys) {
+        if (request.url.includes(`/books/${bookSlug}`)) {
+          await cache.delete(request)
+        }
       }
+
+      const newCached = new Set(cachedBooks.value)
+      newCached.delete(bookSlug)
+      cachedBooks.value = newCached
+      return true
+    } catch (err) {
+      console.error('Failed to clear cache:', err)
+      return false
     }
-
-    const newCached = new Set(cachedBooks.value)
-    newCached.delete(bookSlug)
-    cachedBooks.value = newCached
-
-    return true
-  } catch (err) {
-    console.error('Failed to clear cache:', err)
-    return false
   }
+
+  // Prefer message-based approach so SW can coordinate
+  navigator.serviceWorker.controller.postMessage({
+    type: 'CLEAR_BOOK_CACHE',
+    bookSlug,
+  })
+  return true
 }
