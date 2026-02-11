@@ -56,3 +56,30 @@ Error: error occurred in dts build
 
 Should line 37 of @.github/workflows/deploy-pages.yml just do a `pnpm build`, so it's using the same script as me when I test?
 
+### Prompt 10
+
+I don't think that line 42 of @.github/workflows/deploy-pages.yml is the right command to build the example
+
+### Prompt 11
+
+Running that command gives this error:
+```
+ pnpm --filter flatland-example build                                                                              1 ↵
+
+> flatland-example@0.1.0 build /Users/blittle/dev/pressy/examples/flatland
+> pressy build
+
+sh: pressy: command not found
+/Users/blittle/dev/pressy/examples/flatland:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  flatland-example@0.1.0 build: `pressy build`
+spawn ENOENT
+```
+
+### Prompt 12
+
+[Request interrupted by user for tool use]
+
+### Prompt 13
+
+But this also needs to be done in the gh action script?
+

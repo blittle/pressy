@@ -6,7 +6,7 @@
   "checkpoints_count": 2,
   "files_touched": [
     ".github/workflows/deploy-pages.yml",
-    "package.json"
+    "examples/flatland/package.json"
   ],
   "sessions": [
     {
@@ -18,10 +18,10 @@
     }
   ],
   "token_usage": {
-    "input_tokens": 12,
-    "cache_creation_tokens": 3922,
-    "cache_read_tokens": 233465,
-    "output_tokens": 163,
+    "input_tokens": 14,
+    "cache_creation_tokens": 2272,
+    "cache_read_tokens": 255441,
+    "output_tokens": 191,
     "api_call_count": 8
   }
 }

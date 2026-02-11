@@ -3,31 +3,31 @@
   "checkpoint_id": "4c15cc23ead7",
   "session_id": "7760d207-3d6e-416f-8944-7793cfe648ff",
   "strategy": "manual-commit",
-  "created_at": "2026-02-11T14:43:30.332082Z",
+  "created_at": "2026-02-11T14:51:02.926859Z",
   "branch": "bl-fix-pages",
   "checkpoints_count": 2,
   "files_touched": [
     ".github/workflows/deploy-pages.yml",
-    "package.json"
+    "examples/flatland/package.json"
   ],
   "agent": "Claude Code",
-  "transcript_identifier_at_start": "d9107999-d9c9-4839-9f6a-7fc71a7db17b",
-  "checkpoint_transcript_start": 88,
-  "transcript_lines_at_start": 88,
+  "transcript_identifier_at_start": "86e00cc1-4e3b-4e3a-891c-9bd455fffb81",
+  "checkpoint_transcript_start": 130,
+  "transcript_lines_at_start": 130,
   "token_usage": {
-    "input_tokens": 12,
-    "cache_creation_tokens": 3922,
-    "cache_read_tokens": 233465,
-    "output_tokens": 163,
+    "input_tokens": 14,
+    "cache_creation_tokens": 2272,
+    "cache_read_tokens": 255441,
+    "output_tokens": 191,
     "api_call_count": 8
   },
   "initial_attribution": {
-    "calculated_at": "2026-02-11T14:43:30.318771Z",
-    "agent_lines": 2,
+    "calculated_at": "2026-02-11T14:51:02.913041Z",
+    "agent_lines": 4,
     "human_added": 0,
     "human_modified": 0,
     "human_removed": 0,
-    "total_committed": 2,
+    "total_committed": 4,
     "agent_percentage": 100
   }
 }
