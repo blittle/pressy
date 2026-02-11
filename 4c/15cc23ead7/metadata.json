@@ -1,0 +1,26 @@
+{
+  "cli_version": "0.4.2",
+  "checkpoint_id": "4c15cc23ead7",
+  "strategy": "manual-commit",
+  "branch": "bl-fix-pages",
+  "checkpoints_count": 1,
+  "files_touched": [
+    ".github/workflows/deploy-pages.yml"
+  ],
+  "sessions": [
+    {
+      "metadata": "/4c/15cc23ead7/0/metadata.json",
+      "transcript": "/4c/15cc23ead7/0/full.jsonl",
+      "context": "/4c/15cc23ead7/0/context.md",
+      "content_hash": "/4c/15cc23ead7/0/content_hash.txt",
+      "prompt": "/4c/15cc23ead7/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 6,
+    "cache_creation_tokens": 13543,
+    "cache_read_tokens": 76180,
+    "output_tokens": 569,
+    "api_call_count": 4
+  }
+}
