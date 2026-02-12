@@ -1,6 +1,6 @@
 import { ComponentChildren } from 'preact'
 import { useSignal } from '@preact/signals'
-import { Paginator } from './Paginator.js'
+
 import { Navigation } from './Navigation.js'
 import { TableOfContents } from './TableOfContents.js'
 import { TextShare } from './TextShare.js'
@@ -15,7 +15,6 @@ export interface ReaderProps {
   prevChapter?: { slug: string; title: string }
   nextChapter?: { slug: string; title: string }
   toc?: Array<{ level: number; text: string; slug: string }>
-  mode?: 'scroll' | 'paginated'
   showDropCap?: boolean
 }
 
@@ -27,13 +26,12 @@ export function Reader({
   prevChapter,
   nextChapter,
   toc,
-  mode = 'scroll',
   showDropCap = true,
 }: ReaderProps) {
   const showToc = useSignal(false)
 
   return (
-    <div class="pressy-reader" data-mode={mode}>
+    <div class="pressy-reader">
       {/* Header */}
       <header class="pressy-reader-header">
         <div class="pressy-reader-header-left">
@@ -74,16 +72,12 @@ export function Reader({
 
       {/* Main content */}
       <main class="pressy-reader-main">
-        {mode === 'paginated' ? (
-          <Paginator>{children}</Paginator>
-        ) : (
-          <article
-            class={`pressy-prose ${showDropCap ? '' : 'no-drop-cap'}`}
-            data-drop-cap={showDropCap}
-          >
-            {children}
-          </article>
-        )}
+        <article
+          class={`pressy-prose ${showDropCap ? '' : 'no-drop-cap'}`}
+          data-drop-cap={showDropCap}
+        >
+          {children}
+        </article>
       </main>
 
       {/* Text selection share */}
@@ -177,14 +171,6 @@ export function Reader({
         .pressy-reader-main {
           flex: 1;
           padding: 2rem 0;
-        }
-
-        .pressy-reader[data-mode="scroll"] .pressy-reader-main {
-          overflow-y: auto;
-        }
-
-        .pressy-reader[data-mode="paginated"] .pressy-reader-main {
-          overflow: hidden;
         }
       `}</style>
     </div>
