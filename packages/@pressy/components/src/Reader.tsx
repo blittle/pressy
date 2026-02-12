@@ -36,9 +36,9 @@ export function Reader({
       <header class="pressy-reader-header">
         <div class="pressy-reader-header-left">
           {bookTitle && (
-            <a href="../" class="pressy-book-link">
+            <span class="pressy-book-title">
               {bookTitle}
-            </a>
+            </span>
           )}
         </div>
 
@@ -120,14 +120,9 @@ export function Reader({
           text-align: center;
         }
 
-        .pressy-book-link {
+        .pressy-book-title {
           font-size: var(--font-size-sm);
           color: var(--color-text-muted);
-          text-decoration: none;
-        }
-
-        .pressy-book-link:hover {
-          color: var(--color-text);
         }
 
         .pressy-chapter-title {
