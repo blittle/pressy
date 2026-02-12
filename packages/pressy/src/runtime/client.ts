@@ -14,8 +14,6 @@ import type { ContentManifest, Route, Book, Chapter, Article, ReadingProgress } 
 // State signals
 export const currentRoute = signal<string>('/')
 export const currentTheme = signal<'light' | 'dark' | 'sepia'>('light')
-export const paginationMode = signal<'scroll' | 'paginated'>('scroll')
-export const currentPage = signal<number>(0)
 export const isOffline = signal<boolean>(!navigator.onLine)
 
 // IndexedDB for reading progress
@@ -118,36 +116,6 @@ function loadTheme(): void {
   } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
     setTheme('dark')
   }
-}
-
-// Pagination management
-export function setPaginationMode(mode: 'scroll' | 'paginated'): void {
-  paginationMode.value = mode
-  localStorage.setItem('pressy-pagination', mode)
-}
-
-function loadPaginationMode(): void {
-  const saved = localStorage.getItem('pressy-pagination') as 'scroll' | 'paginated' | null
-  if (saved) {
-    paginationMode.value = saved
-  }
-}
-
-// Keyboard navigation for paginated mode
-function setupKeyboardNav(): void {
-  document.addEventListener('keydown', (e) => {
-    if (paginationMode.value !== 'paginated') return
-
-    if (e.key === 'ArrowRight' || e.key === ' ') {
-      e.preventDefault()
-      currentPage.value++
-    } else if (e.key === 'ArrowLeft') {
-      e.preventDefault()
-      if (currentPage.value > 0) {
-        currentPage.value--
-      }
-    }
-  })
 }
 
 // Offline detection
@@ -265,7 +233,6 @@ function renderChapterPage(
     bookTitle: book?.metadata.title,
     prevChapter,
     nextChapter,
-    mode: paginationMode.value as 'scroll' | 'paginated',
     children: h(Content, { components: useMDXComponents() } as Record<string, unknown>),
   })
 }
@@ -280,7 +247,6 @@ function renderArticlePage(
 
   return h(Reader, {
     title: article?.metadata.title || articleSlug,
-    mode: 'scroll',
     children: h(Content, { components: useMDXComponents() } as Record<string, unknown>),
   })
 }
@@ -380,8 +346,6 @@ export function hydrate(data: HydrateData, Content?: ComponentType): void {
 
   // Initialize
   loadTheme()
-  loadPaginationMode()
-  setupKeyboardNav()
   setupOfflineDetection()
   initDB()
 

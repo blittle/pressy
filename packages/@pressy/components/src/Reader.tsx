@@ -1,6 +1,6 @@
 import { ComponentChildren } from 'preact'
-import { signal, useSignal, useComputed } from '@preact/signals'
-import { Paginator } from './Paginator.js'
+import { useSignal } from '@preact/signals'
+
 import { Navigation } from './Navigation.js'
 import { TableOfContents } from './TableOfContents.js'
 import { TextShare } from './TextShare.js'
@@ -15,7 +15,6 @@ export interface ReaderProps {
   prevChapter?: { slug: string; title: string }
   nextChapter?: { slug: string; title: string }
   toc?: Array<{ level: number; text: string; slug: string }>
-  mode?: 'scroll' | 'paginated'
   showDropCap?: boolean
 }
 
@@ -27,14 +26,12 @@ export function Reader({
   prevChapter,
   nextChapter,
   toc,
-  mode = 'scroll',
   showDropCap = true,
 }: ReaderProps) {
   const showToc = useSignal(false)
-  const currentMode = useSignal(mode)
 
   return (
-    <div class="pressy-reader" data-mode={currentMode.value}>
+    <div class="pressy-reader">
       {/* Header */}
       <header class="pressy-reader-header">
         <div class="pressy-reader-header-left">
@@ -63,24 +60,6 @@ export function Reader({
           )}
 
           <ThemeSwitcher />
-
-          <button
-            class="pressy-mode-toggle"
-            onClick={() => {
-              currentMode.value = currentMode.value === 'scroll' ? 'paginated' : 'scroll'
-            }}
-            aria-label={`Switch to ${currentMode.value === 'scroll' ? 'paginated' : 'scroll'} mode`}
-          >
-            {currentMode.value === 'scroll' ? (
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
-                <path d="M2 3h7v14H2V3zm9 0h7v14h-7V3z" />
-              </svg>
-            ) : (
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
-                <path d="M3 3h14v14H3V3z" />
-              </svg>
-            )}
-          </button>
         </div>
       </header>
 
@@ -93,16 +72,12 @@ export function Reader({
 
       {/* Main content */}
       <main class="pressy-reader-main">
-        {currentMode.value === 'paginated' ? (
-          <Paginator>{children}</Paginator>
-        ) : (
-          <article
-            class={`pressy-prose ${showDropCap ? '' : 'no-drop-cap'}`}
-            data-drop-cap={showDropCap}
-          >
-            {children}
-          </article>
-        )}
+        <article
+          class={`pressy-prose ${showDropCap ? '' : 'no-drop-cap'}`}
+          data-drop-cap={showDropCap}
+        >
+          {children}
+        </article>
       </main>
 
       {/* Text selection share */}
@@ -160,8 +135,7 @@ export function Reader({
           color: var(--color-text-muted);
         }
 
-        .pressy-toc-toggle,
-        .pressy-mode-toggle {
+        .pressy-toc-toggle {
           display: flex;
           align-items: center;
           justify-content: center;
@@ -175,8 +149,7 @@ export function Reader({
           transition: background 0.15s, color 0.15s;
         }
 
-        .pressy-toc-toggle:hover,
-        .pressy-mode-toggle:hover {
+        .pressy-toc-toggle:hover {
           background: var(--color-bg-muted);
           color: var(--color-text);
         }
@@ -198,14 +171,6 @@ export function Reader({
         .pressy-reader-main {
           flex: 1;
           padding: 2rem 0;
-        }
-
-        .pressy-reader[data-mode="scroll"] .pressy-reader-main {
-          overflow-y: auto;
-        }
-
-        .pressy-reader[data-mode="paginated"] .pressy-reader-main {
-          overflow: hidden;
         }
       `}</style>
     </div>
