@@ -1,24 +1,76 @@
 /// <reference lib="webworker" />
 import { precacheAndRoute, cleanupOutdatedCaches } from 'workbox-precaching'
-import { registerRoute, NavigationRoute } from 'workbox-routing'
+import { registerRoute, NavigationRoute, Route } from 'workbox-routing'
 import { NetworkFirst, CacheFirst, StaleWhileRevalidate } from 'workbox-strategies'
 import { ExpirationPlugin } from 'workbox-expiration'
 
 declare const self: ServiceWorkerGlobalScope
 
-// Precache all static assets (injected by Vite plugin)
+const OFFLINE_CACHE = 'pressy-offline'
+// Use the SW's own location to derive the base path for offline.html,
+// so it works on subpath deployments (e.g. /pressy/pr-preview/pr-1/sw.js)
+const SW_BASE = new URL('./', (self as unknown as ServiceWorkerGlobalScope).location.href).pathname
+const OFFLINE_URL = `${SW_BASE}offline.html`
+const BOOK_CACHE = 'pressy-offline-books'
+
+// Precache all static assets (injected by build tool)
 precacheAndRoute(self.__WB_MANIFEST)
 
 // Clean up old caches
 cleanupOutdatedCaches()
 
-// Cache navigation requests with NetworkFirst strategy
+// Cache the offline fallback page on install
+self.addEventListener('install', (event) => {
+  event.waitUntil(
+    caches.open(OFFLINE_CACHE).then((cache) => cache.add(OFFLINE_URL))
+  )
+  self.skipWaiting()
+})
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(self.clients.claim())
+})
+
+// Navigation: NetworkFirst with offline fallback
+const navigationHandler = new NetworkFirst({
+  cacheName: 'pressy-pages',
+  networkTimeoutSeconds: 3,
+})
+
 registerRoute(
-  new NavigationRoute(
-    new NetworkFirst({
-      cacheName: 'pressy-pages',
-      networkTimeoutSeconds: 3,
-    })
+  new NavigationRoute(async (params) => {
+    try {
+      return await navigationHandler.handle(params)
+    } catch {
+      // Network failed and not in cache — serve offline fallback
+      const cache = await caches.open(OFFLINE_CACHE)
+      const fallback = await cache.match(OFFLINE_URL)
+      return fallback || Response.error()
+    }
+  })
+)
+
+// Offline-cached book chapters: try the book cache first,
+// then fall through to the normal navigation handler
+registerRoute(
+  new Route(
+    ({ request, url }) =>
+      request.mode === 'navigate' && url.pathname.match(/^\/books\/[^/]+\/[^/]+/),
+    async (params) => {
+      // Check offline book cache first
+      const bookCache = await caches.open(BOOK_CACHE)
+      const cached = await bookCache.match(params.request)
+      if (cached) return cached
+
+      // Fall through to network
+      try {
+        return await navigationHandler.handle(params)
+      } catch {
+        const cache = await caches.open(OFFLINE_CACHE)
+        const fallback = await cache.match(OFFLINE_URL)
+        return fallback || Response.error()
+      }
+    }
   )
 )
 
@@ -59,20 +111,12 @@ registerRoute(
   })
 )
 
-// Handle offline fallback
-self.addEventListener('install', () => {
-  self.skipWaiting()
-})
-
-self.addEventListener('activate', (event) => {
-  event.waitUntil(self.clients.claim())
-})
-
 // Message handler for manual cache operations
 self.addEventListener('message', async (event) => {
   if (event.data?.type === 'CACHE_BOOK') {
-    const { urls } = event.data
-    const cache = await caches.open('pressy-offline-books')
+    const { bookSlug, urls } = event.data
+    const cache = await caches.open(BOOK_CACHE)
+    let completed = 0
 
     for (const url of urls) {
       try {
@@ -83,15 +127,24 @@ self.addEventListener('message', async (event) => {
       } catch (err) {
         console.error(`Failed to cache ${url}:`, err)
       }
+
+      completed++
+      // Report progress back to client
+      event.source?.postMessage({
+        type: 'CACHE_PROGRESS',
+        bookSlug,
+        current: completed,
+        total: urls.length,
+      })
     }
 
     // Notify client that caching is complete
-    event.source?.postMessage({ type: 'CACHE_COMPLETE', urls })
+    event.source?.postMessage({ type: 'CACHE_COMPLETE', bookSlug, urls })
   }
 
   if (event.data?.type === 'GET_CACHE_STATUS') {
     const { urls } = event.data
-    const cache = await caches.open('pressy-offline-books')
+    const cache = await caches.open(BOOK_CACHE)
     const cached: string[] = []
 
     for (const url of urls) {
@@ -102,5 +155,23 @@ self.addEventListener('message', async (event) => {
     }
 
     event.source?.postMessage({ type: 'CACHE_STATUS', cached })
+  }
+
+  if (event.data?.type === 'CLEAR_BOOK_CACHE') {
+    const { bookSlug } = event.data
+    const cache = await caches.open(BOOK_CACHE)
+    const keys = await cache.keys()
+
+    for (const request of keys) {
+      if (request.url.includes(`/books/${bookSlug}`)) {
+        await cache.delete(request)
+      }
+    }
+
+    event.source?.postMessage({ type: 'CACHE_CLEARED', bookSlug })
+  }
+
+  if (event.data?.type === 'SKIP_WAITING') {
+    self.skipWaiting()
   }
 })

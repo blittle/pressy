@@ -11,4 +11,10 @@ export default defineConfig({
   pagination: {
     defaultMode: 'paginated',
   },
+  pwa: {
+    enabled: true,
+    shortName: 'Flatland',
+    themeColor: '#1a1a1a',
+    backgroundColor: '#ffffff',
+  },
 })

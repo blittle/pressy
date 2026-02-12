@@ -15,10 +15,28 @@ export interface ShopifyConfig {
   storefrontAccessToken: string
 }
 
+export interface PWAConfig {
+  /** Enable PWA support (service worker, manifest, offline). Defaults to true. */
+  enabled?: boolean
+  /** Short name for the app (used on home screen). Defaults to site.title. */
+  shortName?: string
+  /** Theme color for the browser chrome. Defaults to '#ffffff'. */
+  themeColor?: string
+  /** Background color for splash screen. Defaults to '#ffffff'. */
+  backgroundColor?: string
+  /** Display mode. Defaults to 'standalone'. */
+  display?: 'standalone' | 'minimal-ui' | 'fullscreen' | 'browser'
+  /** Path to a custom 192x192 icon. */
+  icon192?: string
+  /** Path to a custom 512x512 icon. */
+  icon512?: string
+}
+
 export interface PressyConfig {
   site: SiteConfig
   pagination?: PaginationConfig
   shopify?: ShopifyConfig
+  pwa?: PWAConfig
   outDir?: string
   contentDir?: string
 }
@@ -27,6 +45,12 @@ export function defineConfig(config: PressyConfig): PressyConfig {
   return {
     pagination: {
       defaultMode: 'scroll',
+    },
+    pwa: {
+      enabled: true,
+      themeColor: '#ffffff',
+      backgroundColor: '#ffffff',
+      display: 'standalone',
     },
     outDir: 'dist',
     contentDir: 'content',

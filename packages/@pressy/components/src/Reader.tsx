@@ -5,6 +5,7 @@ import { Navigation } from './Navigation.js'
 import { TableOfContents } from './TableOfContents.js'
 import { TextShare } from './TextShare.js'
 import { ThemeSwitcher } from './ThemeSwitcher.js'
+import { OfflineIndicator } from './OfflineIndicator.js'
 
 export interface ReaderProps {
   children: ComponentChildren
@@ -109,6 +110,9 @@ export function Reader({
 
       {/* Chapter navigation */}
       <Navigation prev={prevChapter} next={nextChapter} />
+
+      {/* Offline status indicator */}
+      <OfflineIndicator />
 
       <style>{`
         .pressy-reader {
