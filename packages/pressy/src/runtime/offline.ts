@@ -1,9 +1,22 @@
 import { signal } from '@preact/signals'
 
+const CACHED_BOOKS_KEY = 'pressy-cached-books'
+
 export const offlineStatus = signal<'online' | 'offline'>('online')
 export const cacheProgress = signal<{ bookSlug: string; current: number; total: number } | null>(null)
-export const cachedBooks = signal<Set<string>>(new Set())
 export const swReady = signal<boolean>(false)
+
+// Restore cached books from localStorage synchronously on load
+function loadCachedBooks(): Set<string> {
+  if (typeof localStorage === 'undefined') return new Set()
+  try {
+    const stored = localStorage.getItem(CACHED_BOOKS_KEY)
+    if (stored) return new Set(JSON.parse(stored))
+  } catch {}
+  return new Set()
+}
+
+export const cachedBooks = signal<Set<string>>(loadCachedBooks())
 
 // Initialize offline detection
 if (typeof window !== 'undefined') {
@@ -19,15 +32,18 @@ if (typeof window !== 'undefined') {
 }
 
 // Service Worker registration
-export async function registerServiceWorker(): Promise<ServiceWorkerRegistration | null> {
+export async function registerServiceWorker(basePath = ''): Promise<ServiceWorkerRegistration | null> {
   if (!('serviceWorker' in navigator)) {
     console.warn('Service workers are not supported')
     return null
   }
 
+  const swUrl = basePath ? `${basePath}/sw.js` : '/sw.js'
+  const scope = basePath ? `${basePath}/` : '/'
+
   try {
-    const registration = await navigator.serviceWorker.register('/sw.js', {
-      scope: '/',
+    const registration = await navigator.serviceWorker.register(swUrl, {
+      scope,
     })
 
     // Listen for messages from service worker
@@ -61,6 +77,12 @@ export async function registerServiceWorker(): Promise<ServiceWorkerRegistration
   }
 }
 
+function persistCachedBooks() {
+  try {
+    localStorage.setItem(CACHED_BOOKS_KEY, JSON.stringify([...cachedBooks.value]))
+  } catch {}
+}
+
 function handleSWMessage(event: MessageEvent) {
   const { type } = event.data
 
@@ -75,6 +97,7 @@ function handleSWMessage(event: MessageEvent) {
     const newCached = new Set(cachedBooks.value)
     newCached.add(bookSlug)
     cachedBooks.value = newCached
+    persistCachedBooks()
   }
 
   if (type === 'CACHE_STATUS') {
@@ -87,6 +110,7 @@ function handleSWMessage(event: MessageEvent) {
       }
     }
     cachedBooks.value = newCached
+    persistCachedBooks()
   }
 
   if (type === 'CACHE_CLEARED') {
@@ -94,6 +118,7 @@ function handleSWMessage(event: MessageEvent) {
     const newCached = new Set(cachedBooks.value)
     newCached.delete(bookSlug)
     cachedBooks.value = newCached
+    persistCachedBooks()
   }
 }
 
@@ -113,6 +138,12 @@ export async function downloadBookForOffline(
   )
 
   cacheProgress.value = { bookSlug, current: 0, total: urls.length }
+
+  // Optimistically persist to localStorage immediately so state survives refresh
+  const newCached = new Set(cachedBooks.value)
+  newCached.add(bookSlug)
+  cachedBooks.value = newCached
+  persistCachedBooks()
 
   // Send message to service worker
   navigator.serviceWorker.controller.postMessage({
@@ -145,6 +176,12 @@ export async function checkCacheStatus(urls: string[]): Promise<void> {
 
 // Clear cached book
 export async function clearBookCache(bookSlug: string): Promise<boolean> {
+  // Update state and persist immediately
+  const newCached = new Set(cachedBooks.value)
+  newCached.delete(bookSlug)
+  cachedBooks.value = newCached
+  persistCachedBooks()
+
   if (!('serviceWorker' in navigator) || !navigator.serviceWorker.controller) {
     // Fallback to direct cache API
     try {
@@ -157,9 +194,6 @@ export async function clearBookCache(bookSlug: string): Promise<boolean> {
         }
       }
 
-      const newCached = new Set(cachedBooks.value)
-      newCached.delete(bookSlug)
-      cachedBooks.value = newCached
       return true
     } catch (err) {
       console.error('Failed to clear cache:', err)

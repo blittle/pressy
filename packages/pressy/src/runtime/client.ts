@@ -386,7 +386,7 @@ export function hydrate(data: HydrateData, Content?: ComponentType): void {
   initDB()
 
   // Register service worker for PWA offline support
-  registerServiceWorker()
+  registerServiceWorker(basePath)
 
   // Handle popstate for back/forward navigation
   window.addEventListener('popstate', () => {

@@ -1,6 +1,7 @@
 import { Plugin, ViteDevServer } from 'vite'
 import { resolve, join, relative, dirname } from 'path'
 import { existsSync, readFileSync } from 'fs'
+import { createHash } from 'crypto'
 import { createRequire } from 'module'
 
 const _require = createRequire(import.meta.url)
@@ -442,13 +443,13 @@ export const config = ${JSON.stringify(config)};`
               name: config.site.title,
               short_name: pwaConfig.shortName,
               description: config.site.description,
-              start_url: '/',
+              start_url: './',
               display: pwaConfig.display,
               background_color: pwaConfig.backgroundColor,
               theme_color: pwaConfig.themeColor,
               icons: [
-                { src: '/icon-192.png', sizes: '192x192', type: 'image/png' },
-                { src: '/icon-512.png', sizes: '512x512', type: 'image/png' },
+                { src: './icon-192.png', sizes: '192x192', type: 'image/png' },
+                { src: './icon-512.png', sizes: '512x512', type: 'image/png' },
               ],
             }, null, 2))
             return
@@ -569,18 +570,18 @@ ${cssLinks}${buildPwaTags}
           name: config.site.title,
           short_name: pwaConfig.shortName,
           description: config.site.description,
-          start_url: '/',
+          start_url: './',
           display: pwaConfig.display,
           background_color: pwaConfig.backgroundColor,
           theme_color: pwaConfig.themeColor,
           icons: [
             {
-              src: '/icon-192.png',
+              src: './icon-192.png',
               sizes: '192x192',
               type: 'image/png',
             },
             {
-              src: '/icon-512.png',
+              src: './icon-512.png',
               sizes: '512x512',
               type: 'image/png',
               purpose: 'any maskable',
@@ -619,19 +620,37 @@ ${cssLinks}${buildPwaTags}
         if (pwaEnabled) {
           const precacheEntries: Array<{ url: string; revision: string | null }> = []
 
-          // Add all HTML pages
+          // Use relative URLs so precaching works on subpath deployments
+          // (e.g. /pressy/ or /pressy/pr-preview/pr-1/)
+          // The SW resolves these relative to its own scope.
+
+          // Helper: generate a short content hash for revision tracking.
+          // Files with hashed names (JS/CSS chunks) use revision: null since
+          // the hash is in the URL. Non-hashed files (HTML) need an explicit
+          // revision so workbox knows when to update them.
+          const contentRevision = (source: string) =>
+            createHash('md5').update(source).digest('hex').slice(0, 8)
+
+          // Add all HTML pages (non-hashed filenames → need revision)
           for (const route of routes) {
-            precacheEntries.push({ url: route.path, revision: null })
+            const fileName = route.path === '/' ? 'index.html' : `${route.path.slice(1)}/index.html`
+            const htmlAsset = bundle[fileName]
+            const source = htmlAsset && htmlAsset.type === 'asset' ? String(htmlAsset.source) : ''
+            precacheEntries.push({
+              url: `./${fileName}`,
+              revision: contentRevision(source),
+            })
           }
 
-          // Add offline page
-          precacheEntries.push({ url: '/offline.html', revision: null })
+          // Add offline page (non-hashed → need revision)
+          const offlineSource = generateOfflinePage(config.site.title)
+          precacheEntries.push({ url: './offline.html', revision: contentRevision(offlineSource) })
 
-          // Add built JS/CSS chunks from the bundle
+          // Add built JS/CSS chunks (hashed filenames → revision: null)
           for (const [fileName] of Object.entries(bundle)) {
             if (fileName.endsWith('.js') || fileName.endsWith('.css')) {
               precacheEntries.push({
-                url: `/${fileName}`,
+                url: `./${fileName}`,
                 revision: null,
               })
             }

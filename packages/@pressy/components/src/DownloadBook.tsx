@@ -1,5 +1,15 @@
-import { useSignal, useComputed } from '@preact/signals'
+import { useSignal } from '@preact/signals'
 import { useEffect } from 'preact/hooks'
+
+const CACHED_BOOKS_KEY = 'pressy-cached-books'
+
+function readCachedBooks(): Set<string> {
+  try {
+    const stored = localStorage.getItem(CACHED_BOOKS_KEY)
+    if (stored) return new Set(JSON.parse(stored))
+  } catch {}
+  return new Set()
+}
 
 export interface DownloadBookProps {
   bookSlug: string
@@ -22,15 +32,28 @@ export function DownloadBook({
   onDownload,
   onRemove,
 }: DownloadBookProps) {
-  const isCached = useComputed(() => cachedBooks.value.has(bookSlug))
-  const isDownloading = useComputed(
-    () => cacheProgress.value?.bookSlug === bookSlug
-  )
-  const progress = useComputed(() => {
-    const p = cacheProgress.value
-    if (!p || p.bookSlug !== bookSlug) return null
-    return Math.round((p.current / p.total) * 100)
-  })
+  // Check localStorage directly for initial state, and also track the signal
+  // for live updates (e.g. after downloading or removing).
+  const isCached = useSignal(readCachedBooks().has(bookSlug) || cachedBooks.value.has(bookSlug))
+  const isDownloading = useSignal(cacheProgress.value?.bookSlug === bookSlug)
+  const progress = useSignal<number | null>(null)
+
+  // Sync with external signals on each render
+  useEffect(() => {
+    const check = () => {
+      isCached.value = readCachedBooks().has(bookSlug) || cachedBooks.value.has(bookSlug)
+      isDownloading.value = cacheProgress.value?.bookSlug === bookSlug
+      const p = cacheProgress.value
+      progress.value = p && p.bookSlug === bookSlug
+        ? Math.round((p.current / p.total) * 100)
+        : null
+    }
+
+    // Poll briefly to catch signal updates (SW messages are async)
+    const interval = setInterval(check, 500)
+    check()
+    return () => clearInterval(interval)
+  }, [bookSlug])
 
   if (isCached.value) {
     return (

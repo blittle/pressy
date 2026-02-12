@@ -10,7 +10,8 @@
       "Bash(pnpm --filter @pressy/typography build:*)",
       "Bash(pnpm --filter pressy build:*)",
       "Bash(npm run build)",
-      "Bash(pnpm build:*)"
+      "Bash(pnpm build:*)",
+      "Bash(node:*)"
     ]
   }
 }

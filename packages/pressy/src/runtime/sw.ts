@@ -7,7 +7,10 @@ import { ExpirationPlugin } from 'workbox-expiration'
 declare const self: ServiceWorkerGlobalScope
 
 const OFFLINE_CACHE = 'pressy-offline'
-const OFFLINE_URL = '/offline.html'
+// Use the SW's own location to derive the base path for offline.html,
+// so it works on subpath deployments (e.g. /pressy/pr-preview/pr-1/sw.js)
+const SW_BASE = new URL('./', (self as unknown as ServiceWorkerGlobalScope).location.href).pathname
+const OFFLINE_URL = `${SW_BASE}offline.html`
 const BOOK_CACHE = 'pressy-offline-books'
 
 // Precache all static assets (injected by build tool)
