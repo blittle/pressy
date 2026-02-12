@@ -1,0 +1,129 @@
+Can you rebase this branch with main and help me fix conflicts
+
+---
+
+The build is now broken:
+
+```
+packages/pressy build$ tsup
+│ CLI Building entry: {"index":"src/index.ts","cli/index":"src/cli/index.ts","vite/plugin":"src/vite/plugin.ts","runtime/client":"src/runtime/client.ts","runtime/offline":"src/runtime/offline.ts","runtime/sw":…
+│ CLI Using tsconfig: tsconfig.json
+│ CLI tsup v8.5.1
+│ CLI Using tsup config: /Users/blittle/dev/pressy/packages/pressy/tsup.config.ts
+│ CLI Target: node18
+│ CLI Cleaning output folder
+│ ESM Build start
+│ ESM dist/cli/index.js           26.40 KB
+│ ESM dist/index.js               23.74 KB
+│ ESM dist/runtime/sw.js          3.90 KB
+│ ESM dist/runtime/offline.js     4.20 KB
+│ ESM dist/vite/plugin.js         23.42 KB
+│ ESM dist/runtime/client.js      15.47 KB
+│ ESM dist/index.js.map           42.86 KB
+│ ESM dist/runtime/offline.js.map 7.74 KB
+│ ESM dist/vite/plugin.js.map     41.16 KB
+│ ESM dist/runtime/sw.js.map      7.64 KB
+│ ESM dist/cli/index.js.map       46.86 KB
+│ ESM dist/runtime/client.js.map  29.63 KB
+│ ESM ⚡️ Build lugin.ts(305,27): error TS2552: Cannot find name 'dirname'. Did you mean '__dirname'?
+│ src/vite/plugin.ts(306,39): error TS2552: Cannot find name 'dirname'. Did you mean '__dirname'?
+│ Error: error occurred in dts build
+│     at Worker.<anonymous> (/Users/blittle/dev/pressy/node_modules/.pnpm/tsup@8.5.1_typescript@5.9.3_yaml@2.8.2/node_modules/tsup/dist/index.js:1545:26)
+│     at Worker.emit (node:events:519:28)
+│     at MessagePort.<anonymous> (node:internal/worker:270:53)
+│     at [nodejs.internal.kHybridDispatch] (node:internal/event_target:827:20)
+│     at MessagePort.<anonymous> (node:internal/per_context/messageport:23:28)
+│ DTS Build error
+└─ Failed in 2.4s at /Users/blittle/dev/pressy/packages/pressy
+/Users/blittle/dev/pressy/packages/pressy:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  pressy@0.1.0 build: `tsup`
+Exit status 1
+ ELIFECYCLE  Command failed with exit code 1.
+```
+
+---
+
+Now there is this error:
+
+```
+packages/pressy build$ tsup
+│ CLI Building entry: {"index":"src/index.ts","cli/index":"src/cli/index.ts","vite/plugin":"src/vite/plugin.ts","runtime/client":"src/runtime/client.ts","runtime/offline":"src/runtime/offline.ts","runtime/sw":…
+│ CLI Using tsconfig: tsconfig.json
+│ CLI tsup v8.5.1
+│ CLI Using tsup config: /Users/blittle/dev/pressy/packages/pressy/tsup.config.ts
+│ CLI Target: node18
+│ CLI Cleaning output folder
+│ ESM Build start
+│ ESM dist/cli/index.js           26.40 KB
+│ ESM dist/runtime/offline.js     4.20 KB
+│ ESM dist/vite/plugin.js         23.42 KB
+│ ESM dist/index.js               23.74 KB
+│ ESM dist/runtime/client.js      15.47 KB
+│ ESM dist/runtime/sw.js          3.90 KB
+│ ESM dist/cli/index.js.map       46.87 KB
+│ ESM dist/runtime/offline.js.map 7.74 KB
+│ ESM dist/vite/plugin.js.map     41.17 KB
+│ ESM dist/runtime/sw.js.map      7.64 KB
+│ ESM dist/index.js.map           42.87 KB
+│ ESM dist/runtime/client.js.map  29.63 KB
+│ ESM ⚡️ Build e/sw.ts(5,34): error TS2307: Cannot find module 'workbox-expiration' or its corresponding type declarations.
+│ Error: error occurred in dts build
+│     at Worker.<anonymous> (/Users/blittle/dev/pressy/node_modules/.pnpm/tsup@8.5.1_typescript@5.9.3_yaml@2.8.2/node_modules/tsup/dist/index.js:1545:26)
+│     at Worker.emit (node:events:519:28)
+│     at MessagePort.<anonymous> (node:internal/worker:270:53)
+│     at [nodejs.internal.kHybridDispatch] (node:internal/event_target:827:20)
+│     at MessagePort.<anonymous> (node:internal/per_context/messageport:23:28)
+│ DTS Build error
+└─ Failed in 2.6s at /Users/blittle/dev/pressy/packages/pressy
+/Users/blittle/dev/pressy/packages/pressy:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  pressy@0.1.0 build: `tsup`
+Exit status 1
+ ELIFECYCLE  Command failed with exit code 1.
+```
+
+---
+
+The service worker seems to be failing to load in the browser. I see this error:
+
+```
+Uncaught SyntaxError: Cannot use import statement outside a module (at sw.js:2:1)
+installHook.js:1 Service worker registration failed: TypeError: Failed to register a ServiceWorker for scope ('http://localhost:8080/') with script ('http://localhost:8080/sw.js'): ServiceWorker script evaluation failed
+```
+
+---
+
+This doesn't work for github pages, because it loads the service worker at `https://blittle.github.io/sw.js`, but GH pages hosts at https://blittle.github.io/pressy/pr-preview/pr-1/ and https://blittle.github.io/pressy/
+
+---
+
+The "Download for offline" button doesn't seem to properly maintain state when I am offline and refresh the page.
+
+1. Load the page online.
+2. Click the "Download for offline" button
+3. UI says available for offline
+4. Disconnect from the internet
+5. Refresh the page.
+6. The page loads, but now "Download for offline" button reappears, but shouldn't because we are viewing the page offline already!
+
+---
+
+That didn't work
+
+---
+
+That still didn't work :(
+
+---
+
+Still doesn't work
+
+---
+
+It's still not working. I can click to make available offline, but on refresh, the button resets and I now can click it again to make it available offline. Even though, the app is available offline.
+
+---
+
+Still null. A few ideas that might be causing it:
+
+1. I see that there is an error in the devtools for loading this script: `books-flatland-CU_6sy7J.js    GET    404    fetch    sw.js:669`
+2. Maybe the service worker is writing to it's own localStorage that the document doesn't have access to?
