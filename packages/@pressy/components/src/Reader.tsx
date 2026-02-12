@@ -1,5 +1,5 @@
 import { ComponentChildren } from 'preact'
-import { signal, useSignal, useComputed } from '@preact/signals'
+import { useSignal } from '@preact/signals'
 import { Paginator } from './Paginator.js'
 import { Navigation } from './Navigation.js'
 import { TableOfContents } from './TableOfContents.js'
@@ -31,10 +31,9 @@ export function Reader({
   showDropCap = true,
 }: ReaderProps) {
   const showToc = useSignal(false)
-  const currentMode = useSignal(mode)
 
   return (
-    <div class="pressy-reader" data-mode={currentMode.value}>
+    <div class="pressy-reader" data-mode={mode}>
       {/* Header */}
       <header class="pressy-reader-header">
         <div class="pressy-reader-header-left">
@@ -63,24 +62,6 @@ export function Reader({
           )}
 
           <ThemeSwitcher />
-
-          <button
-            class="pressy-mode-toggle"
-            onClick={() => {
-              currentMode.value = currentMode.value === 'scroll' ? 'paginated' : 'scroll'
-            }}
-            aria-label={`Switch to ${currentMode.value === 'scroll' ? 'paginated' : 'scroll'} mode`}
-          >
-            {currentMode.value === 'scroll' ? (
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
-                <path d="M2 3h7v14H2V3zm9 0h7v14h-7V3z" />
-              </svg>
-            ) : (
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
-                <path d="M3 3h14v14H3V3z" />
-              </svg>
-            )}
-          </button>
         </div>
       </header>
 
@@ -93,7 +74,7 @@ export function Reader({
 
       {/* Main content */}
       <main class="pressy-reader-main">
-        {currentMode.value === 'paginated' ? (
+        {mode === 'paginated' ? (
           <Paginator>{children}</Paginator>
         ) : (
           <article
@@ -160,8 +141,7 @@ export function Reader({
           color: var(--color-text-muted);
         }
 
-        .pressy-toc-toggle,
-        .pressy-mode-toggle {
+        .pressy-toc-toggle {
           display: flex;
           align-items: center;
           justify-content: center;
@@ -175,8 +155,7 @@ export function Reader({
           transition: background 0.15s, color 0.15s;
         }
 
-        .pressy-toc-toggle:hover,
-        .pressy-mode-toggle:hover {
+        .pressy-toc-toggle:hover {
           background: var(--color-bg-muted);
           color: var(--color-text);
         }
