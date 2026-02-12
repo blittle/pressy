@@ -230,7 +230,6 @@ function renderChapterPage(
 
   return h(Reader, {
     title: chapter?.title || chapterSlug,
-    bookTitle: book?.metadata.title,
     prevChapter,
     nextChapter,
     children: h(Content, { components: useMDXComponents() } as Record<string, unknown>),
