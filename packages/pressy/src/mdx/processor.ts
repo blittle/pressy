@@ -1,7 +1,7 @@
 import { compile } from '@mdx-js/mdx'
 import remarkGfm from 'remark-gfm'
 import rehypeSlug from 'rehype-slug'
-import rehypeAutolinkHeadings from 'rehype-autolink-headings'
+
 import matter from 'gray-matter'
 
 export interface MDXCompileResult {
@@ -21,18 +21,7 @@ export async function compileMDX(
   const result = await compile(content, {
     jsxImportSource: 'preact',
     remarkPlugins: [remarkGfm],
-    rehypePlugins: [
-      rehypeSlug,
-      [
-        rehypeAutolinkHeadings,
-        {
-          behavior: 'wrap',
-          properties: {
-            className: ['anchor-link'],
-          },
-        },
-      ],
-    ],
+    rehypePlugins: [rehypeSlug],
     development: false,
   })
 

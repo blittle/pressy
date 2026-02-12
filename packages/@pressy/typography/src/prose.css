@@ -91,15 +91,6 @@
   color: var(--color-link-hover);
 }
 
-/* Anchor links (headings) */
-.pressy-prose .anchor-link {
-  text-decoration: none;
-}
-
-.pressy-prose .anchor-link:hover {
-  text-decoration: underline;
-}
-
 /* Blockquotes */
 .pressy-prose blockquote {
   border-left: 3px solid var(--color-border);
