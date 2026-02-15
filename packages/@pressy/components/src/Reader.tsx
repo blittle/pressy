@@ -172,6 +172,7 @@ function PaginatedReader({
   onRestoreProgress,
   bookProgressPercent,
 }: PaginatedReaderProps) {
+  const containerRef = useRef<HTMLDivElement>(null)
   const viewportRef = useRef<HTMLDivElement>(null)
   const articleRef = useRef<HTMLElement>(null)
   const [currentPage, setCurrentPage] = useState(0)
@@ -381,10 +382,12 @@ function PaginatedReader({
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [goNext, goPrev, goToPage, totalPages])
 
-  // Touch swipe navigation with drag tracking, velocity detection, and rubber-band
+  // Touch swipe navigation with drag tracking, velocity detection, and rubber-band.
+  // Listeners attach to the outer container (not the viewport) so they capture
+  // touches that land on sibling elements like the tap-zone overlays.
   useEffect(() => {
-    const viewport = viewportRef.current
-    if (!viewport) return
+    const container = containerRef.current
+    if (!container) return
 
     const onTouchStart = (e: TouchEvent) => {
       const touch = e.touches[0]
@@ -511,16 +514,16 @@ function PaginatedReader({
       setChapterHint(null)
     }
 
-    viewport.addEventListener('touchstart', onTouchStart, { passive: true })
-    viewport.addEventListener('touchmove', onTouchMove, { passive: false })
-    viewport.addEventListener('touchend', onTouchEnd, { passive: true })
-    viewport.addEventListener('touchcancel', onTouchCancel, { passive: true })
+    container.addEventListener('touchstart', onTouchStart, { passive: true })
+    container.addEventListener('touchmove', onTouchMove, { passive: false })
+    container.addEventListener('touchend', onTouchEnd, { passive: true })
+    container.addEventListener('touchcancel', onTouchCancel, { passive: true })
 
     return () => {
-      viewport.removeEventListener('touchstart', onTouchStart)
-      viewport.removeEventListener('touchmove', onTouchMove)
-      viewport.removeEventListener('touchend', onTouchEnd)
-      viewport.removeEventListener('touchcancel', onTouchCancel)
+      container.removeEventListener('touchstart', onTouchStart)
+      container.removeEventListener('touchmove', onTouchMove)
+      container.removeEventListener('touchend', onTouchEnd)
+      container.removeEventListener('touchcancel', onTouchCancel)
     }
   }, [currentPage, totalPages, goNext, goPrev, nextChapter, prevChapter])
 
@@ -528,8 +531,8 @@ function PaginatedReader({
   // Accumulates small wheel deltas and triggers page turns at a threshold,
   // giving CSS scroll-snap-like behavior without conflicting with CSS columns.
   useEffect(() => {
-    const viewport = viewportRef.current
-    if (!viewport) return
+    const container = containerRef.current
+    if (!container) return
 
     let accumulatedDelta = 0
     let wheelTimer: ReturnType<typeof setTimeout> | null = null
@@ -557,10 +560,10 @@ function PaginatedReader({
       }
     }
 
-    viewport.addEventListener('wheel', onWheel, { passive: false })
+    container.addEventListener('wheel', onWheel, { passive: false })
 
     return () => {
-      viewport.removeEventListener('wheel', onWheel)
+      container.removeEventListener('wheel', onWheel)
       if (wheelTimer) clearTimeout(wheelTimer)
     }
   }, [goNext, goPrev])
@@ -568,7 +571,7 @@ function PaginatedReader({
   const progressPercent = totalPages > 1 ? ((currentPage + 1) / totalPages) * 100 : 100
 
   return (
-    <div class="pressy-reader pressy-reader--paginated">
+    <div class="pressy-reader pressy-reader--paginated" ref={containerRef}>
       {/* Paginated content viewport */}
       <div class="pressy-paginated-viewport" ref={viewportRef}>
         <article
