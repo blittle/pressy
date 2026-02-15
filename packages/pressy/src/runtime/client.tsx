@@ -1,6 +1,8 @@
 import { render, type ComponentType, type VNode } from 'preact'
+import { useState, useEffect } from 'preact/hooks'
 import { signal, effect } from '@preact/signals'
-import { Reader, DownloadBook } from '@pressy/components'
+import { Reader, DownloadBook, BookProgress } from '@pressy/components'
+import type { ProgressData } from '@pressy/components'
 import { useMDXComponents } from '@pressy/components/content'
 import {
   registerServiceWorker,
@@ -67,6 +69,17 @@ export async function getReadingProgress(chapterSlug: string): Promise<ReadingPr
     const store = tx.objectStore(PROGRESS_STORE)
     const request = store.get(chapterSlug)
     request.onsuccess = () => resolve(request.result || null)
+    request.onerror = () => reject(request.error)
+  })
+}
+
+export async function getAllReadingProgress(): Promise<ReadingProgress[]> {
+  const database = await initDB()
+  return new Promise((resolve, reject) => {
+    const tx = database.transaction(PROGRESS_STORE, 'readonly')
+    const store = tx.objectStore(PROGRESS_STORE)
+    const request = store.getAll()
+    request.onsuccess = () => resolve(request.result || [])
     request.onerror = () => reject(request.error)
   })
 }
@@ -155,17 +168,17 @@ function renderBookPage(book: Book, articles: Article[] = []) {
       />
       <section class="pressy-home-section">
         <h2>Chapters</h2>
-        <nav class="pressy-chapter-list">
-          {book.chapters.map((ch: Chapter) => (
-            <a
-              href={`${basePath}/books/${book.slug}/${ch.slug}`}
-              class="pressy-chapter-link"
-            >
-              <span class="pressy-chapter-order">{ch.order}.</span>
-              <span>{ch.title}</span>
-            </a>
-          ))}
-        </nav>
+        <BookProgress
+          bookSlug={book.slug}
+          chapters={book.chapters.map((ch) => ({
+            slug: ch.slug,
+            title: ch.title,
+            order: ch.order,
+            wordCount: ch.wordCount || 0,
+          }))}
+          basePath={basePath}
+          loadAllProgress={getAllReadingProgress}
+        />
       </section>
       {articles.length > 0 && (
         <section class="pressy-home-section">
@@ -238,6 +251,115 @@ function renderHomePage(manifest: ContentManifest) {
   )
 }
 
+// Calculates global book progress % from word counts + saved progress data
+function calculateBookProgressPercent(
+  book: Book,
+  currentChapterSlug: string,
+  currentPage: number,
+  currentTotalPages: number,
+  allProgress: ReadingProgress[],
+): number {
+  const totalWords = book.chapters.reduce((sum, ch) => sum + (ch.wordCount || 0), 0)
+  if (totalWords === 0) return 0
+
+  const progressMap = new Map(allProgress.map((p) => [p.chapterSlug, p]))
+  let wordsRead = 0
+
+  for (const ch of book.chapters) {
+    const chapterWords = ch.wordCount || 0
+    if (ch.slug === currentChapterSlug) {
+      // Use live page position for current chapter
+      if (currentTotalPages > 0) {
+        wordsRead += (currentPage / Math.max(1, currentTotalPages - 1)) * chapterWords
+      }
+    } else {
+      const progress = progressMap.get(ch.slug)
+      if (!progress) continue
+      if (progress.totalPages > 0 && progress.page >= progress.totalPages - 1) {
+        wordsRead += chapterWords
+      } else if (progress.page > 0 && progress.totalPages > 0) {
+        wordsRead += (progress.page / progress.totalPages) * chapterWords
+      }
+    }
+  }
+
+  return Math.min(100, (wordsRead / totalWords) * 100)
+}
+
+// Wrapper component that provides progress callbacks and computes global progress
+function ChapterReaderWithProgress({
+  book,
+  chapterSlug,
+  chapter,
+  prevChapter,
+  nextChapter,
+  paginationMode,
+  Content,
+}: {
+  book: Book
+  chapterSlug: string
+  chapter?: Chapter
+  prevChapter?: { slug: string; title: string }
+  nextChapter?: { slug: string; title: string }
+  paginationMode?: 'scroll' | 'paginated'
+  Content: ComponentType<{ components?: Record<string, unknown> }>
+}) {
+  const [bookProgressPercent, setBookProgressPercent] = useState<number | undefined>(undefined)
+
+  // Load initial global book progress
+  useEffect(() => {
+    getAllReadingProgress().then((allProgress) => {
+      const percent = calculateBookProgressPercent(book, chapterSlug, 0, 0, allProgress)
+      setBookProgressPercent(percent)
+    })
+  }, [book, chapterSlug])
+
+  const handleSaveProgress = (data: ProgressData) => {
+    saveReadingProgress({
+      chapterSlug,
+      page: data.page,
+      totalPages: data.totalPages,
+      scrollPosition: data.scrollPosition,
+      timestamp: Date.now(),
+    })
+
+    // Update global book progress with live page position
+    if (data.totalPages > 0) {
+      getAllReadingProgress().then((allProgress) => {
+        const percent = calculateBookProgressPercent(
+          book, chapterSlug, data.page, data.totalPages, allProgress,
+        )
+        setBookProgressPercent(percent)
+      })
+    }
+  }
+
+  const handleRestoreProgress = async (): Promise<ProgressData | null> => {
+    const progress = await getReadingProgress(chapterSlug)
+    if (!progress) return null
+    return {
+      page: progress.page,
+      totalPages: progress.totalPages,
+      scrollPosition: progress.scrollPosition,
+    }
+  }
+
+  return (
+    <Reader
+      title={chapter?.title || chapterSlug}
+      chapterSlug={chapterSlug}
+      prevChapter={prevChapter}
+      nextChapter={nextChapter}
+      paginationMode={paginationMode}
+      onSaveProgress={handleSaveProgress}
+      onRestoreProgress={handleRestoreProgress}
+      bookProgressPercent={bookProgressPercent}
+    >
+      <Content components={useMDXComponents()} />
+    </Reader>
+  )
+}
+
 function renderChapterPage(
   manifest: ContentManifest,
   route: string,
@@ -260,15 +382,29 @@ function renderChapterPage(
 
   const MDXContent = Content as ComponentType<{ components?: Record<string, unknown> }>
 
+  if (!book) {
+    return (
+      <Reader
+        title={chapter?.title || chapterSlug}
+        prevChapter={prevChapter}
+        nextChapter={nextChapter}
+        paginationMode={paginationMode}
+      >
+        <MDXContent components={useMDXComponents()} />
+      </Reader>
+    )
+  }
+
   return (
-    <Reader
-      title={chapter?.title || chapterSlug}
+    <ChapterReaderWithProgress
+      book={book}
+      chapterSlug={chapterSlug}
+      chapter={chapter}
       prevChapter={prevChapter}
       nextChapter={nextChapter}
       paginationMode={paginationMode}
-    >
-      <MDXContent components={useMDXComponents()} />
-    </Reader>
+      Content={MDXContent}
+    />
   )
 }
 
