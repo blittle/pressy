@@ -1,0 +1,44 @@
+{
+  "cli_version": "0.4.2",
+  "checkpoint_id": "9fa3839c152e",
+  "session_id": "4f089425-3eac-4496-a05d-8b022ebf782b",
+  "strategy": "manual-commit",
+  "created_at": "2026-02-15T21:35:04.686773Z",
+  "branch": "main",
+  "checkpoints_count": 5,
+  "files_touched": [
+    "README.md",
+    "examples/flatland/package.json",
+    "examples/frankenstein/package.json",
+    "package.json",
+    "packages/@pressy/components/package.json",
+    "packages/@pressy/components/src/Paywall.tsx",
+    "packages/@pressy/components/tsup.config.ts",
+    "packages/@pressy/shopify/package.json",
+    "packages/@pressy/typography/package.json",
+    "packages/pressy/package.json",
+    "packages/pressy/src/runtime/client.tsx",
+    "packages/pressy/src/vite/plugin.ts",
+    "tsconfig.json"
+  ],
+  "agent": "Claude Code",
+  "transcript_identifier_at_start": "f852136f-743a-4d5f-8876-beb97a96acab",
+  "checkpoint_transcript_start": 319,
+  "transcript_lines_at_start": 319,
+  "token_usage": {
+    "input_tokens": 81,
+    "cache_creation_tokens": 58539,
+    "cache_read_tokens": 7795688,
+    "output_tokens": 3638,
+    "api_call_count": 63
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-02-15T21:35:04.527092Z",
+    "agent_lines": 233,
+    "human_added": 713,
+    "human_modified": 18,
+    "human_removed": 0,
+    "total_committed": 964,
+    "agent_percentage": 24.1701244813278
+  }
+}
