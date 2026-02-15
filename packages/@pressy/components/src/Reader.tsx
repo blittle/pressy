@@ -392,9 +392,9 @@ function PaginatedReader({
 
   const goPrev = useCallback(() => {
     if (currentPage <= 0) {
-      // At the first page — navigate to prev chapter if available
+      // At the first page — navigate to prev chapter at its end
       if (prevChapter) {
-        window.location.href = prevChapter.slug
+        window.location.href = prevChapter.slug + '#end'
       }
       return
     }
@@ -533,7 +533,7 @@ function PaginatedReader({
         setIsDragging(false)
         setDragOffset(0)
         setChapterHint(null)
-        window.location.href = prevChapter.slug
+        window.location.href = prevChapter.slug + '#end'
         return
       }
 

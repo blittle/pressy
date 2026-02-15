@@ -335,13 +335,14 @@ function ChapterReaderWithProgress({
   }
 
   const handleRestoreProgress = async (): Promise<ProgressData | null> => {
-    const progress = await getReadingProgress(chapterSlug)
-    if (!progress) return null
-    return {
-      page: progress.page,
-      totalPages: progress.totalPages,
-      scrollPosition: progress.scrollPosition,
+    // Backward navigation: #end means go to the last page
+    if (window.location.hash === '#end') {
+      history.replaceState(null, '', window.location.pathname + window.location.search)
+      return { page: Number.MAX_SAFE_INTEGER, totalPages: 0, scrollPosition: 0 }
     }
+    // Forward/direct navigation: always start at beginning.
+    // Progress is still saved for informational display but not used for positioning.
+    return null
   }
 
   return (
@@ -596,13 +597,15 @@ function SeamlessChapterReader({
   }
 
   const handleRestoreProgress = async (): Promise<ProgressData | null> => {
-    const progress = await getReadingProgress(chapterSlug)
-    if (!progress) return null
-    return {
-      page: progress.page,
-      totalPages: progress.totalPages,
-      scrollPosition: progress.scrollPosition,
+    // Backward navigation: #end means go to the last page
+    if (window.location.hash === '#end') {
+      history.replaceState(null, '', window.location.pathname + window.location.search)
+      return { page: Number.MAX_SAFE_INTEGER, totalPages: 0, scrollPosition: 0 }
     }
+    // Forward/direct navigation: always start at beginning.
+    // Progress is still saved to IndexedDB for informational display
+    // (book progress badges) but not used for positioning.
+    return null
   }
 
   const components = useMDXComponents()
