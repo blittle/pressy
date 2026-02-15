@@ -130,60 +130,7 @@ function setupOfflineDetection(): void {
 
 // ── Page renderers ──────────────────────────────────────────
 
-function renderHomePage(manifest: ContentManifest) {
-  const siteTitle = manifest.books[0]?.metadata.title || 'Library'
-
-  return h('div', { class: 'pressy-home' },
-    h('header', { class: 'pressy-home-header' },
-      h('h1', null, siteTitle),
-      manifest.books[0]?.metadata.description &&
-        h('p', { class: 'pressy-home-desc' }, manifest.books[0].metadata.description),
-    ),
-    // Offline download button for each book
-    ...manifest.books.map((book: Book) =>
-      h(DownloadBook, {
-        bookSlug: book.slug,
-        chapterUrls: book.chapters.map(
-          (ch: Chapter) => `/books/${book.slug}/${ch.slug}`
-        ),
-        cachedBooks,
-        cacheProgress,
-        onDownload: downloadBookForOffline,
-        onRemove: clearBookCache,
-      })
-    ),
-    manifest.books.length > 0 && h('section', { class: 'pressy-home-section' },
-      h('h2', null, 'Chapters'),
-      h('nav', { class: 'pressy-chapter-list' },
-        ...manifest.books.flatMap((book: Book) =>
-          book.chapters.map((ch: Chapter) =>
-            h('a', {
-              href: `${basePath}/books/${book.slug}/${ch.slug}`,
-              class: 'pressy-chapter-link',
-            },
-              h('span', { class: 'pressy-chapter-order' }, `${ch.order}.`),
-              h('span', null, ch.title),
-            )
-          )
-        )
-      ),
-    ),
-    manifest.articles.length > 0 && h('section', { class: 'pressy-home-section' },
-      h('h2', null, 'Articles'),
-      h('nav', { class: 'pressy-chapter-list' },
-        ...manifest.articles.map((article: Article) =>
-          h('a', {
-            href: `${basePath}/articles/${article.slug}`,
-            class: 'pressy-chapter-link',
-          }, article.metadata.title)
-        ),
-      ),
-    ),
-    h('style', null, HOME_STYLES),
-  )
-}
-
-function renderBookPage(book: Book) {
+function renderBookPage(book: Book, articles: Article[] = []) {
   const chapterUrls = book.chapters.map(
     (ch: Chapter) => `/books/${book.slug}/${ch.slug}`
   )
@@ -195,7 +142,6 @@ function renderBookPage(book: Book) {
       book.metadata.description &&
         h('p', { class: 'pressy-home-desc' }, book.metadata.description),
     ),
-    // Offline download button
     h(DownloadBook, {
       bookSlug: book.slug,
       chapterUrls,
@@ -215,6 +161,57 @@ function renderBookPage(book: Book) {
             h('span', { class: 'pressy-chapter-order' }, `${ch.order}.`),
             h('span', null, ch.title),
           )
+        ),
+      ),
+    ),
+    articles.length > 0 && h('section', { class: 'pressy-home-section' },
+      h('h2', null, 'Articles'),
+      h('nav', { class: 'pressy-chapter-list' },
+        ...articles.map((article: Article) =>
+          h('a', {
+            href: `${basePath}/articles/${article.slug}`,
+            class: 'pressy-chapter-link',
+          }, article.metadata.title)
+        ),
+      ),
+    ),
+    h('style', null, HOME_STYLES),
+  )
+}
+
+function renderHomePage(manifest: ContentManifest) {
+  // Single-book site: render as the book page
+  if (manifest.books.length === 1) {
+    return renderBookPage(manifest.books[0], manifest.articles)
+  }
+
+  const siteTitle = manifest.books[0]?.metadata.title || 'Library'
+
+  return h('div', { class: 'pressy-home' },
+    h('header', { class: 'pressy-home-header' },
+      h('h1', null, siteTitle),
+      manifest.books[0]?.metadata.description &&
+        h('p', { class: 'pressy-home-desc' }, manifest.books[0].metadata.description),
+    ),
+    manifest.books.length > 0 && h('section', { class: 'pressy-home-section' },
+      h('h2', null, 'Books'),
+      h('nav', { class: 'pressy-chapter-list' },
+        ...manifest.books.map((book: Book) =>
+          h('a', {
+            href: `${basePath}/books/${book.slug}`,
+            class: 'pressy-chapter-link',
+          }, book.metadata.title)
+        ),
+      ),
+    ),
+    manifest.articles.length > 0 && h('section', { class: 'pressy-home-section' },
+      h('h2', null, 'Articles'),
+      h('nav', { class: 'pressy-chapter-list' },
+        ...manifest.articles.map((article: Article) =>
+          h('a', {
+            href: `${basePath}/articles/${article.slug}`,
+            class: 'pressy-chapter-link',
+          }, article.metadata.title)
         ),
       ),
     ),
