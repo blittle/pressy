@@ -179,6 +179,20 @@ function PaginatedReader({
   const hasRestoredRef = useRef(false)
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
+  // Drag/swipe state
+  const [isDragging, setIsDragging] = useState(false)
+  const [dragOffset, setDragOffset] = useState(0)
+  const [chapterHint, setChapterHint] = useState<'next' | 'prev' | null>(null)
+
+  // Touch tracking refs (avoid re-renders during drag)
+  const touchStartXRef = useRef(0)
+  const touchStartYRef = useRef(0)
+  const lastTouchXRef = useRef(0)
+  const lastTouchTimeRef = useRef(0)
+  const velocityRef = useRef(0)
+  const isSwipingRef = useRef(false)
+  const isDraggingRef = useRef(false)
+
   // Calculate page count and set column-width to match viewport
   const recalculatePages = useCallback(() => {
     const article = articleRef.current
@@ -257,15 +271,25 @@ function PaginatedReader({
     })
   }, [totalPages, onRestoreProgress])
 
-  // Apply translateX whenever currentPage changes
+  // Apply translateX — combines page position + drag offset
   useEffect(() => {
     const article = articleRef.current
     const viewport = viewportRef.current
     if (!article || !viewport) return
 
-    const offset = currentPage * viewport.clientWidth
-    article.style.transform = `translateX(-${offset}px)`
-  }, [currentPage])
+    const baseOffset = currentPage * viewport.clientWidth
+    const totalOffset = baseOffset - dragOffset
+
+    if (isDragging) {
+      // During drag: no transition, immediate response
+      article.style.transition = 'none'
+    } else {
+      // Snap animation: smooth ease-out
+      article.style.transition = 'transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94)'
+    }
+
+    article.style.transform = `translateX(-${totalOffset}px)`
+  }, [currentPage, dragOffset, isDragging])
 
   // Save progress when page changes (debounced)
   useEffect(() => {
@@ -357,50 +381,187 @@ function PaginatedReader({
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [goNext, goPrev, goToPage, totalPages])
 
-  // Touch swipe navigation
+  // Touch swipe navigation with drag tracking, velocity detection, and rubber-band
   useEffect(() => {
     const viewport = viewportRef.current
     if (!viewport) return
 
-    let touchStartX = 0
-    let touchStartY = 0
-    let isSwiping = false
-
     const onTouchStart = (e: TouchEvent) => {
-      touchStartX = e.touches[0].clientX
-      touchStartY = e.touches[0].clientY
-      isSwiping = false
+      const touch = e.touches[0]
+      touchStartXRef.current = touch.clientX
+      touchStartYRef.current = touch.clientY
+      lastTouchXRef.current = touch.clientX
+      lastTouchTimeRef.current = performance.now()
+      velocityRef.current = 0
+      isSwipingRef.current = false
+      isDraggingRef.current = false
     }
 
     const onTouchMove = (e: TouchEvent) => {
-      const dx = e.touches[0].clientX - touchStartX
-      const dy = e.touches[0].clientY - touchStartY
-      // Only count as horizontal swipe if horizontal movement > vertical
-      if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 10) {
-        isSwiping = true
-        e.preventDefault()
+      const touch = e.touches[0]
+      const dx = touch.clientX - touchStartXRef.current
+      const dy = touch.clientY - touchStartYRef.current
+
+      // Lock direction after initial movement
+      if (!isSwipingRef.current) {
+        if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 10) {
+          isSwipingRef.current = true
+        } else if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 10) {
+          // Vertical scroll — not our concern
+          return
+        } else {
+          return // Not enough movement yet
+        }
       }
+
+      e.preventDefault()
+
+      // Track velocity (px per ms) using last touch position
+      const now = performance.now()
+      const timeDelta = now - lastTouchTimeRef.current
+      if (timeDelta > 0) {
+        const instantVelocity = (touch.clientX - lastTouchXRef.current) / timeDelta
+        // Smooth velocity with exponential moving average
+        velocityRef.current = 0.6 * instantVelocity + 0.4 * velocityRef.current
+      }
+      lastTouchXRef.current = touch.clientX
+      lastTouchTimeRef.current = now
+
+      // Determine drag offset with rubber-band resistance at boundaries
+      let offset = dx
+      const atStart = currentPage === 0
+      const atEnd = currentPage >= totalPages - 1
+
+      if ((atStart && dx > 0) || (atEnd && dx < 0)) {
+        // Rubber-band: diminishing resistance using square root curve
+        // This gives a natural iOS-like rubber-band feel
+        const sign = dx > 0 ? 1 : -1
+        const absDx = Math.abs(dx)
+        offset = sign * Math.sqrt(absDx) * 5
+
+        // Show chapter hint when overscrolling past boundary
+        if (dx > 40 && atStart && prevChapter) {
+          setChapterHint('prev')
+        } else if (dx < -40 && atEnd && nextChapter) {
+          setChapterHint('next')
+        } else {
+          setChapterHint(null)
+        }
+      } else {
+        setChapterHint(null)
+      }
+
+      isDraggingRef.current = true
+      setIsDragging(true)
+      setDragOffset(offset)
     }
 
     const onTouchEnd = (e: TouchEvent) => {
-      if (!isSwiping) return
-      const dx = e.changedTouches[0].clientX - touchStartX
-      const threshold = 50
-      if (dx < -threshold) {
+      if (!isSwipingRef.current || !isDraggingRef.current) {
+        setIsDragging(false)
+        setDragOffset(0)
+        setChapterHint(null)
+        return
+      }
+
+      const dx = e.changedTouches[0].clientX - touchStartXRef.current
+      const velocity = velocityRef.current // px/ms
+      const distanceThreshold = 50
+      const velocityThreshold = 0.3 // px/ms — a fast flick
+      const chapterThreshold = 80
+
+      const atStart = currentPage === 0
+      const atEnd = currentPage >= totalPages - 1
+
+      // Chapter navigation on overscroll
+      if (atEnd && dx < -chapterThreshold && nextChapter) {
+        setIsDragging(false)
+        setDragOffset(0)
+        setChapterHint(null)
+        window.location.href = nextChapter.slug
+        return
+      }
+      if (atStart && dx > chapterThreshold && prevChapter) {
+        setIsDragging(false)
+        setDragOffset(0)
+        setChapterHint(null)
+        window.location.href = prevChapter.slug
+        return
+      }
+
+      // Determine page change: distance OR velocity triggers a turn
+      if (dx < -distanceThreshold || velocity < -velocityThreshold) {
         goNext()
-      } else if (dx > threshold) {
+      } else if (dx > distanceThreshold || velocity > velocityThreshold) {
         goPrev()
       }
+
+      // Reset drag state — the CSS transition handles the snap animation
+      isDraggingRef.current = false
+      setIsDragging(false)
+      setDragOffset(0)
+      setChapterHint(null)
+    }
+
+    // Cancel drag if touch is interrupted
+    const onTouchCancel = () => {
+      isDraggingRef.current = false
+      setIsDragging(false)
+      setDragOffset(0)
+      setChapterHint(null)
     }
 
     viewport.addEventListener('touchstart', onTouchStart, { passive: true })
     viewport.addEventListener('touchmove', onTouchMove, { passive: false })
     viewport.addEventListener('touchend', onTouchEnd, { passive: true })
+    viewport.addEventListener('touchcancel', onTouchCancel, { passive: true })
 
     return () => {
       viewport.removeEventListener('touchstart', onTouchStart)
       viewport.removeEventListener('touchmove', onTouchMove)
       viewport.removeEventListener('touchend', onTouchEnd)
+      viewport.removeEventListener('touchcancel', onTouchCancel)
+    }
+  }, [currentPage, totalPages, goNext, goPrev, nextChapter, prevChapter])
+
+  // Trackpad/mouse wheel → page snapping
+  // Accumulates small wheel deltas and triggers page turns at a threshold,
+  // giving CSS scroll-snap-like behavior without conflicting with CSS columns.
+  useEffect(() => {
+    const viewport = viewportRef.current
+    if (!viewport) return
+
+    let accumulatedDelta = 0
+    let wheelTimer: ReturnType<typeof setTimeout> | null = null
+    const wheelThreshold = 80 // px of accumulated scroll before page turn
+
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault()
+
+      // Use deltaX for horizontal scroll, deltaY for vertical (most common)
+      const delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY
+      accumulatedDelta += delta
+
+      // Reset accumulator after inactivity
+      if (wheelTimer) clearTimeout(wheelTimer)
+      wheelTimer = setTimeout(() => {
+        accumulatedDelta = 0
+      }, 200)
+
+      if (accumulatedDelta > wheelThreshold) {
+        goNext()
+        accumulatedDelta = 0
+      } else if (accumulatedDelta < -wheelThreshold) {
+        goPrev()
+        accumulatedDelta = 0
+      }
+    }
+
+    viewport.addEventListener('wheel', onWheel, { passive: false })
+
+    return () => {
+      viewport.removeEventListener('wheel', onWheel)
+      if (wheelTimer) clearTimeout(wheelTimer)
     }
   }, [goNext, goPrev])
 
@@ -419,17 +580,35 @@ function PaginatedReader({
         </article>
       </div>
 
-      {/* Tap zones */}
+      {/* Tap zones with visual feedback */}
       <div
         class="pressy-tap-zone pressy-tap-prev"
         onClick={goPrev}
         aria-label="Previous page"
+        role="button"
+        tabIndex={-1}
       />
       <div
         class="pressy-tap-zone pressy-tap-next"
         onClick={goNext}
         aria-label="Next page"
+        role="button"
+        tabIndex={-1}
       />
+
+      {/* Chapter boundary hints */}
+      {chapterHint === 'prev' && prevChapter && (
+        <div class="pressy-chapter-hint pressy-chapter-hint--prev" aria-live="polite">
+          <span class="pressy-chapter-hint-arrow">{'\u2190'}</span>
+          <span class="pressy-chapter-hint-text">{prevChapter.title}</span>
+        </div>
+      )}
+      {chapterHint === 'next' && nextChapter && (
+        <div class="pressy-chapter-hint pressy-chapter-hint--next" aria-live="polite">
+          <span class="pressy-chapter-hint-text">{nextChapter.title}</span>
+          <span class="pressy-chapter-hint-arrow">{'\u2192'}</span>
+        </div>
+      )}
 
       {/* Page footer with progress and indicator */}
       <div class="pressy-page-footer">
@@ -494,7 +673,7 @@ const PAGINATED_STYLES = `
   /* Article uses CSS multi-column layout for pagination.
      column-width is set dynamically via JS to match viewport width.
      Each column = one "page". Content overflows horizontally into new columns.
-     We use translateX to show the current page. */
+     translateX controlled by JS — transitions set dynamically during drag vs snap. */
   .pressy-prose--paginated {
     max-width: none;
     height: 100%;
@@ -504,7 +683,7 @@ const PAGINATED_STYLES = `
     box-sizing: border-box;
     padding: 0;
     will-change: transform;
-    transition: transform 0.3s ease;
+    /* Transition is set dynamically: none during drag, ease-out on snap */
   }
 
   /* Center content elements within each column/page at a readable width */
@@ -524,7 +703,9 @@ const PAGINATED_STYLES = `
     margin-right: auto;
   }
 
-  /* Tap zones — invisible overlays on left/right thirds of screen */
+  /* ── Tap zones ─────────────────────────────────────────────── */
+  /* Invisible overlays on left/right thirds of screen.
+     Visual feedback via radial gradient on active state. */
   .pressy-tap-zone {
     position: absolute;
     top: 0;
@@ -532,6 +713,8 @@ const PAGINATED_STYLES = `
     z-index: 10;
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
+    background: transparent;
+    transition: background 0.15s ease;
   }
 
   .pressy-tap-prev {
@@ -544,7 +727,91 @@ const PAGINATED_STYLES = `
     width: 33%;
   }
 
-  /* Page footer */
+  /* Tap feedback — brief highlight on press */
+  .pressy-tap-prev:active {
+    background: radial-gradient(
+      circle at 30% 50%,
+      rgba(0, 0, 0, 0.04) 0%,
+      transparent 70%
+    );
+  }
+
+  .pressy-tap-next:active {
+    background: radial-gradient(
+      circle at 70% 50%,
+      rgba(0, 0, 0, 0.04) 0%,
+      transparent 70%
+    );
+  }
+
+  /* Dark theme tap feedback */
+  [data-theme="dark"] .pressy-tap-prev:active {
+    background: radial-gradient(
+      circle at 30% 50%,
+      rgba(255, 255, 255, 0.06) 0%,
+      transparent 70%
+    );
+  }
+
+  [data-theme="dark"] .pressy-tap-next:active {
+    background: radial-gradient(
+      circle at 70% 50%,
+      rgba(255, 255, 255, 0.06) 0%,
+      transparent 70%
+    );
+  }
+
+  /* ── Chapter boundary hints ─────────────────────────────── */
+  /* Shown when overscrolling past first/last page of a chapter */
+  .pressy-chapter-hint {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.25rem;
+    background: var(--color-bg-subtle, #f5f5f5);
+    border: 1px solid var(--color-border, #dee2e6);
+    border-radius: 0.75rem;
+    font-family: var(--font-heading, system-ui, -apple-system, sans-serif);
+    font-size: var(--font-size-sm, 0.875rem);
+    color: var(--color-text-muted, #6c757d);
+    z-index: 20;
+    pointer-events: none;
+    animation: pressy-hint-fade-in 0.15s ease-out;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    max-width: 60%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .pressy-chapter-hint--prev {
+    left: 1rem;
+  }
+
+  .pressy-chapter-hint--next {
+    right: 1rem;
+  }
+
+  .pressy-chapter-hint-arrow {
+    flex-shrink: 0;
+    font-size: 1rem;
+    opacity: 0.6;
+  }
+
+  .pressy-chapter-hint-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  @keyframes pressy-hint-fade-in {
+    from { opacity: 0; transform: translateY(-50%) scale(0.95); }
+    to { opacity: 1; transform: translateY(-50%) scale(1); }
+  }
+
+  /* ── Page footer ───────────────────────────────────────────── */
   .pressy-page-footer {
     flex-shrink: 0;
     padding: 0.5rem 1.5rem 1rem;
@@ -581,5 +848,16 @@ const PAGINATED_STYLES = `
 
   .pressy-book-progress {
     opacity: 0.7;
+  }
+
+  /* ── Reduced motion preference ────────────────────────────
+     Disable page turn animations for users who prefer reduced motion. */
+  @media (prefers-reduced-motion: reduce) {
+    .pressy-prose--paginated {
+      transition: none !important;
+    }
+    .pressy-progress-fill {
+      transition: none !important;
+    }
   }
 `
