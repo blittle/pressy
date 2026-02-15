@@ -5,7 +5,7 @@ export default defineConfig({
     index: 'src/index.ts',
     'cli/index': 'src/cli/index.ts',
     'vite/plugin': 'src/vite/plugin.ts',
-    'runtime/client': 'src/runtime/client.ts',
+    'runtime/client': 'src/runtime/client.tsx',
     'runtime/offline': 'src/runtime/offline.ts',
     'runtime/sw': 'src/runtime/sw.ts',
   },

@@ -1,4 +1,4 @@
-import { h, render, ComponentType } from 'preact'
+import { render, type ComponentType, type VNode } from 'preact'
 import { signal, effect } from '@preact/signals'
 import { Reader, DownloadBook } from '@pressy/components'
 import { useMDXComponents } from '@pressy/components/content'
@@ -135,47 +135,54 @@ function renderBookPage(book: Book, articles: Article[] = []) {
     (ch: Chapter) => `/books/${book.slug}/${ch.slug}`
   )
 
-  return h('div', { class: 'pressy-home' },
-    h('header', { class: 'pressy-home-header' },
-      h('h1', null, book.metadata.title),
-      h('p', { class: 'pressy-home-author' }, `by ${book.metadata.author}`),
-      book.metadata.description &&
-        h('p', { class: 'pressy-home-desc' }, book.metadata.description),
-    ),
-    h(DownloadBook, {
-      bookSlug: book.slug,
-      chapterUrls,
-      cachedBooks,
-      cacheProgress,
-      onDownload: downloadBookForOffline,
-      onRemove: clearBookCache,
-    }),
-    h('section', { class: 'pressy-home-section' },
-      h('h2', null, 'Chapters'),
-      h('nav', { class: 'pressy-chapter-list' },
-        ...book.chapters.map((ch: Chapter) =>
-          h('a', {
-            href: `${basePath}/books/${book.slug}/${ch.slug}`,
-            class: 'pressy-chapter-link',
-          },
-            h('span', { class: 'pressy-chapter-order' }, `${ch.order}.`),
-            h('span', null, ch.title),
-          )
-        ),
-      ),
-    ),
-    articles.length > 0 && h('section', { class: 'pressy-home-section' },
-      h('h2', null, 'Articles'),
-      h('nav', { class: 'pressy-chapter-list' },
-        ...articles.map((article: Article) =>
-          h('a', {
-            href: `${basePath}/articles/${article.slug}`,
-            class: 'pressy-chapter-link',
-          }, article.metadata.title)
-        ),
-      ),
-    ),
-    h('style', null, HOME_STYLES),
+  return (
+    <div class="pressy-home">
+      <header class="pressy-home-header">
+        <h1>{book.metadata.title}</h1>
+        <p class="pressy-home-author">by {book.metadata.author}</p>
+        {book.metadata.description && (
+          <p class="pressy-home-desc">{book.metadata.description}</p>
+        )}
+      </header>
+      <DownloadBook
+        bookSlug={book.slug}
+        chapterUrls={chapterUrls}
+        cachedBooks={cachedBooks}
+        cacheProgress={cacheProgress}
+        onDownload={downloadBookForOffline}
+        onRemove={clearBookCache}
+      />
+      <section class="pressy-home-section">
+        <h2>Chapters</h2>
+        <nav class="pressy-chapter-list">
+          {book.chapters.map((ch: Chapter) => (
+            <a
+              href={`${basePath}/books/${book.slug}/${ch.slug}`}
+              class="pressy-chapter-link"
+            >
+              <span class="pressy-chapter-order">{ch.order}.</span>
+              <span>{ch.title}</span>
+            </a>
+          ))}
+        </nav>
+      </section>
+      {articles.length > 0 && (
+        <section class="pressy-home-section">
+          <h2>Articles</h2>
+          <nav class="pressy-chapter-list">
+            {articles.map((article: Article) => (
+              <a
+                href={`${basePath}/articles/${article.slug}`}
+                class="pressy-chapter-link"
+              >
+                {article.metadata.title}
+              </a>
+            ))}
+          </nav>
+        </section>
+      )}
+      <style>{HOME_STYLES}</style>
+    </div>
   )
 }
 
@@ -187,35 +194,46 @@ function renderHomePage(manifest: ContentManifest) {
 
   const siteTitle = manifest.books[0]?.metadata.title || 'Library'
 
-  return h('div', { class: 'pressy-home' },
-    h('header', { class: 'pressy-home-header' },
-      h('h1', null, siteTitle),
-      manifest.books[0]?.metadata.description &&
-        h('p', { class: 'pressy-home-desc' }, manifest.books[0].metadata.description),
-    ),
-    manifest.books.length > 0 && h('section', { class: 'pressy-home-section' },
-      h('h2', null, 'Books'),
-      h('nav', { class: 'pressy-chapter-list' },
-        ...manifest.books.map((book: Book) =>
-          h('a', {
-            href: `${basePath}/books/${book.slug}`,
-            class: 'pressy-chapter-link',
-          }, book.metadata.title)
-        ),
-      ),
-    ),
-    manifest.articles.length > 0 && h('section', { class: 'pressy-home-section' },
-      h('h2', null, 'Articles'),
-      h('nav', { class: 'pressy-chapter-list' },
-        ...manifest.articles.map((article: Article) =>
-          h('a', {
-            href: `${basePath}/articles/${article.slug}`,
-            class: 'pressy-chapter-link',
-          }, article.metadata.title)
-        ),
-      ),
-    ),
-    h('style', null, HOME_STYLES),
+  return (
+    <div class="pressy-home">
+      <header class="pressy-home-header">
+        <h1>{siteTitle}</h1>
+        {manifest.books[0]?.metadata.description && (
+          <p class="pressy-home-desc">{manifest.books[0].metadata.description}</p>
+        )}
+      </header>
+      {manifest.books.length > 0 && (
+        <section class="pressy-home-section">
+          <h2>Books</h2>
+          <nav class="pressy-chapter-list">
+            {manifest.books.map((book: Book) => (
+              <a
+                href={`${basePath}/books/${book.slug}`}
+                class="pressy-chapter-link"
+              >
+                {book.metadata.title}
+              </a>
+            ))}
+          </nav>
+        </section>
+      )}
+      {manifest.articles.length > 0 && (
+        <section class="pressy-home-section">
+          <h2>Articles</h2>
+          <nav class="pressy-chapter-list">
+            {manifest.articles.map((article: Article) => (
+              <a
+                href={`${basePath}/articles/${article.slug}`}
+                class="pressy-chapter-link"
+              >
+                {article.metadata.title}
+              </a>
+            ))}
+          </nav>
+        </section>
+      )}
+      <style>{HOME_STYLES}</style>
+    </div>
   )
 }
 
@@ -238,12 +256,17 @@ function renderChapterPage(
     ? { slug: chapterPath(book.chapters[chapterIdx + 1]), title: book.chapters[chapterIdx + 1].title }
     : undefined
 
-  return h(Reader, {
-    title: chapter?.title || chapterSlug,
-    prevChapter,
-    nextChapter,
-    children: h(Content, { components: useMDXComponents() } as Record<string, unknown>),
-  })
+  const MDXContent = Content as ComponentType<{ components?: Record<string, unknown> }>
+
+  return (
+    <Reader
+      title={chapter?.title || chapterSlug}
+      prevChapter={prevChapter}
+      nextChapter={nextChapter}
+    >
+      <MDXContent components={useMDXComponents()} />
+    </Reader>
+  )
 }
 
 function renderArticlePage(
@@ -254,10 +277,13 @@ function renderArticlePage(
   const articleSlug = route.split('/')[2]
   const article = manifest.articles.find((a: Article) => a.slug === articleSlug)
 
-  return h(Reader, {
-    title: article?.metadata.title || articleSlug,
-    children: h(Content, { components: useMDXComponents() } as Record<string, unknown>),
-  })
+  const MDXContent = Content as ComponentType<{ components?: Record<string, unknown> }>
+
+  return (
+    <Reader title={article?.metadata.title || articleSlug}>
+      <MDXContent components={useMDXComponents()} />
+    </Reader>
+  )
 }
 
 // ── Styles ──────────────────────────────────────────────────
@@ -394,7 +420,7 @@ export function hydrate(data: HydrateData, Content?: ComponentType): void {
   })
 
   // Render the app
-  let page
+  let page: VNode
   switch (data.routeType) {
     case 'home':
       page = renderHomePage(data.manifest)
@@ -402,18 +428,18 @@ export function hydrate(data: HydrateData, Content?: ComponentType): void {
     case 'book': {
       const bookSlug = data.route.split('/')[2]
       const book = data.manifest.books.find((b: Book) => b.slug === bookSlug)
-      page = book ? renderBookPage(book) : h('div', null, 'Book not found')
+      page = book ? renderBookPage(book) : <div>Book not found</div>
       break
     }
     case 'chapter':
       page = Content
         ? renderChapterPage(data.manifest, data.route, Content)
-        : h('div', null, 'Loading...')
+        : <div>Loading...</div>
       break
     case 'article':
       page = Content
         ? renderArticlePage(data.manifest, data.route, Content)
-        : h('div', null, 'Loading...')
+        : <div>Loading...</div>
       break
     case 'books':
       page = renderHomePage(data.manifest)
@@ -422,7 +448,7 @@ export function hydrate(data: HydrateData, Content?: ComponentType): void {
       page = renderHomePage(data.manifest)
       break
     default:
-      page = h('div', null, 'Page not found')
+      page = <div>Page not found</div>
   }
 
   render(page, document.getElementById('app')!)
