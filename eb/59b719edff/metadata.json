@@ -1,0 +1,30 @@
+{
+  "cli_version": "0.4.2",
+  "checkpoint_id": "eb59b719edff",
+  "strategy": "manual-commit",
+  "branch": "claude/seamless-chapter-transitions-phase-4",
+  "checkpoints_count": 8,
+  "files_touched": [
+    "packages/@pressy/components/src/Reader.tsx",
+    "packages/@pressy/components/src/index.ts",
+    "packages/pressy/src/runtime/client.tsx",
+    "packages/pressy/src/types.ts",
+    "packages/pressy/src/vite/plugin.ts"
+  ],
+  "sessions": [
+    {
+      "metadata": "/eb/59b719edff/0/metadata.json",
+      "transcript": "/eb/59b719edff/0/full.jsonl",
+      "context": "/eb/59b719edff/0/context.md",
+      "content_hash": "/eb/59b719edff/0/content_hash.txt",
+      "prompt": "/eb/59b719edff/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 115,
+    "cache_creation_tokens": 102495,
+    "cache_read_tokens": 7819883,
+    "output_tokens": 4802,
+    "api_call_count": 95
+  }
+}
