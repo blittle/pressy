@@ -72,3 +72,6 @@ export interface ReadingProgress {
   scrollPosition: number
   timestamp: number
 }
+
+/** Map of chapter slug -> dynamic import function for that chapter's MDX module */
+export type ChapterLoaders = Record<string, () => Promise<{ default: any }>>

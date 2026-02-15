@@ -19,6 +19,8 @@ const VIRTUAL_ENTRY_ID = 'virtual:pressy-entry'
 const RESOLVED_VIRTUAL_ENTRY_ID = '\0' + VIRTUAL_ENTRY_ID
 const VIRTUAL_ROUTE_PREFIX = 'virtual:pressy-route:'
 const RESOLVED_ROUTE_PREFIX = '\0' + VIRTUAL_ROUTE_PREFIX
+const VIRTUAL_CHAPTER_LOADER_PREFIX = 'virtual:pressy-chapters/'
+const RESOLVED_CHAPTER_LOADER_PREFIX = '\0' + VIRTUAL_CHAPTER_LOADER_PREFIX
 
 export function pressyPlugin(config: PressyConfig): Plugin[] {
   let root: string
@@ -192,11 +194,16 @@ export function pressyPlugin(config: PressyConfig): Plugin[] {
 
     let contentImport = ''
     let contentArg = ''
+    let chapterLoaderImport = ''
+    let chapterLoaderArg = ''
     if (route.type === 'chapter') {
       const chapter = route.content as Chapter
       const importPath = '/' + relative(root, chapter.filePath).split('\\').join('/')
       contentImport = `import Content from '${importPath}';\n    `
       contentArg = ', Content'
+      const bookSlug = route.book!.slug
+      chapterLoaderImport = `import chapterLoaders from '${VIRTUAL_CHAPTER_LOADER_PREFIX}${bookSlug}';\n    `
+      chapterLoaderArg = ', chapterLoaders'
     } else if (route.type === 'article') {
       const article = route.content as Article
       const importPath = '/' + relative(root, article.filePath).split('\\').join('/')
@@ -237,8 +244,8 @@ export function pressyPlugin(config: PressyConfig): Plugin[] {
   <div id="app"></div>
   <script type="module">
     import { hydrate } from '/@pressy/client';
-    ${contentImport}const data = ${dataJson};
-    hydrate(data${contentArg});
+    ${contentImport}${chapterLoaderImport}const data = ${dataJson};
+    hydrate(data${contentArg}${chapterLoaderArg});
   </script>
 </body>
 </html>`
@@ -349,6 +356,9 @@ export function pressyPlugin(config: PressyConfig): Plugin[] {
         if (id.startsWith(VIRTUAL_ROUTE_PREFIX)) {
           return '\0' + id
         }
+        if (id.startsWith(VIRTUAL_CHAPTER_LOADER_PREFIX)) {
+          return '\0' + id
+        }
         if (id === '/@pressy/client') {
           return resolve(__dirname, '../runtime/client.js')
         }
@@ -371,6 +381,18 @@ export const config = ${JSON.stringify(config)};`
             `export { hydrate } from '/@pressy/client'`,
           ].join('\n')
         }
+        if (id.startsWith(RESOLVED_CHAPTER_LOADER_PREFIX)) {
+          const bookSlug = id.slice(RESOLVED_CHAPTER_LOADER_PREFIX.length)
+          const book = manifest.books.find(b => b.slug === bookSlug)
+          if (!book) return null
+
+          const imports = book.chapters.map(ch => {
+            const importPath = ch.filePath
+            return `  ${JSON.stringify(ch.slug)}: () => import(${JSON.stringify(importPath)})`
+          })
+
+          return `export default {\n${imports.join(',\n')}\n}`
+        }
         if (id.startsWith(RESOLVED_ROUTE_PREFIX)) {
           const routePath = id.slice(RESOLVED_ROUTE_PREFIX.length)
           const route = routes.find(r => r.path === routePath)
@@ -385,11 +407,16 @@ export const config = ${JSON.stringify(config)};`
 
           let contentImport = ''
           let contentArg = ''
+          let chapterLoaderImport = ''
+          let chapterLoaderArg = ''
           if (route.type === 'chapter') {
             const chapter = route.content as Chapter
             const importPath = chapter.filePath
             contentImport = `import Content from '${importPath}';\n`
             contentArg = ', Content'
+            const bookSlug = route.book!.slug
+            chapterLoaderImport = `import chapterLoaders from '${VIRTUAL_CHAPTER_LOADER_PREFIX}${bookSlug}';\n`
+            chapterLoaderArg = ', chapterLoaders'
           } else if (route.type === 'article') {
             const article = route.content as Article
             const importPath = article.filePath
@@ -400,8 +427,9 @@ export const config = ${JSON.stringify(config)};`
           return [
             `import { hydrate } from '/@pressy/client';`,
             contentImport,
+            chapterLoaderImport,
             `const data = ${dataJson};`,
-            `hydrate(data${contentArg});`,
+            `hydrate(data${contentArg}${chapterLoaderArg});`,
           ].join('\n')
         }
       },

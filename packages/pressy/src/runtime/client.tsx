@@ -1,5 +1,5 @@
 import { render, type ComponentType, type VNode } from 'preact'
-import { useState, useEffect } from 'preact/hooks'
+import { useState, useEffect, useRef, useCallback } from 'preact/hooks'
 import { signal, effect } from '@preact/signals'
 import { Reader, DownloadBook, BookProgress } from '@pressy/components'
 import type { ProgressData } from '@pressy/components'
@@ -11,7 +11,7 @@ import {
   cachedBooks,
   cacheProgress,
 } from './offline.js'
-import type { ContentManifest, Route, Book, Chapter, Article, ReadingProgress } from '../types.js'
+import type { ContentManifest, Route, Book, Chapter, Article, ReadingProgress, ChapterLoaders } from '../types.js'
 import type { PaginationConfig } from '../config.js'
 
 // State signals
@@ -360,11 +360,292 @@ function ChapterReaderWithProgress({
   )
 }
 
+// ── Seamless Chapter Reader ─────────────────────────────────
+// Wraps Reader with forward preloading, chapter boundary detection,
+// URL updates via replaceState, and backward prefetch.
+
+interface LoadedChapter {
+  slug: string
+  title: string
+  Content: ComponentType<{ components?: Record<string, unknown> }>
+  wordCount: number
+}
+
+function SeamlessChapterReader({
+  book,
+  chapterSlug,
+  chapter,
+  prevChapter,
+  nextChapter,
+  paginationMode,
+  Content,
+  chapterLoaders,
+}: {
+  book: Book
+  chapterSlug: string
+  chapter?: Chapter
+  prevChapter?: { slug: string; title: string }
+  nextChapter?: { slug: string; title: string }
+  paginationMode?: 'scroll' | 'paginated'
+  Content: ComponentType<{ components?: Record<string, unknown> }>
+  chapterLoaders: ChapterLoaders
+}) {
+  const [bookProgressPercent, setBookProgressPercent] = useState<number | undefined>(undefined)
+
+  // Track all loaded chapters (initially just the current one)
+  const [loadedChapters, setLoadedChapters] = useState<LoadedChapter[]>(() => [{
+    slug: chapterSlug,
+    title: chapter?.title || chapterSlug,
+    Content,
+    wordCount: chapter?.wordCount || 0,
+  }])
+
+  // Track the currently visible chapter (for URL and progress)
+  const [activeChapterSlug, setActiveChapterSlug] = useState(chapterSlug)
+
+  // Refs for DOM access
+  const articleElRef = useRef<HTMLElement | null>(null)
+  const viewportElRef = useRef<HTMLElement | null>(null)
+  const isLoadingRef = useRef(false)
+
+  // Determine what can still be loaded forward
+  const lastLoadedSlug = loadedChapters[loadedChapters.length - 1].slug
+  const lastLoadedIdx = book.chapters.findIndex(c => c.slug === lastLoadedSlug)
+  const hasMoreChapters = lastLoadedIdx >= 0 && lastLoadedIdx < book.chapters.length - 1
+
+  // The "next chapter" for navigation is the one AFTER all loaded chapters
+  const finalNextChapterIdx = lastLoadedIdx + 1
+  const finalNextChapter = finalNextChapterIdx < book.chapters.length
+    ? {
+        slug: `${basePath}/books/${book.slug}/${book.chapters[finalNextChapterIdx].slug}`,
+        title: book.chapters[finalNextChapterIdx].title,
+      }
+    : undefined
+
+  // Prefetch previous chapter HTML for fast backward navigation
+  useEffect(() => {
+    if (!prevChapter) return
+    const link = document.createElement('link')
+    link.rel = 'prefetch'
+    link.href = prevChapter.slug
+    document.head.appendChild(link)
+    return () => { document.head.removeChild(link) }
+  }, [prevChapter])
+
+  // Load initial global book progress
+  useEffect(() => {
+    getAllReadingProgress().then((allProgress) => {
+      const percent = calculateBookProgressPercent(book, chapterSlug, 0, 0, allProgress)
+      setBookProgressPercent(percent)
+    })
+  }, [book, chapterSlug])
+
+  // Handle near-end: preload next chapter
+  const handleNearEnd = useCallback(async () => {
+    if (!hasMoreChapters || isLoadingRef.current) return
+    isLoadingRef.current = true
+
+    const nextCh = book.chapters[lastLoadedIdx + 1]
+    const loader = chapterLoaders[nextCh.slug]
+    if (!loader) {
+      isLoadingRef.current = false
+      return
+    }
+
+    try {
+      const module = await loader()
+      const NextContent = module.default as ComponentType<{ components?: Record<string, unknown> }>
+
+      setLoadedChapters(prev => [
+        ...prev,
+        {
+          slug: nextCh.slug,
+          title: nextCh.title,
+          Content: NextContent,
+          wordCount: nextCh.wordCount || 0,
+        },
+      ])
+    } catch (err) {
+      console.error('Failed to preload chapter:', nextCh.slug, err)
+    }
+
+    isLoadingRef.current = false
+  }, [hasMoreChapters, lastLoadedIdx, book.chapters, chapterLoaders])
+
+  // Detect chapter boundaries from DOM markers on page change
+  const handlePageChange = useCallback((page: number, totalPages: number) => {
+    const article = articleElRef.current
+    const viewport = viewportElRef.current
+    if (!article || !viewport || loadedChapters.length <= 1) return
+
+    const viewportWidth = viewport.clientWidth
+    if (viewportWidth === 0) return
+
+    // Find chapter boundary markers and determine which chapter the current page belongs to
+    const markers = article.querySelectorAll('[data-chapter-start]')
+    let newActiveSlug = loadedChapters[0].slug
+    let chapterLocalStartPage = 0
+
+    for (const marker of markers) {
+      const markerEl = marker as HTMLElement
+      const markerPage = Math.floor(markerEl.offsetLeft / viewportWidth)
+      if (page >= markerPage) {
+        newActiveSlug = markerEl.getAttribute('data-chapter-start') || newActiveSlug
+        chapterLocalStartPage = markerPage
+      }
+    }
+
+    if (newActiveSlug !== activeChapterSlug) {
+      setActiveChapterSlug(newActiveSlug)
+
+      // Update URL without page reload
+      const newPath = `${basePath}/books/${book.slug}/${newActiveSlug}`
+      history.replaceState(null, '', newPath)
+
+      // Save progress for the chapter we just left
+      saveReadingProgress({
+        chapterSlug: activeChapterSlug,
+        page: 0,
+        totalPages: 0,
+        scrollPosition: 0,
+        timestamp: Date.now(),
+      })
+    }
+
+    // Update global book progress
+    if (totalPages > 0) {
+      const chapterLocalPage = page - chapterLocalStartPage
+      getAllReadingProgress().then((allProgress) => {
+        const percent = calculateBookProgressPercent(
+          book, newActiveSlug, chapterLocalPage, totalPages - chapterLocalStartPage, allProgress,
+        )
+        setBookProgressPercent(percent)
+      })
+    }
+  }, [loadedChapters, activeChapterSlug, book])
+
+  const handleSaveProgress = (data: ProgressData) => {
+    // Determine chapter-local page from the active chapter
+    const article = articleElRef.current
+    const viewport = viewportElRef.current
+    let localPage = data.page
+    let localTotalPages = data.totalPages
+
+    if (article && viewport && loadedChapters.length > 1) {
+      const viewportWidth = viewport.clientWidth
+      if (viewportWidth > 0) {
+        const markers = article.querySelectorAll('[data-chapter-start]')
+        let startPage = 0
+
+        for (const marker of markers) {
+          const markerEl = marker as HTMLElement
+          const markerPage = Math.floor(markerEl.offsetLeft / viewportWidth)
+          const slug = markerEl.getAttribute('data-chapter-start')
+          if (slug === activeChapterSlug) {
+            startPage = markerPage
+          }
+        }
+
+        // For the first loaded chapter, start is 0
+        if (activeChapterSlug === loadedChapters[0].slug) {
+          startPage = 0
+        }
+
+        localPage = data.page - startPage
+        // Approximate local total by finding the next boundary
+        let endPage = data.totalPages
+        let foundCurrent = false
+        for (const marker of markers) {
+          const markerEl = marker as HTMLElement
+          const markerPage = Math.floor(markerEl.offsetLeft / viewportWidth)
+          const slug = markerEl.getAttribute('data-chapter-start')
+          if (foundCurrent) {
+            endPage = markerPage
+            break
+          }
+          if (slug === activeChapterSlug) {
+            foundCurrent = true
+          }
+        }
+        if (activeChapterSlug === loadedChapters[0].slug) {
+          const firstMarker = markers[0] as HTMLElement | undefined
+          endPage = firstMarker ? Math.floor(firstMarker.offsetLeft / viewportWidth) : data.totalPages
+          localTotalPages = endPage
+        } else {
+          localTotalPages = endPage - startPage
+        }
+      }
+    }
+
+    saveReadingProgress({
+      chapterSlug: activeChapterSlug,
+      page: localPage,
+      totalPages: localTotalPages,
+      scrollPosition: data.scrollPosition,
+      timestamp: Date.now(),
+    })
+
+    if (data.totalPages > 0) {
+      getAllReadingProgress().then((allProgress) => {
+        const percent = calculateBookProgressPercent(
+          book, activeChapterSlug, localPage, localTotalPages, allProgress,
+        )
+        setBookProgressPercent(percent)
+      })
+    }
+  }
+
+  const handleRestoreProgress = async (): Promise<ProgressData | null> => {
+    const progress = await getReadingProgress(chapterSlug)
+    if (!progress) return null
+    return {
+      page: progress.page,
+      totalPages: progress.totalPages,
+      scrollPosition: progress.scrollPosition,
+    }
+  }
+
+  const components = useMDXComponents()
+
+  return (
+    <Reader
+      title={chapter?.title || chapterSlug}
+      chapterSlug={activeChapterSlug}
+      prevChapter={prevChapter}
+      nextChapter={loadedChapters.length > 1 ? finalNextChapter : nextChapter}
+      paginationMode={paginationMode}
+      onSaveProgress={handleSaveProgress}
+      onRestoreProgress={handleRestoreProgress}
+      bookProgressPercent={bookProgressPercent}
+      onNearEnd={handleNearEnd}
+      onPageChange={handlePageChange}
+      articleRef={(el) => { articleElRef.current = el }}
+      viewportRef={(el) => { viewportElRef.current = el }}
+    >
+      {loadedChapters.map((ch, i) => (
+        <div key={ch.slug}>
+          {i > 0 && (
+            <div
+              data-chapter-start={ch.slug}
+              class="pressy-chapter-break"
+              style={{ breakBefore: 'column' }}
+            >
+              <h1>{ch.title}</h1>
+            </div>
+          )}
+          <ch.Content components={components} />
+        </div>
+      ))}
+    </Reader>
+  )
+}
+
 function renderChapterPage(
   manifest: ContentManifest,
   route: string,
   Content: ComponentType,
   paginationMode?: 'scroll' | 'paginated',
+  chapterLoaders?: ChapterLoaders,
 ) {
   const parts = route.split('/')
   const bookSlug = parts[2]
@@ -392,6 +673,22 @@ function renderChapterPage(
       >
         <MDXContent components={useMDXComponents()} />
       </Reader>
+    )
+  }
+
+  // Use seamless chapter reader when chapter loaders are available and paginated
+  if (chapterLoaders && paginationMode === 'paginated') {
+    return (
+      <SeamlessChapterReader
+        book={book}
+        chapterSlug={chapterSlug}
+        chapter={chapter}
+        prevChapter={prevChapter}
+        nextChapter={nextChapter}
+        paginationMode={paginationMode}
+        Content={MDXContent}
+        chapterLoaders={chapterLoaders}
+      />
     )
   }
 
@@ -515,7 +812,7 @@ function getBasePath(route: string): string {
 
 let basePath = ''
 
-export function hydrate(data: HydrateData, Content?: ComponentType): void {
+export function hydrate(data: HydrateData, Content?: ComponentType, chapterLoaders?: ChapterLoaders): void {
   basePath = getBasePath(data.route)
   currentRoute.value = data.route
 
@@ -573,7 +870,7 @@ export function hydrate(data: HydrateData, Content?: ComponentType): void {
     }
     case 'chapter':
       page = Content
-        ? renderChapterPage(data.manifest, data.route, Content, data.pagination?.defaultMode)
+        ? renderChapterPage(data.manifest, data.route, Content, data.pagination?.defaultMode, chapterLoaders)
         : <div>Loading...</div>
       break
     case 'article':

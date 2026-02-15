@@ -22,6 +22,14 @@ export interface ReaderProps {
   onSaveProgress?: (data: ProgressData) => void
   onRestoreProgress?: () => Promise<ProgressData | null>
   bookProgressPercent?: number
+  /** Called when paginated reader is within 2 pages of the end */
+  onNearEnd?: () => void
+  /** Called on every page change with current page and total */
+  onPageChange?: (page: number, totalPages: number) => void
+  /** Ref callback to access the paginated article element (for chapter boundary detection) */
+  articleRef?: (el: HTMLElement | null) => void
+  /** Ref callback to access the viewport element (for width measurement) */
+  viewportRef?: (el: HTMLElement | null) => void
 }
 
 export function Reader({
@@ -33,6 +41,10 @@ export function Reader({
   onSaveProgress,
   onRestoreProgress,
   bookProgressPercent,
+  onNearEnd,
+  onPageChange,
+  articleRef: articleRefCb,
+  viewportRef: viewportRefCb,
 }: ReaderProps) {
   if (paginationMode === 'paginated') {
     return (
@@ -43,6 +55,10 @@ export function Reader({
         onSaveProgress={onSaveProgress}
         onRestoreProgress={onRestoreProgress}
         bookProgressPercent={bookProgressPercent}
+        onNearEnd={onNearEnd}
+        onPageChange={onPageChange}
+        articleRefCb={articleRefCb}
+        viewportRefCb={viewportRefCb}
       >
         {children}
       </PaginatedReader>
@@ -161,6 +177,10 @@ interface PaginatedReaderProps {
   onSaveProgress?: (data: ProgressData) => void
   onRestoreProgress?: () => Promise<ProgressData | null>
   bookProgressPercent?: number
+  onNearEnd?: () => void
+  onPageChange?: (page: number, totalPages: number) => void
+  articleRefCb?: (el: HTMLElement | null) => void
+  viewportRefCb?: (el: HTMLElement | null) => void
 }
 
 function PaginatedReader({
@@ -171,6 +191,10 @@ function PaginatedReader({
   onSaveProgress,
   onRestoreProgress,
   bookProgressPercent,
+  onNearEnd,
+  onPageChange,
+  articleRefCb,
+  viewportRefCb,
 }: PaginatedReaderProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const viewportRef = useRef<HTMLDivElement>(null)
@@ -291,6 +315,27 @@ function PaginatedReader({
 
     article.style.transform = `translateX(-${totalOffset}px)`
   }, [currentPage, dragOffset, isDragging])
+
+  // Notify parent of page changes and near-end events
+  useEffect(() => {
+    onPageChange?.(currentPage, totalPages)
+
+    // Fire onNearEnd when within 2 pages of the end
+    if (totalPages > 1 && currentPage >= totalPages - 3) {
+      onNearEnd?.()
+    }
+  }, [currentPage, totalPages])
+
+  // Expose article and viewport refs to parent for chapter boundary detection
+  useEffect(() => {
+    articleRefCb?.(articleRef.current)
+    return () => articleRefCb?.(null)
+  }, [articleRefCb])
+
+  useEffect(() => {
+    viewportRefCb?.(viewportRef.current)
+    return () => viewportRefCb?.(null)
+  }, [viewportRefCb])
 
   // Save progress when page changes (debounced)
   useEffect(() => {
@@ -851,6 +896,24 @@ const PAGINATED_STYLES = `
 
   .pressy-book-progress {
     opacity: 0.7;
+  }
+
+  /* ── Chapter break (seamless transitions) ─────────────── */
+  /* Forces next chapter to start on a new page/column and adds visual separation */
+  .pressy-chapter-break {
+    break-before: column;
+    padding-top: 4rem;
+    margin-bottom: 2rem;
+  }
+
+  .pressy-chapter-break h1 {
+    max-width: min(65ch, calc(100% - 3rem));
+    margin-left: auto;
+    margin-right: auto;
+    font-family: var(--font-heading, system-ui, -apple-system, sans-serif);
+    font-size: 1.75rem;
+    line-height: 1.3;
+    color: var(--color-heading, #1a1a1a);
   }
 
   /* ── Reduced motion preference ────────────────────────────
