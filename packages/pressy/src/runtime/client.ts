@@ -139,6 +139,19 @@ function renderHomePage(manifest: ContentManifest) {
       manifest.books[0]?.metadata.description &&
         h('p', { class: 'pressy-home-desc' }, manifest.books[0].metadata.description),
     ),
+    // Offline download button for each book
+    ...manifest.books.map((book: Book) =>
+      h(DownloadBook, {
+        bookSlug: book.slug,
+        chapterUrls: book.chapters.map(
+          (ch: Chapter) => `/books/${book.slug}/${ch.slug}`
+        ),
+        cachedBooks,
+        cacheProgress,
+        onDownload: downloadBookForOffline,
+        onRemove: clearBookCache,
+      })
+    ),
     manifest.books.length > 0 && h('section', { class: 'pressy-home-section' },
       h('h2', null, 'Chapters'),
       h('nav', { class: 'pressy-chapter-list' },
