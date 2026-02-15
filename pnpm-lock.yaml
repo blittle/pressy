@@ -39,6 +39,18 @@ importers:
         specifier: workspace:*
         version: link:../../packages/pressy
 
+  examples/frankenstein:
+    dependencies:
+      '@pressy/components':
+        specifier: workspace:*
+        version: link:../../packages/@pressy/components
+      '@pressy/typography':
+        specifier: workspace:*
+        version: link:../../packages/@pressy/typography
+      pressy:
+        specifier: workspace:*
+        version: link:../../packages/pressy
+
   packages/@pressy/components:
     dependencies:
       '@preact/signals':
