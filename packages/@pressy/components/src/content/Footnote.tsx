@@ -10,7 +10,7 @@ export function Footnote({ id, children }: FootnoteProps) {
   const isOpen = useSignal(false)
 
   return (
-    <>
+    <span class="pressy-footnote-wrapper">
       <button
         class="pressy-footnote-ref"
         onClick={() => (isOpen.value = !isOpen.value)}
@@ -34,6 +34,11 @@ export function Footnote({ id, children }: FootnoteProps) {
       )}
 
       <style>{`
+        .pressy-footnote-wrapper {
+          position: relative;
+          display: inline;
+        }
+
         .pressy-footnote-ref {
           display: inline-flex;
           align-items: center;
@@ -58,16 +63,19 @@ export function Footnote({ id, children }: FootnoteProps) {
         }
 
         .pressy-footnote-content {
-          display: inline-block;
-          position: relative;
-          margin-left: 0.5em;
+          position: absolute;
+          bottom: calc(100% + 0.5em);
+          left: 0;
+          z-index: 30;
+          display: block;
           padding: 0.5em 2em 0.5em 0.75em;
           font-size: var(--font-size-sm);
           background: var(--color-bg-subtle);
           border-radius: 0.375em;
           border: 1px solid var(--color-border);
-          max-width: 300px;
-          vertical-align: baseline;
+          width: 300px;
+          max-width: 80vw;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
         }
 
         .pressy-footnote-close {
@@ -92,6 +100,6 @@ export function Footnote({ id, children }: FootnoteProps) {
           color: var(--color-text);
         }
       `}</style>
-    </>
+    </span>
   )
 }

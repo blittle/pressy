@@ -411,6 +411,44 @@ function PaginatedReader({
     article.style.transform = `translateX(-${totalOffset}px)`
   }, [currentPage, dragOffset, isDragging])
 
+  // Manage focusability: elements on off-screen pages get tabindex="-1"
+  // so tab navigation can't reach them and cause layout shifts.
+  // Uses getBoundingClientRect which accounts for the CSS transform.
+  useEffect(() => {
+    const article = articleRef.current
+    const viewport = viewportRef.current
+    if (!article || !viewport) return
+
+    const viewportRect = viewport.getBoundingClientRect()
+
+    const focusable = article.querySelectorAll<HTMLElement>(
+      'a[href], button, input, select, textarea, [tabindex]'
+    )
+
+    focusable.forEach((el) => {
+      const elRect = el.getBoundingClientRect()
+      const onCurrentPage = elRect.left >= viewportRect.left - 1
+        && elRect.right <= viewportRect.right + 1
+
+      if (onCurrentPage) {
+        const original = el.getAttribute('data-original-tabindex')
+        if (original !== null) {
+          if (original === '') {
+            el.removeAttribute('tabindex')
+          } else {
+            el.setAttribute('tabindex', original)
+          }
+          el.removeAttribute('data-original-tabindex')
+        }
+      } else {
+        if (!el.hasAttribute('data-original-tabindex')) {
+          el.setAttribute('data-original-tabindex', el.getAttribute('tabindex') || '')
+        }
+        el.setAttribute('tabindex', '-1')
+      }
+    })
+  }, [currentPage, totalPages])
+
   // Preload next chapter when within 2 pages of chapter end
   useEffect(() => {
     if (!isMultiChapter || !chapterMapData || chapterRanges.length === 0) return
@@ -606,6 +644,83 @@ function PaginatedReader({
     goToPage(currentPage - 1)
   }, [currentPage, effectivePrevChapter, goToPage])
 
+  // Footer visibility — hidden by default, shown on interaction
+  const [footerVisible, setFooterVisible] = useState(false)
+  const footerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const showFooterTemporarily = useCallback(() => {
+    setFooterVisible(true)
+    if (footerTimerRef.current) clearTimeout(footerTimerRef.current)
+    footerTimerRef.current = setTimeout(() => setFooterVisible(false), 3000)
+  }, [])
+
+  // Tap-to-turn: clicking left/right thirds of the screen turns pages.
+  // Uses a click handler on the container so interactive content (links,
+  // footnotes, buttons) naturally gets priority via event bubbling.
+  const handleContainerClick = useCallback((e: MouseEvent) => {
+    // Ignore clicks on interactive elements — let them handle the event
+    const target = e.target as HTMLElement
+    if (target.closest('a, button, input, select, textarea, [role="button"]')) return
+
+    const container = containerRef.current
+    if (!container) return
+
+    const rect = container.getBoundingClientRect()
+    const x = e.clientX - rect.left
+    const third = rect.width / 3
+
+    if (x < third) {
+      goPrev()
+    } else if (x > third * 2) {
+      goNext()
+    } else {
+      // Middle third tap — toggle footer (useful on mobile)
+      if (footerVisible) {
+        setFooterVisible(false)
+        if (footerTimerRef.current) clearTimeout(footerTimerRef.current)
+      } else {
+        showFooterTemporarily()
+      }
+    }
+  }, [goNext, goPrev, footerVisible, showFooterTemporarily])
+
+  // Hover zone tracking for desktop navigation hints
+  const [hoverZone, setHoverZone] = useState<'left' | 'right' | null>(null)
+
+  const handleMouseMove = useCallback((e: MouseEvent) => {
+    const container = containerRef.current
+    if (!container) return
+
+    const rect = container.getBoundingClientRect()
+    const x = e.clientX - rect.left
+    const y = e.clientY - rect.top
+    const third = rect.width / 3
+
+    if (x < third) {
+      setHoverZone('left')
+    } else if (x > third * 2) {
+      setHoverZone('right')
+    } else {
+      setHoverZone(null)
+    }
+
+    // Show footer when mouse is in the bottom quarter
+    if (y > rect.height * 0.75) {
+      setFooterVisible(true)
+      if (footerTimerRef.current) clearTimeout(footerTimerRef.current)
+    } else {
+      // Hide after a short delay when leaving the bottom area
+      if (footerTimerRef.current) clearTimeout(footerTimerRef.current)
+      footerTimerRef.current = setTimeout(() => setFooterVisible(false), 600)
+    }
+  }, [])
+
+  const handleMouseLeave = useCallback(() => {
+    setHoverZone(null)
+    if (footerTimerRef.current) clearTimeout(footerTimerRef.current)
+    footerTimerRef.current = setTimeout(() => setFooterVisible(false), 600)
+  }, [])
+
   // Keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -792,9 +907,38 @@ function PaginatedReader({
     }
   })()
 
-  const progressPercent = chapterPageInfo.chapterTotalPages > 1
-    ? ((chapterPageInfo.chapterPage + 1) / chapterPageInfo.chapterTotalPages) * 100
-    : 100
+  // Book progress: position in the entire book based on word counts.
+  // Maps currentPage/totalPages (across all loaded content) through
+  // word counts to estimate absolute position in the full book.
+  const progressPercent = (() => {
+    if (!allChapters || allChapters.length === 0) {
+      return totalPages > 1 ? (currentPage / (totalPages - 1)) * 100 : 100
+    }
+
+    const totalWords = allChapters.reduce((sum, ch) => sum + (ch.wordCount || 0), 0)
+    if (totalWords === 0) return 0
+
+    const firstLoadedSlug = loadedChapters[0]?.slug || activeChapterSlug
+    let wordsBeforeLoaded = 0
+    let loadedWords = 0
+    let foundFirst = false
+
+    for (const ch of allChapters) {
+      if (ch.slug === firstLoadedSlug) foundFirst = true
+      if (!foundFirst) {
+        wordsBeforeLoaded += ch.wordCount || 0
+      } else if (loadedChapters.some(lc => lc.slug === ch.slug)) {
+        loadedWords += ch.wordCount || 0
+      } else {
+        break
+      }
+    }
+
+    const pageFraction = totalPages > 1 ? currentPage / (totalPages - 1) : 0
+    const wordsInto = wordsBeforeLoaded + pageFraction * loadedWords
+
+    return Math.min(100, (wordsInto / totalWords) * 100)
+  })()
 
   // Render content — either multi-chapter sections or single-chapter children
   const renderContent = () => {
@@ -810,7 +954,13 @@ function PaginatedReader({
   }
 
   return (
-    <div class="pressy-reader pressy-reader--paginated" ref={containerRef}>
+    <div
+      class="pressy-reader pressy-reader--paginated"
+      ref={containerRef}
+      onClick={handleContainerClick}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+    >
       {/* Paginated content viewport */}
       <div class="pressy-paginated-viewport" ref={viewportRef}>
         <article
@@ -822,21 +972,17 @@ function PaginatedReader({
         </article>
       </div>
 
-      {/* Tap zones with visual feedback */}
-      <div
-        class="pressy-tap-zone pressy-tap-prev"
-        onClick={goPrev}
-        aria-label="Previous page"
-        role="button"
-        tabIndex={-1}
-      />
-      <div
-        class="pressy-tap-zone pressy-tap-next"
-        onClick={goNext}
-        aria-label="Next page"
-        role="button"
-        tabIndex={-1}
-      />
+      {/* Navigation arrows — appear on hover in left/right thirds */}
+      <div class={`pressy-nav-arrow pressy-nav-arrow--prev ${hoverZone === 'left' ? 'pressy-nav-arrow--visible' : ''}`}>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="15 18 9 12 15 6" />
+        </svg>
+      </div>
+      <div class={`pressy-nav-arrow pressy-nav-arrow--next ${hoverZone === 'right' ? 'pressy-nav-arrow--visible' : ''}`}>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="9 6 15 12 9 18" />
+        </svg>
+      </div>
 
       {/* Chapter boundary hints */}
       {chapterHint === 'prev' && effectivePrevChapter && (
@@ -852,19 +998,13 @@ function PaginatedReader({
         </div>
       )}
 
-      {/* Page footer with progress and indicator */}
-      <div class="pressy-page-footer">
+      {/* Page footer with progress — hidden by default */}
+      <div class={`pressy-page-footer ${footerVisible ? 'pressy-page-footer--visible' : ''}`}>
         <div class="pressy-progress-bar">
           <div
             class="pressy-progress-fill"
             style={{ width: `${progressPercent}%` }}
           />
-        </div>
-        <div class="pressy-page-indicator">
-          <span>Page {chapterPageInfo.chapterPage + 1} of {chapterPageInfo.chapterTotalPages}</span>
-          {bookProgressPercent != null && (
-            <span class="pressy-book-progress">{Math.round(bookProgressPercent)}% of book</span>
-          )}
         </div>
       </div>
 
@@ -892,6 +1032,10 @@ const SCROLL_STYLES = `
 `
 
 const PAGINATED_STYLES = `
+  html:has(.pressy-reader--paginated) body {
+    margin: 0;
+  }
+
   .pressy-reader--paginated {
     height: 100vh;
     height: 100dvh;
@@ -945,62 +1089,46 @@ const PAGINATED_STYLES = `
     margin-right: auto;
   }
 
-  /* ── Tap zones ─────────────────────────────────────────────── */
-  /* Invisible overlays on left/right thirds of screen.
-     Visual feedback via radial gradient on active state. */
-  .pressy-tap-zone {
+  /* ── Navigation arrows ────────────────────────────────────── */
+  /* Hover-triggered arrows on left/right edges for desktop navigation */
+  .pressy-nav-arrow {
     position: absolute;
-    top: 0;
-    bottom: 60px;
-    z-index: 10;
-    cursor: pointer;
-    -webkit-tap-highlight-color: transparent;
-    background: transparent;
-    transition: background 0.15s ease;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 2.5rem;
+    height: 2.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-text-muted, #6c757d);
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    pointer-events: none;
+    z-index: 5;
   }
 
-  .pressy-tap-prev {
-    left: 0;
-    width: 33%;
+  .pressy-nav-arrow svg {
+    width: 1.5rem;
+    height: 1.5rem;
   }
 
-  .pressy-tap-next {
-    right: 0;
-    width: 33%;
+  .pressy-nav-arrow--prev {
+    left: 0.75rem;
   }
 
-  /* Tap feedback — brief highlight on press */
-  .pressy-tap-prev:active {
-    background: radial-gradient(
-      circle at 30% 50%,
-      rgba(0, 0, 0, 0.04) 0%,
-      transparent 70%
-    );
+  .pressy-nav-arrow--next {
+    right: 0.75rem;
   }
 
-  .pressy-tap-next:active {
-    background: radial-gradient(
-      circle at 70% 50%,
-      rgba(0, 0, 0, 0.04) 0%,
-      transparent 70%
-    );
+  .pressy-nav-arrow--visible {
+    opacity: 0.4;
   }
 
-  /* Dark theme tap feedback */
-  [data-theme="dark"] .pressy-tap-prev:active {
-    background: radial-gradient(
-      circle at 30% 50%,
-      rgba(255, 255, 255, 0.06) 0%,
-      transparent 70%
-    );
-  }
-
-  [data-theme="dark"] .pressy-tap-next:active {
-    background: radial-gradient(
-      circle at 70% 50%,
-      rgba(255, 255, 255, 0.06) 0%,
-      transparent 70%
-    );
+  /* Hide on touch devices — swipe handles navigation there */
+  @media (hover: none) {
+    .pressy-nav-arrow {
+      display: none;
+    }
   }
 
   /* ── Chapter boundary hints ─────────────────────────────── */
@@ -1055,10 +1183,23 @@ const PAGINATED_STYLES = `
 
   /* ── Page footer ───────────────────────────────────────────── */
   .pressy-page-footer {
-    flex-shrink: 0;
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
     padding: 0.5rem 1.5rem 1rem;
     text-align: center;
     user-select: none;
+    transform: translateY(100%);
+    opacity: 0;
+    transition: transform 0.25s ease, opacity 0.25s ease;
+    z-index: 15;
+    background: var(--color-bg, #ffffff);
+  }
+
+  .pressy-page-footer--visible {
+    transform: translateY(0);
+    opacity: 1;
   }
 
   /* Progress bar */
@@ -1067,7 +1208,6 @@ const PAGINATED_STYLES = `
     background: var(--color-border, #dee2e6);
     border-radius: 1.5px;
     overflow: hidden;
-    margin-bottom: 0.5rem;
   }
 
   .pressy-progress-fill {
@@ -1075,21 +1215,6 @@ const PAGINATED_STYLES = `
     background: var(--color-accent, #212529);
     border-radius: 1.5px;
     transition: width 0.3s ease;
-  }
-
-  /* Page indicator */
-  .pressy-page-indicator {
-    font-family: var(--font-heading, system-ui, -apple-system, sans-serif);
-    font-size: var(--font-size-sm, 0.875rem);
-    color: var(--color-text-muted, #6c757d);
-    letter-spacing: 0.02em;
-    display: flex;
-    justify-content: center;
-    gap: 1.5rem;
-  }
-
-  .pressy-book-progress {
-    opacity: 0.7;
   }
 
   /* ── Chapter sections ─────────────────────────────────── */

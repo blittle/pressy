@@ -413,7 +413,9 @@ function renderChapterPage(
   const chapterPath = (ch: Chapter) => `${basePath}/books/${bookSlug}/${ch.slug}`
   const prevChapter = book && chapterIdx > 0
     ? { slug: chapterPath(book.chapters[chapterIdx - 1]), title: book.chapters[chapterIdx - 1].title }
-    : undefined
+    : book
+      ? { slug: `${basePath}/books/${bookSlug}`, title: book.metadata.title }
+      : undefined
   const nextChapter = book && chapterIdx >= 0 && chapterIdx < book.chapters.length - 1
     ? { slug: chapterPath(book.chapters[chapterIdx + 1]), title: book.chapters[chapterIdx + 1].title }
     : book
