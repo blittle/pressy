@@ -1,4 +1,4 @@
-import{u as e,k as h}from"./client-CREwHZ2Y.js";function o(t){const n={h1:"h1",h2:"h2",p:"p",...t.components},{Aside:i,Callout:r}=n;return i||a("Aside"),r||a("Callout"),e(h,{children:[e(n.h1,{id:"concerning-a-stranger-from-spaceland",children:"Concerning a Stranger from Spaceland"}),`
+import{u as e,k as h}from"./client-DH8s9iPl.js";function o(t){const n={h1:"h1",h2:"h2",p:"p",...t.components},{Aside:i,Callout:r}=n;return i||a("Aside"),r||a("Callout"),e(h,{children:[e(n.h1,{id:"concerning-a-stranger-from-spaceland",children:"Concerning a Stranger from Spaceland"}),`
 `,e(n.h2,{id:"part-ii-other-worlds",children:"Part II: Other Worlds"}),`
 `,e(r,{type:"important",title:"A New Dimension",children:e(n.p,{children:"With this chapter begins the second part of A Square's memoir. Having described the world of Flatland in detail, our narrator now recounts the extraordinary events that shattered his understanding of reality — an encounter with a being from the Third Dimension."})}),`
 `,e(n.p,{children:"From dreams I proceed to facts."}),`
