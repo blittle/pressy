@@ -1,5 +1,5 @@
 {
-  "name": "@pressy/shopify",
+  "name": "@pressy-pub/shopify",
   "version": "0.1.0",
   "description": "Shopify integration for Pressy monetization",
   "type": "module",
@@ -11,6 +11,9 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     }
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "files": [
     "dist"

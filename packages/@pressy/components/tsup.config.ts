@@ -11,7 +11,7 @@ export default defineConfig({
   splitting: false,
   sourcemap: true,
   target: 'es2022',
-  external: ['preact', '@preact/signals'],
+  external: ['preact', '@preact/signals', '@pressy-pub/shopify'],
   esbuildOptions(options) {
     options.jsx = 'automatic'
     options.jsxImportSource = 'preact'

@@ -1,9 +1,9 @@
 import { render, type ComponentType, type VNode } from 'preact'
 import { useState, useEffect } from 'preact/hooks'
 import { signal, effect } from '@preact/signals'
-import { Reader, DownloadBook, BookProgress } from '@pressy/components'
-import type { ProgressData } from '@pressy/components'
-import { useMDXComponents } from '@pressy/components/content'
+import { Reader, DownloadBook, BookProgress } from '@pressy-pub/components'
+import type { ProgressData } from '@pressy-pub/components'
+import { useMDXComponents } from '@pressy-pub/components/content'
 import {
   registerServiceWorker,
   downloadBookForOffline,

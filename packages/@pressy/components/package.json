@@ -1,5 +1,5 @@
 {
-  "name": "@pressy/components",
+  "name": "@pressy-pub/components",
   "version": "0.1.0",
   "description": "Preact UI components for Pressy",
   "type": "module",
@@ -15,6 +15,9 @@
       "types": "./dist/content/index.d.ts",
       "import": "./dist/content/index.js"
     }
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "files": [
     "dist"
@@ -35,6 +38,6 @@
     "typescript": "^5.3.0"
   },
   "peerDependencies": {
-    "@pressy/typography": "workspace:*"
+    "@pressy-pub/typography": "workspace:*"
   }
 }

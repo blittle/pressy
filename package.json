@@ -10,7 +10,8 @@
     "dev:flatland": "pnpm --filter 'flatland-example' dev",
     "test": "vitest",
     "lint": "eslint packages --ext .ts,.tsx",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "publish-packages": "pnpm -r --filter './packages/**' build && pnpm -r --filter './packages/**' publish --no-git-checks"
   },
   "devDependencies": {
     "@types/node": "^20.10.0",

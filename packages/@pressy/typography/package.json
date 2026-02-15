@@ -1,5 +1,5 @@
 {
-  "name": "@pressy/typography",
+  "name": "@pressy-pub/typography",
   "version": "0.1.0",
   "description": "Typography CSS preset for Pressy",
   "type": "module",
@@ -14,6 +14,9 @@
     "./prose.css": "./src/prose.css",
     "./fluid.css": "./src/fluid.css",
     "./themes/*.css": "./src/themes/*.css"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "files": [
     "dist",

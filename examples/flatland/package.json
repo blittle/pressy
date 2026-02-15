@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "pressy": "workspace:*",
-    "@pressy/components": "workspace:*",
-    "@pressy/typography": "workspace:*"
+    "@pressy-pub/components": "workspace:*",
+    "@pressy-pub/typography": "workspace:*"
   }
 }

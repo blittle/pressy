@@ -14,14 +14,33 @@ A web framework for self-publishing books and articles. Write in MDX, get a pagi
 - **Shopify integration** — optional paywall via Shopify Storefront API
 - **Static output** — builds to static HTML, deploy anywhere
 
+## Install
+
+```bash
+npm install pressy @pressy-pub/components @pressy-pub/typography
+```
+
+| Package | Description |
+|---|---|
+| [`pressy`](https://www.npmjs.com/package/pressy) | Core framework — Vite plugin, CLI, client runtime |
+| [`@pressy-pub/components`](https://www.npmjs.com/package/@pressy-pub/components) | Preact UI — Reader, Navigation, BookProgress, etc. |
+| [`@pressy-pub/typography`](https://www.npmjs.com/package/@pressy-pub/typography) | CSS — prose styles, fluid type scale, themes |
+| [`@pressy-pub/shopify`](https://www.npmjs.com/package/@pressy-pub/shopify) | Optional Shopify Storefront API integration |
+
 ## Quick Start
 
 ```bash
-# Clone and install
+mkdir my-book && cd my-book
+npm init -y
+npm install pressy @pressy-pub/components @pressy-pub/typography
+npx pressy dev
+```
+
+Or clone the repo and run an example:
+
+```bash
 git clone <repo-url> && cd pressy
 pnpm install
-
-# Run the Flatland example
 pnpm dev:flatland
 ```
 
@@ -45,8 +64,8 @@ examples/
 
 ```bash
 mkdir my-book && cd my-book
-pnpm init
-pnpm add pressy @pressy/components @pressy/typography
+npm init -y
+npm install pressy @pressy-pub/components @pressy-pub/typography
 ```
 
 ### 2. Configure

@@ -241,16 +241,16 @@ export function pressyPlugin(config: PressyConfig): Plugin[] {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${title}</title>
   <meta name="description" content="${description}">
-  <link rel="stylesheet" href="/@pressy/typography/prose.css">
-  <link rel="stylesheet" href="/@pressy/typography/fluid.css">
-  <link rel="stylesheet" href="/@pressy/typography/themes/light.css">
-  <link rel="stylesheet" href="/@pressy/typography/themes/dark.css">
-  <link rel="stylesheet" href="/@pressy/typography/themes/sepia.css">${pwaTags}
+  <link rel="stylesheet" href="/@pressy-pub/typography/prose.css">
+  <link rel="stylesheet" href="/@pressy-pub/typography/fluid.css">
+  <link rel="stylesheet" href="/@pressy-pub/typography/themes/light.css">
+  <link rel="stylesheet" href="/@pressy-pub/typography/themes/dark.css">
+  <link rel="stylesheet" href="/@pressy-pub/typography/themes/sepia.css">${pwaTags}
 </head>
 <body>
   <div id="app"></div>
   <script type="module">
-    import { hydrate } from '/@pressy/client';
+    import { hydrate } from '/@pressy-pub/client';
     ${contentImport}${chapterMapImport}const data = ${dataJson};
     hydrate(data${contentArg}${chapterMapArg});
   </script>
@@ -330,6 +330,7 @@ export function pressyPlugin(config: PressyConfig): Plugin[] {
               rollupOptions: {
                 input,
                 preserveEntrySignatures: 'exports-only',
+                external: ['@pressy-pub/shopify'],
               },
             },
           }
@@ -366,12 +367,17 @@ export function pressyPlugin(config: PressyConfig): Plugin[] {
         if (id.startsWith(VIRTUAL_CHAPTER_MAP_PREFIX)) {
           return '\0' + id
         }
-        if (id === '/@pressy/client') {
+        // @pressy-pub/shopify is optional — mark as external so Vite doesn't
+        // error on the dynamic import in Paywall.tsx when shopify isn't installed
+        if (id === '@pressy-pub/shopify') {
+          return { id, external: true }
+        }
+        if (id === '/@pressy-pub/client') {
           return resolve(__dirname, '../runtime/client.js')
         }
-        if (id.startsWith('/@pressy/typography/')) {
-          const cssFile = id.replace('/@pressy/typography/', '')
-          return { id: `@pressy/typography/${cssFile}`, external: false }
+        if (id.startsWith('/@pressy-pub/typography/')) {
+          const cssFile = id.replace('/@pressy-pub/typography/', '')
+          return { id: `@pressy-pub/typography/${cssFile}`, external: false }
         }
       },
       load(id) {
@@ -382,12 +388,12 @@ export const config = ${JSON.stringify(config)};`
         }
         if (id === RESOLVED_VIRTUAL_ENTRY_ID) {
           return [
-            `import '@pressy/typography/prose.css'`,
-            `import '@pressy/typography/fluid.css'`,
-            `import '@pressy/typography/themes/light.css'`,
-            `import '@pressy/typography/themes/dark.css'`,
-            `import '@pressy/typography/themes/sepia.css'`,
-            `export { hydrate } from '/@pressy/client'`,
+            `import '@pressy-pub/typography/prose.css'`,
+            `import '@pressy-pub/typography/fluid.css'`,
+            `import '@pressy-pub/typography/themes/light.css'`,
+            `import '@pressy-pub/typography/themes/dark.css'`,
+            `import '@pressy-pub/typography/themes/sepia.css'`,
+            `export { hydrate } from '/@pressy-pub/client'`,
           ].join('\n')
         }
         if (id.startsWith(RESOLVED_ROUTE_PREFIX)) {
@@ -423,7 +429,7 @@ export const config = ${JSON.stringify(config)};`
           }
 
           return [
-            `import { hydrate } from '/@pressy/client';`,
+            `import { hydrate } from '/@pressy-pub/client';`,
             contentImport,
             chapterMapImport,
             `const data = ${dataJson};`,
@@ -522,9 +528,9 @@ export const config = ${JSON.stringify(config)};`
             return
           }
 
-          // Resolve virtual /@pressy/ URLs to real file paths
-          if (url.startsWith('/@pressy/')) {
-            const bareImport = url.slice(1) // e.g. '@pressy/typography/prose.css'
+          // Resolve virtual /@pressy-pub/ URLs to real file paths
+          if (url.startsWith('/@pressy-pub/')) {
+            const bareImport = url.slice(1) // e.g. '@pressy-pub/typography/prose.css'
             try {
               const result = await server.pluginContainer.resolveId(bareImport)
               if (result && !result.external) {
