@@ -68,6 +68,7 @@ export interface Route {
 export interface ReadingProgress {
   chapterSlug: string
   page: number
+  totalPages: number
   scrollPosition: number
   timestamp: number
 }

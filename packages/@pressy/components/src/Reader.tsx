@@ -5,13 +5,23 @@ import { Navigation } from './Navigation.js'
 import { TextShare } from './TextShare.js'
 import { OfflineIndicator } from './OfflineIndicator.js'
 
+export interface ProgressData {
+  page: number
+  totalPages: number
+  scrollPosition: number
+}
+
 export interface ReaderProps {
   children: ComponentChildren
   title: string
+  chapterSlug?: string
   prevChapter?: { slug: string; title: string }
   nextChapter?: { slug: string; title: string }
   showDropCap?: boolean
   paginationMode?: 'scroll' | 'paginated'
+  onSaveProgress?: (data: ProgressData) => void
+  onRestoreProgress?: () => Promise<ProgressData | null>
+  bookProgressPercent?: number
 }
 
 export function Reader({
@@ -20,6 +30,9 @@ export function Reader({
   nextChapter,
   showDropCap = true,
   paginationMode = 'scroll',
+  onSaveProgress,
+  onRestoreProgress,
+  bookProgressPercent,
 }: ReaderProps) {
   if (paginationMode === 'paginated') {
     return (
@@ -27,11 +40,96 @@ export function Reader({
         prevChapter={prevChapter}
         nextChapter={nextChapter}
         showDropCap={showDropCap}
+        onSaveProgress={onSaveProgress}
+        onRestoreProgress={onRestoreProgress}
+        bookProgressPercent={bookProgressPercent}
       >
         {children}
       </PaginatedReader>
     )
   }
+
+  return (
+    <ScrollReader
+      prevChapter={prevChapter}
+      nextChapter={nextChapter}
+      showDropCap={showDropCap}
+      onSaveProgress={onSaveProgress}
+      onRestoreProgress={onRestoreProgress}
+    >
+      {children}
+    </ScrollReader>
+  )
+}
+
+// ── Scroll Reader ────────────────────────────────────────────
+
+interface ScrollReaderProps {
+  children: ComponentChildren
+  prevChapter?: { slug: string; title: string }
+  nextChapter?: { slug: string; title: string }
+  showDropCap: boolean
+  onSaveProgress?: (data: ProgressData) => void
+  onRestoreProgress?: () => Promise<ProgressData | null>
+}
+
+function ScrollReader({
+  children,
+  prevChapter,
+  nextChapter,
+  showDropCap,
+  onSaveProgress,
+  onRestoreProgress,
+}: ScrollReaderProps) {
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Restore scroll position on mount
+  useEffect(() => {
+    if (!onRestoreProgress) return
+    onRestoreProgress().then((data) => {
+      if (data && data.scrollPosition > 0) {
+        window.scrollTo(0, data.scrollPosition)
+      }
+    })
+  }, [])
+
+  // Save scroll position (debounced)
+  useEffect(() => {
+    if (!onSaveProgress) return
+
+    const handleScroll = () => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
+      saveTimerRef.current = setTimeout(() => {
+        onSaveProgress({
+          page: 0,
+          totalPages: 0,
+          scrollPosition: window.scrollY,
+        })
+      }, 500)
+    }
+
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    return () => {
+      window.removeEventListener('scroll', handleScroll)
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
+    }
+  }, [onSaveProgress])
+
+  // Save on page unload
+  useEffect(() => {
+    if (!onSaveProgress) return
+
+    const handleUnload = () => {
+      onSaveProgress({
+        page: 0,
+        totalPages: 0,
+        scrollPosition: window.scrollY,
+      })
+    }
+
+    window.addEventListener('beforeunload', handleUnload)
+    return () => window.removeEventListener('beforeunload', handleUnload)
+  }, [onSaveProgress])
 
   return (
     <div class="pressy-reader">
@@ -60,6 +158,9 @@ interface PaginatedReaderProps {
   prevChapter?: { slug: string; title: string }
   nextChapter?: { slug: string; title: string }
   showDropCap: boolean
+  onSaveProgress?: (data: ProgressData) => void
+  onRestoreProgress?: () => Promise<ProgressData | null>
+  bookProgressPercent?: number
 }
 
 function PaginatedReader({
@@ -67,11 +168,16 @@ function PaginatedReader({
   prevChapter,
   nextChapter,
   showDropCap,
+  onSaveProgress,
+  onRestoreProgress,
+  bookProgressPercent,
 }: PaginatedReaderProps) {
   const viewportRef = useRef<HTMLDivElement>(null)
   const articleRef = useRef<HTMLElement>(null)
   const [currentPage, setCurrentPage] = useState(0)
   const [totalPages, setTotalPages] = useState(1)
+  const hasRestoredRef = useRef(false)
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Calculate page count and set column-width to match viewport
   const recalculatePages = useCallback(() => {
@@ -138,6 +244,19 @@ function PaginatedReader({
     }
   }, [recalculatePages])
 
+  // Restore saved reading position once totalPages is known
+  useEffect(() => {
+    if (hasRestoredRef.current || !onRestoreProgress || totalPages <= 1) return
+    hasRestoredRef.current = true
+
+    onRestoreProgress().then((data) => {
+      if (data && data.page > 0) {
+        const clamped = Math.min(data.page, totalPages - 1)
+        setCurrentPage(clamped)
+      }
+    })
+  }, [totalPages, onRestoreProgress])
+
   // Apply translateX whenever currentPage changes
   useEffect(() => {
     const article = articleRef.current
@@ -147,6 +266,40 @@ function PaginatedReader({
     const offset = currentPage * viewport.clientWidth
     article.style.transform = `translateX(-${offset}px)`
   }, [currentPage])
+
+  // Save progress when page changes (debounced)
+  useEffect(() => {
+    if (!onSaveProgress || !hasRestoredRef.current) return
+
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
+    saveTimerRef.current = setTimeout(() => {
+      onSaveProgress({
+        page: currentPage,
+        totalPages,
+        scrollPosition: 0,
+      })
+    }, 300)
+
+    return () => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
+    }
+  }, [currentPage, totalPages, onSaveProgress])
+
+  // Save progress on page unload
+  useEffect(() => {
+    if (!onSaveProgress) return
+
+    const handleUnload = () => {
+      onSaveProgress({
+        page: currentPage,
+        totalPages,
+        scrollPosition: 0,
+      })
+    }
+
+    window.addEventListener('beforeunload', handleUnload)
+    return () => window.removeEventListener('beforeunload', handleUnload)
+  }, [currentPage, totalPages, onSaveProgress])
 
   const goToPage = useCallback(
     (page: number) => {
@@ -287,7 +440,10 @@ function PaginatedReader({
           />
         </div>
         <div class="pressy-page-indicator">
-          Page {currentPage + 1} of {totalPages}
+          <span>Page {currentPage + 1} of {totalPages}</span>
+          {bookProgressPercent != null && (
+            <span class="pressy-book-progress">{Math.round(bookProgressPercent)}% of book</span>
+          )}
         </div>
       </div>
 
@@ -418,5 +574,12 @@ const PAGINATED_STYLES = `
     font-size: var(--font-size-sm, 0.875rem);
     color: var(--color-text-muted, #6c757d);
     letter-spacing: 0.02em;
+    display: flex;
+    justify-content: center;
+    gap: 1.5rem;
+  }
+
+  .pressy-book-progress {
+    opacity: 0.7;
   }
 `
