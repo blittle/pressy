@@ -18,6 +18,7 @@
     "paths": {
       "pressy": ["./packages/pressy/src/index.ts"],
       "@pressy/components": ["./packages/@pressy/components/src/index.ts"],
+      "@pressy/components/content": ["./packages/@pressy/components/src/content/index.ts"],
       "@pressy/typography": ["./packages/@pressy/typography/src/index.ts"],
       "@pressy/shopify": ["./packages/@pressy/shopify/src/index.ts"]
     }
