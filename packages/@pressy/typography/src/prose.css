@@ -270,6 +270,26 @@
   margin-block: 1.5em;
 }
 
+/* CSS fragmentation rules for paginated mode — keep elements together on one page */
+.pressy-prose figure,
+.pressy-prose pre,
+.pressy-prose blockquote,
+.pressy-prose .pressy-callout,
+.pressy-prose .pressy-aside,
+.pressy-prose .pressy-footnote-tooltip,
+.pressy-prose table {
+  break-inside: avoid;
+}
+
+.pressy-prose h1,
+.pressy-prose h2,
+.pressy-prose h3,
+.pressy-prose h4,
+.pressy-prose h5,
+.pressy-prose h6 {
+  break-after: avoid;
+}
+
 /* Wide content (images, code blocks that need more space) */
 @media (min-width: 80ch) {
   .pressy-prose .wide {

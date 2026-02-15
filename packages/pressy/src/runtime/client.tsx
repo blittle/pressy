@@ -10,6 +10,7 @@ import {
   cacheProgress,
 } from './offline.js'
 import type { ContentManifest, Route, Book, Chapter, Article, ReadingProgress } from '../types.js'
+import type { PaginationConfig } from '../config.js'
 
 // State signals
 export const currentRoute = signal<string>('/')
@@ -241,6 +242,7 @@ function renderChapterPage(
   manifest: ContentManifest,
   route: string,
   Content: ComponentType,
+  paginationMode?: 'scroll' | 'paginated',
 ) {
   const parts = route.split('/')
   const bookSlug = parts[2]
@@ -263,6 +265,7 @@ function renderChapterPage(
       title={chapter?.title || chapterSlug}
       prevChapter={prevChapter}
       nextChapter={nextChapter}
+      paginationMode={paginationMode}
     >
       <MDXContent components={useMDXComponents()} />
     </Reader>
@@ -352,6 +355,7 @@ interface HydrateData {
   route: string
   routeType: string
   manifest: ContentManifest
+  pagination?: PaginationConfig
 }
 
 // Compute the base path by comparing the known route to the actual URL
@@ -433,7 +437,7 @@ export function hydrate(data: HydrateData, Content?: ComponentType): void {
     }
     case 'chapter':
       page = Content
-        ? renderChapterPage(data.manifest, data.route, Content)
+        ? renderChapterPage(data.manifest, data.route, Content, data.pagination?.defaultMode)
         : <div>Loading...</div>
       break
     case 'article':
