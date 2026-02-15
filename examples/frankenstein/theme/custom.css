@@ -1,0 +1,23 @@
+/*
+ * Frankenstein Example — Custom Theme
+ * A dark, Gothic aesthetic befitting Shelley's novel.
+ */
+
+@import url('https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,600;1,400&display=swap');
+
+:root {
+  /* Custom body font */
+  --pressy-font-body: 'EB Garamond', Georgia, 'Times New Roman', serif;
+
+  /* Custom drop cap styling */
+  --pressy-dropcap-color: #166534;
+  --pressy-dropcap-font-size: 3.5em;
+
+  /* Custom accent color */
+  --pressy-accent: #15803d;
+}
+
+[data-theme='dark'] {
+  --pressy-dropcap-color: #6ee7b7;
+  --pressy-accent: #6ee7b7;
+}
