@@ -14,7 +14,9 @@
       "Bash(node:*)",
       "Bash(pnpm:*)",
       "Bash(git checkout:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(grep:*)",
+      "Bash(xargs:*)"
     ]
   }
 }

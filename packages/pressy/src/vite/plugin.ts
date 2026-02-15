@@ -243,7 +243,9 @@ export function pressyPlugin(config: PressyConfig): Plugin[] {
   <meta name="description" content="${description}">
   <link rel="stylesheet" href="/@pressy/typography/prose.css">
   <link rel="stylesheet" href="/@pressy/typography/fluid.css">
-  <link rel="stylesheet" href="/@pressy/typography/themes/light.css" id="theme-light">${pwaTags}
+  <link rel="stylesheet" href="/@pressy/typography/themes/light.css">
+  <link rel="stylesheet" href="/@pressy/typography/themes/dark.css">
+  <link rel="stylesheet" href="/@pressy/typography/themes/sepia.css">${pwaTags}
 </head>
 <body>
   <div id="app"></div>
@@ -383,6 +385,8 @@ export const config = ${JSON.stringify(config)};`
             `import '@pressy/typography/prose.css'`,
             `import '@pressy/typography/fluid.css'`,
             `import '@pressy/typography/themes/light.css'`,
+            `import '@pressy/typography/themes/dark.css'`,
+            `import '@pressy/typography/themes/sepia.css'`,
             `export { hydrate } from '/@pressy/client'`,
           ].join('\n')
         }

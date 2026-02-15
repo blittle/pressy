@@ -16,7 +16,7 @@ import type { PaginationConfig } from '../config.js'
 
 // State signals
 export const currentRoute = signal<string>('/')
-export const currentTheme = signal<'light' | 'dark' | 'sepia'>('light')
+export const currentTheme = signal<'light' | 'dark' | 'sepia' | 'system'>('light')
 export const isOffline = signal<boolean>(!navigator.onLine)
 
 // IndexedDB for reading progress
@@ -117,19 +117,31 @@ export function navigate(path: string, replace = false): void {
 }
 
 // Theme management
-export function setTheme(theme: 'light' | 'dark' | 'sepia'): void {
+function resolveSystemTheme(): 'light' | 'dark' {
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+}
+
+export function setTheme(theme: 'light' | 'dark' | 'sepia' | 'system'): void {
   currentTheme.value = theme
-  document.documentElement.setAttribute('data-theme', theme)
   localStorage.setItem('pressy-theme', theme)
+  const resolved = theme === 'system' ? resolveSystemTheme() : theme
+  document.documentElement.setAttribute('data-theme', resolved)
 }
 
 function loadTheme(): void {
-  const saved = localStorage.getItem('pressy-theme') as 'light' | 'dark' | 'sepia' | null
+  const saved = localStorage.getItem('pressy-theme') as 'light' | 'dark' | 'sepia' | 'system' | null
   if (saved) {
     setTheme(saved)
   } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
     setTheme('dark')
   }
+
+  // Listen for OS theme changes so "system" mode updates live
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+    if (currentTheme.value === 'system') {
+      document.documentElement.setAttribute('data-theme', resolveSystemTheme())
+    }
+  })
 }
 
 // Offline detection
@@ -377,6 +389,7 @@ function ChapterReaderWithProgress({
   return (
     <Reader
       title={chapter?.title || chapterSlug}
+      bookTitle={book.metadata.title}
       chapterSlug={chapterSlug}
       prevChapter={prevChapter}
       nextChapter={nextChapter}
