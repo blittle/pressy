@@ -270,6 +270,24 @@
   margin-block: 1.5em;
 }
 
+/* ── Paginated mode: prevent awkward breaks ── */
+
+.pressy-paginated-content figure,
+.pressy-paginated-content pre,
+.pressy-paginated-content blockquote,
+.pressy-paginated-content .pressy-callout,
+.pressy-paginated-content .pressy-aside,
+.pressy-paginated-content table {
+  break-inside: avoid;
+}
+
+.pressy-paginated-content h1,
+.pressy-paginated-content h2,
+.pressy-paginated-content h3,
+.pressy-paginated-content h4 {
+  break-after: avoid;
+}
+
 /* Wide content (images, code blocks that need more space) */
 @media (min-width: 80ch) {
   .pressy-prose .wide {

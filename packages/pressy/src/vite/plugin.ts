@@ -204,7 +204,7 @@ export function pressyPlugin(config: PressyConfig): Plugin[] {
       contentArg = ', Content'
     }
 
-    const dataJson = JSON.stringify({ route: route.path, routeType: route.type, manifest })
+    const dataJson = JSON.stringify({ route: route.path, routeType: route.type, manifest, config: { pagination: config.pagination } })
 
     const pwaTags = pwaEnabled
       ? `
@@ -371,7 +371,7 @@ export const config = ${JSON.stringify(config)};`
           const route = routes.find(r => r.path === routePath)
           if (!route) return null
 
-          const dataJson = JSON.stringify({ route: route.path, routeType: route.type, manifest })
+          const dataJson = JSON.stringify({ route: route.path, routeType: route.type, manifest, config: { pagination: config.pagination } })
 
           let contentImport = ''
           let contentArg = ''
