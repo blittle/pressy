@@ -75,7 +75,86 @@ el.scrollLeft = pageNumber * el.clientWidth
 | **Publisher page-list** (maps to print) | EPUB 3 | Requires publisher effort, position within "page" is approximate |
 | **Per-device page numbers** | Kobo, Apple Books | Pages are per-chapter, numbers change with settings |
 
-**Recommendation for Pressy:** Accept that page numbers differ per device. Show page numbers relative to the chapter (e.g., "Page 3 of 12") and use **percentage-based progress** for the overall book position. This is what most readers do and what users expect from digital books.
+**Recommendation for Pressy:** Accept that page numbers differ per device. Show page numbers relative to the chapter (e.g., "Page 3 of 12") and use **word-count-based progress** for the overall book position. This is what most readers do and what users expect from digital books.
+
+### Global Progress via Word Count
+
+Page numbers are device-specific, but word counts are fixed at build time. This gives us an accurate, device-independent global progress indicator:
+
+```
+words_completed = sum of word counts for all finished chapters
+words_in_current = (current_page / total_pages) × current_chapter_word_count
+progress = (words_completed + words_in_current) / total_book_word_count
+```
+
+Someone on a phone and someone on a desktop both see "27% through the book" even though the phone shows "page 14 of 22" and the desktop shows "page 6 of 9" in the same chapter. This is how Kindle's "locations" and percentages work — character-count based, not page-based.
+
+**UI:**
+- **Per-chapter**: "Page 5 of 12" — device-specific, useful for local orientation within a chapter
+- **Global**: thin progress bar or "27%" — word-count based, consistent everywhere
+
+These serve different purposes: per-chapter tells you "how much is left in this section," global tells you "how much is left in the book."
+
+## Seamless Chapter Transitions
+
+### The Problem
+
+Currently Pressy is an MPA — each chapter is a separate HTML page with its own JS bundle. Clicking "next chapter" triggers a full page reload. This is fine for a website but breaks the reading flow. In real reading apps (Kindle, Apple Books, Kobo), chapter boundaries are invisible — you just keep turning pages.
+
+### Approach: Preload + Append (Forward), Prefetch + Navigate (Backward)
+
+CSS column pagination makes forward transitions elegant. When you append more content to the column container, the browser creates more columns (pages). The reader never notices the chapter boundary.
+
+#### Forward (turning past the last page of a chapter)
+
+This is the common case — the reader just keeps swiping. It should be invisible.
+
+1. When the reader reaches the last ~2 pages of a chapter, dynamically `import()` the next chapter's MDX module
+2. Render it and append to the column container, with a chapter divider/title element between them
+3. CSS columns recalculate — total pages increase, but the current page position doesn't shift
+4. The reader keeps swiping and flows right into the next chapter's content
+
+When the reader crosses a chapter boundary:
+- Update the URL via `history.replaceState()` (no page reload)
+- Update the chapter indicator in the UI
+- Save reading progress for the completed chapter
+- Start tracking progress in the new chapter
+
+#### Backward (swiping back before page 1)
+
+This is harder because CSS columns flow left-to-right — prepending content would shift everything. The pragmatic solution: **prefetch the previous chapter into the browser cache, then do a fast cached navigation.** It won't be perfectly seamless, but it's a rare path and a ~50ms cached page load is good enough. Apple Books has a similar brief pause going backward.
+
+### Architecture Change: Dynamic Chapter Imports
+
+The key change: chapter MDX modules need to be **dynamically importable**, not baked into per-route HTML pages.
+
+```
+Current:  Each route → separate HTML → separate JS bundle with MDX baked in
+              chapter-1.html → chapter-1.js (includes MDX content)
+              chapter-2.html → chapter-2.js (includes MDX content)
+
+Proposed: Each route → shared reader shell → dynamically imports chapter content
+              chapter-1.html → reader.js + import("./chapters/chapter-1.js")
+                                          + preload("./chapters/chapter-2.js")
+```
+
+The Vite plugin would need to:
+1. Generate chapter content as **code-split chunks** (dynamic `import()` targets)
+2. Include a **chapter manifest** in the reader shell listing all chapter module paths
+3. The reader shell handles pagination, chapter loading, and URL updates
+
+This is a natural evolution — the reader becomes a lightweight SPA within the MPA. Each chapter's HTML page still works as a standalone entry point (good for SEO, direct links, offline), but once the reader is active, subsequent chapters load client-side.
+
+### Chapter Transition Summary
+
+| Direction | Behavior | Mechanism |
+|-----------|----------|-----------|
+| **Forward** | Seamless — reader doesn't notice | Preload + append next chapter to column container via dynamic `import()` |
+| **Backward** | Near-instant — brief flash | Prefetch previous chapter HTML into cache, fast cached navigation |
+| **URL** | Updates without reload | `history.replaceState()` as reader crosses chapter boundary |
+| **Progress** | Per-chapter pages + global % | Page indicator updates; word-count progress bar is continuous |
+| **Initial load** | MPA — each chapter URL works standalone | Direct links, SEO, offline all work |
+| **Subsequent chapters** | SPA-like — no page reload | Dynamic `import()` of code-split chapter modules |
 
 ## Should Authors Define Page Breaks?
 
@@ -129,7 +208,18 @@ Key implementation details:
 4. **Tap zones** — Tap left/right third of screen to turn pages
 5. **CSS Scroll Snap** — Optional enhancement for native-feeling swipe
 
-### Phase 4: Polish
+### Phase 4: Seamless Chapter Transitions
+
+Refactor from full-page chapter navigation to dynamic in-reader chapter loading.
+
+1. **Code-split chapter modules** — Update Vite plugin to generate chapter content as dynamic `import()` targets instead of baking them into per-route JS bundles
+2. **Chapter manifest** — Generate a manifest listing all chapter module paths, embedded in the reader shell
+3. **Forward preloading** — When reader is ~2 pages from end of chapter, dynamically import the next chapter's MDX module and append its rendered content to the column container
+4. **Chapter boundary handling** — Update URL via `history.replaceState()`, update chapter indicator, save progress for completed chapter
+5. **Backward navigation** — Prefetch previous chapter HTML into browser cache; on swipe-back past page 1, do a fast cached navigation
+6. **Global progress bar** — Word-count-based progress across the entire book (device-independent), shown alongside per-chapter page numbers
+
+### Phase 5: Polish
 
 1. **`<PageBreak />` component** — For author-defined forced breaks
 2. **Spread mode** — Two-column layout on wide screens (like an open book)
@@ -143,7 +233,10 @@ The config already has `pagination.defaultMode: 'scroll' | 'paginated'` and the 
 Key files to modify:
 - `packages/@pressy/components/src/Reader.tsx` — add paginated mode with CSS columns
 - `packages/@pressy/typography/src/prose.css` — add break rules for content elements
-- `packages/pressy/src/runtime/client.tsx` — wire up page navigation, save/restore progress
+- `packages/pressy/src/runtime/client.tsx` — wire up page navigation, save/restore progress, chapter preloading, `replaceState` URL updates
 - `packages/@pressy/components/src/content/` — add `PageBreak` component
+- `packages/pressy/src/vite/plugin.ts` — refactor to generate code-split chapter modules and a chapter manifest (Phase 4)
+- `packages/@pressy/components/src/Navigation.tsx` — replace prev/next links with in-reader chapter loading trigger (Phase 4)
+- `packages/pressy/src/runtime/sw.ts` — update offline caching strategy to cache chapter modules in addition to full HTML pages (Phase 4)
 
-No changes needed to the chapter/content data model. Chapters remain the authoring unit; pages are a rendering concern.
+No changes needed to the chapter/content data model. Chapters remain the authoring unit; pages are a rendering concern. The Vite plugin changes (Phase 4) affect how chapter content is bundled and loaded at runtime, but the source format stays the same.
