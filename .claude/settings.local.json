@@ -11,7 +11,10 @@
       "Bash(pnpm --filter pressy build:*)",
       "Bash(npm run build)",
       "Bash(pnpm build:*)",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "Bash(pnpm:*)",
+      "Bash(git checkout:*)",
+      "Bash(git add:*)"
     ]
   }
 }
