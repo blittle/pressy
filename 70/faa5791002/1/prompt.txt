@@ -1,0 +1,95 @@
+Implement the following plan:
+
+# Settings Dialog in Reader Footer
+
+## Context
+
+The reader footer (shown on tap/hover) currently only has a progress bar. The user wants a settings button below the progress bar that opens a dialog for adjusting font size and theme (Light, Dark, System, Sepia).
+
+## Files to Modify
+
+| File | Change |
+|------|--------|
+| `packages/@pressy/components/src/Reader.tsx` | Settings button in footer, settings panel UI, font size + theme state |
+| `packages/pressy/src/runtime/client.tsx` | Update `setTheme()`/`loadTheme()` to support `"system"` value |
+
+## Existing Patterns to Reuse
+
+- **Theme switching**: `data-theme` attr on `<html>` + `localStorage('pressy-theme')` — `client.tsx:120-133`
+- **Theme CSS**: `light.css`, `dark.css`, `sepia.css` in `@pressy/typography/src/themes/`
+- **Font size base**: `--font-size-base` in `fluid.css`, applied via `html { font-size: var(--font-size-base) }`
+
+## Implementation
+
+### Step 1: Pass book title through to Reader (`client.tsx`)
+
+- Add `bookTitle` prop to `ReaderProps` and `PaginatedReaderProps`
+- In `ChapterReaderWithProgress`, pass `bookTitle={book.metadata.title}`
+- Already available: `book.metadata.title` at `client.tsx:417`
+
+### Step 2: "System" theme support (`client.tsx`)
+
+- `setTheme('system')` stores `"system"` in localStorage, then resolves to `"light"` or `"dark"` via `prefers-color-scheme` and applies that to `data-theme`
+- Add a `matchMedia('(prefers-color-scheme: dark)')` change listener so theme updates live when OS preference changes
+
+### Step 3: Settings panel in `Reader.tsx`
+
+**Footer layout** — below the progress bar, a row with the book title on the left and a gear icon on the right:
+
+```
+┌─────────────────────────────┐
+│ ██████████░░░░░░░░ progress │
+│ Flatland              ⚙     │
+└─────────────────────────────┘
+```
+
+The book title is passed as a prop (already available as `bookTitle` from the hydrate data). Tapping the gear opens a panel that slides up from the footer.
+
+**Theme section** — 4 option buttons in a row, each with a small SVG icon + label:
+- Light (sun) · Dark (moon) · System (monitor) · Sepia (book-open)
+- Active option gets highlighted border. Calls existing `setTheme()` pattern.
+
+**Font size section** — `[A-]  100%  [A+]` row:
+- Stored in `localStorage('pressy-font-size')` as a multiplier (e.g. `"1.1"`)
+- Applied via `document.documentElement.style.setProperty('--font-size-base', computed)`
+- Range: 0.8x to 1.5x in 0.1 steps, default 1.0x (no override)
+- After change, call `recalculatePages()` since column layout changes
+
+**Closing**: tapping gear again or tapping outside the panel closes it. The container click handler skips page turns when the settings panel is open (check if click target is inside `.pressy-settings-panel`).
+
+### Step 4: Font size persistence
+
+- On PaginatedReader mount, read `pressy-font-size` from localStorage and apply
+- After changing font size, save to localStorage and recalculate pages (small delay for reflow)
+
+### Step 5: Styles in `PAGINATED_STYLES`
+
+Settings panel:
+- Positioned absolutely above footer, full width
+- `var(--color-bg)` background, border-top, subtle box-shadow
+- Compact padding, works well on mobile
+- Slide-up/down via `transform: translateY` + `opacity` transition (same pattern as footer)
+- Theme buttons: small rounded pills with icon + text, grid/flex row
+- Font size buttons: circular `-`/`+` with percentage label between
+
+## Verification
+
+1. `pnpm --filter @pressy/components build` — no errors
+2. Dev server — tap middle of page, footer with gear icon appears
+3. Tap gear → settings panel slides up
+4. Change theme → immediate switch, persists on reload
+5. Select "System" → follows OS preference, updates live on OS theme change
+6. Adjust font size → text reflows, page count recalculates, persists on reload
+7. Tap outside panel → closes
+8. Page turn taps still work when panel is closed
+
+
+If you need specific details from before exiting plan mode (like exact code snippets, error messages, or content you generated), read the full transcript at: /Users/blittle/.claude/projects/-Users-blittle-dev-pressy/004407cd-4bb6-40a4-9ab1-445b085e4dfe.jsonl
+
+---
+
+Could we actually implement the different themes?
+
+---
+
+Could you reduce the padding at the top of the page a bit from the header/title?
