@@ -19,6 +19,8 @@ const VIRTUAL_ENTRY_ID = 'virtual:pressy-entry'
 const RESOLVED_VIRTUAL_ENTRY_ID = '\0' + VIRTUAL_ENTRY_ID
 const VIRTUAL_ROUTE_PREFIX = 'virtual:pressy-route:'
 const RESOLVED_ROUTE_PREFIX = '\0' + VIRTUAL_ROUTE_PREFIX
+const VIRTUAL_CHAPTER_MAP_PREFIX = 'virtual:pressy-chapter-map:'
+const RESOLVED_CHAPTER_MAP_PREFIX = '\0' + VIRTUAL_CHAPTER_MAP_PREFIX
 
 export function pressyPlugin(config: PressyConfig): Plugin[] {
   let root: string
@@ -186,17 +188,27 @@ export function pressyPlugin(config: PressyConfig): Plugin[] {
     return routes
   }
 
+  function escapeHtmlAttr(str: string): string {
+    return str.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  }
+
   function generateHTML(route: Route): string {
-    const title = getRouteTitle(route, config)
-    const description = getRouteDescription(route, config)
+    const title = escapeHtmlAttr(getRouteTitle(route, config))
+    const description = escapeHtmlAttr(getRouteDescription(route, config))
 
     let contentImport = ''
     let contentArg = ''
+    let chapterMapImport = ''
+    let chapterMapArg = ''
     if (route.type === 'chapter') {
       const chapter = route.content as Chapter
       const importPath = '/' + relative(root, chapter.filePath).split('\\').join('/')
       contentImport = `import Content from '${importPath}';\n    `
       contentArg = ', Content'
+      if (route.book) {
+        chapterMapImport = `import { chapterMap, chapterOrder } from '${VIRTUAL_CHAPTER_MAP_PREFIX}${route.book.slug}';\n    `
+        chapterMapArg = ', { chapterMap, chapterOrder }'
+      }
     } else if (route.type === 'article') {
       const article = route.content as Article
       const importPath = '/' + relative(root, article.filePath).split('\\').join('/')
@@ -237,8 +249,8 @@ export function pressyPlugin(config: PressyConfig): Plugin[] {
   <div id="app"></div>
   <script type="module">
     import { hydrate } from '/@pressy/client';
-    ${contentImport}const data = ${dataJson};
-    hydrate(data${contentArg});
+    ${contentImport}${chapterMapImport}const data = ${dataJson};
+    hydrate(data${contentArg}${chapterMapArg});
   </script>
 </body>
 </html>`
@@ -349,6 +361,9 @@ export function pressyPlugin(config: PressyConfig): Plugin[] {
         if (id.startsWith(VIRTUAL_ROUTE_PREFIX)) {
           return '\0' + id
         }
+        if (id.startsWith(VIRTUAL_CHAPTER_MAP_PREFIX)) {
+          return '\0' + id
+        }
         if (id === '/@pressy/client') {
           return resolve(__dirname, '../runtime/client.js')
         }
@@ -385,11 +400,17 @@ export const config = ${JSON.stringify(config)};`
 
           let contentImport = ''
           let contentArg = ''
+          let chapterMapImport = ''
+          let chapterMapArg = ''
           if (route.type === 'chapter') {
             const chapter = route.content as Chapter
             const importPath = chapter.filePath
             contentImport = `import Content from '${importPath}';\n`
             contentArg = ', Content'
+            if (route.book) {
+              chapterMapImport = `import { chapterMap, chapterOrder } from '${VIRTUAL_CHAPTER_MAP_PREFIX}${route.book.slug}';\n`
+              chapterMapArg = ', { chapterMap, chapterOrder }'
+            }
           } else if (route.type === 'article') {
             const article = route.content as Article
             const importPath = article.filePath
@@ -400,8 +421,25 @@ export const config = ${JSON.stringify(config)};`
           return [
             `import { hydrate } from '/@pressy/client';`,
             contentImport,
+            chapterMapImport,
             `const data = ${dataJson};`,
-            `hydrate(data${contentArg});`,
+            `hydrate(data${contentArg}${chapterMapArg});`,
+          ].join('\n')
+        }
+        if (id.startsWith(RESOLVED_CHAPTER_MAP_PREFIX)) {
+          const bookSlug = id.slice(RESOLVED_CHAPTER_MAP_PREFIX.length)
+          const book = manifest.books.find(b => b.slug === bookSlug)
+          if (!book) return null
+
+          const entries = book.chapters.map(ch => {
+            return `  ${JSON.stringify(ch.slug)}: () => import(${JSON.stringify(ch.filePath)})`
+          })
+
+          return [
+            `export const chapterMap = {`,
+            entries.join(',\n'),
+            `};`,
+            `export const chapterOrder = ${JSON.stringify(book.chapters.map(ch => ch.slug))};`,
           ].join('\n')
         }
       },
@@ -493,7 +531,8 @@ export const config = ${JSON.stringify(config)};`
             return
           }
 
-          const route = routes.find((r) => r.path === url)
+          const pathname = url.split('?')[0]
+          const route = routes.find((r) => r.path === pathname)
 
           if (route) {
             const html = generateHTML(route)
@@ -525,8 +564,8 @@ export const config = ${JSON.stringify(config)};`
 
         // Generate HTML files for each route during build
         for (const route of routes) {
-          const title = getRouteTitle(route, config)
-          const description = getRouteDescription(route, config)
+          const title = escapeHtmlAttr(getRouteTitle(route, config))
+          const description = escapeHtmlAttr(getRouteDescription(route, config))
 
           // Find the bundled JS chunk for this route
           const routeName = route.path === '/' ? 'index' : route.path.slice(1).replace(/\//g, '-')

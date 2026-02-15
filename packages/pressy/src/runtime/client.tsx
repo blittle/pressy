@@ -11,7 +11,7 @@ import {
   cachedBooks,
   cacheProgress,
 } from './offline.js'
-import type { ContentManifest, Route, Book, Chapter, Article, ReadingProgress } from '../types.js'
+import type { ContentManifest, Route, Book, Chapter, Article, ReadingProgress, ChapterMapData } from '../types.js'
 import type { PaginationConfig } from '../config.js'
 
 // State signals
@@ -295,6 +295,7 @@ function ChapterReaderWithProgress({
   nextChapter,
   paginationMode,
   Content,
+  chapterMapData,
 }: {
   book: Book
   chapterSlug: string
@@ -303,6 +304,7 @@ function ChapterReaderWithProgress({
   nextChapter?: { slug: string; title: string }
   paginationMode?: 'scroll' | 'paginated'
   Content: ComponentType<{ components?: Record<string, unknown> }>
+  chapterMapData?: ChapterMapData
 }) {
   const [bookProgressPercent, setBookProgressPercent] = useState<number | undefined>(undefined)
 
@@ -344,6 +346,34 @@ function ChapterReaderWithProgress({
     }
   }
 
+  const handleChapterChange = (slug: string, page: number, chapterTotalPages: number) => {
+    // Save progress for the chapter being left (mark as complete)
+    saveReadingProgress({
+      chapterSlug: slug,
+      page,
+      totalPages: chapterTotalPages,
+      scrollPosition: 0,
+      timestamp: Date.now(),
+    })
+
+    // Update global book progress
+    getAllReadingProgress().then((allProgress) => {
+      const percent = calculateBookProgressPercent(book, slug, page, chapterTotalPages, allProgress)
+      setBookProgressPercent(percent)
+    })
+  }
+
+  // Prefetch previous chapter HTML for fast backward navigation
+  useEffect(() => {
+    if (prevChapter) {
+      const link = document.createElement('link')
+      link.rel = 'prefetch'
+      link.href = prevChapter.slug
+      document.head.appendChild(link)
+      return () => { document.head.removeChild(link) }
+    }
+  }, [prevChapter])
+
   return (
     <Reader
       title={chapter?.title || chapterSlug}
@@ -354,6 +384,13 @@ function ChapterReaderWithProgress({
       onSaveProgress={handleSaveProgress}
       onRestoreProgress={handleRestoreProgress}
       bookProgressPercent={bookProgressPercent}
+      initialContent={Content}
+      chapterMapData={chapterMapData}
+      currentChapterSlug={chapterSlug}
+      allChapters={book.chapters.map(ch => ({ slug: ch.slug, title: ch.title, wordCount: ch.wordCount }))}
+      bookBasePath={`${basePath}/books/${book.slug}`}
+      onChapterChange={handleChapterChange}
+      mdxComponents={useMDXComponents()}
     >
       <Content components={useMDXComponents()} />
     </Reader>
@@ -365,6 +402,7 @@ function renderChapterPage(
   route: string,
   Content: ComponentType,
   paginationMode?: 'scroll' | 'paginated',
+  chapterMapData?: ChapterMapData,
 ) {
   const parts = route.split('/')
   const bookSlug = parts[2]
@@ -378,7 +416,9 @@ function renderChapterPage(
     : undefined
   const nextChapter = book && chapterIdx >= 0 && chapterIdx < book.chapters.length - 1
     ? { slug: chapterPath(book.chapters[chapterIdx + 1]), title: book.chapters[chapterIdx + 1].title }
-    : undefined
+    : book
+      ? { slug: `${basePath}/books/${bookSlug}`, title: book.metadata.title }
+      : undefined
 
   const MDXContent = Content as ComponentType<{ components?: Record<string, unknown> }>
 
@@ -404,6 +444,7 @@ function renderChapterPage(
       nextChapter={nextChapter}
       paginationMode={paginationMode}
       Content={MDXContent}
+      chapterMapData={chapterMapData}
     />
   )
 }
@@ -515,7 +556,7 @@ function getBasePath(route: string): string {
 
 let basePath = ''
 
-export function hydrate(data: HydrateData, Content?: ComponentType): void {
+export function hydrate(data: HydrateData, Content?: ComponentType, chapterMapData?: ChapterMapData): void {
   basePath = getBasePath(data.route)
   currentRoute.value = data.route
 
@@ -573,7 +614,7 @@ export function hydrate(data: HydrateData, Content?: ComponentType): void {
     }
     case 'chapter':
       page = Content
-        ? renderChapterPage(data.manifest, data.route, Content, data.pagination?.defaultMode)
+        ? renderChapterPage(data.manifest, data.route, Content, data.pagination?.defaultMode, chapterMapData)
         : <div>Loading...</div>
       break
     case 'article':

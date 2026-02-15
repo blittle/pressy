@@ -1,4 +1,4 @@
-import { ComponentChildren } from 'preact'
+import { ComponentChildren, ComponentType } from 'preact'
 import { useState, useEffect, useRef, useCallback } from 'preact/hooks'
 
 import { Navigation } from './Navigation.js'
@@ -9,6 +9,11 @@ export interface ProgressData {
   page: number
   totalPages: number
   scrollPosition: number
+}
+
+export interface ChapterMapData {
+  chapterMap: Record<string, () => Promise<{ default: ComponentType<{ components?: Record<string, unknown> }> }>>
+  chapterOrder: string[]
 }
 
 export interface ReaderProps {
@@ -22,6 +27,13 @@ export interface ReaderProps {
   onSaveProgress?: (data: ProgressData) => void
   onRestoreProgress?: () => Promise<ProgressData | null>
   bookProgressPercent?: number
+  initialContent?: ComponentType<{ components?: Record<string, unknown> }>
+  chapterMapData?: ChapterMapData
+  currentChapterSlug?: string
+  allChapters?: Array<{ slug: string; title: string; wordCount?: number }>
+  bookBasePath?: string
+  onChapterChange?: (slug: string, page: number, totalPages: number) => void
+  mdxComponents?: Record<string, unknown>
 }
 
 export function Reader({
@@ -33,6 +45,13 @@ export function Reader({
   onSaveProgress,
   onRestoreProgress,
   bookProgressPercent,
+  initialContent,
+  chapterMapData,
+  currentChapterSlug,
+  allChapters,
+  bookBasePath,
+  onChapterChange,
+  mdxComponents,
 }: ReaderProps) {
   if (paginationMode === 'paginated') {
     return (
@@ -43,6 +62,13 @@ export function Reader({
         onSaveProgress={onSaveProgress}
         onRestoreProgress={onRestoreProgress}
         bookProgressPercent={bookProgressPercent}
+        initialContent={initialContent}
+        chapterMapData={chapterMapData}
+        currentChapterSlug={currentChapterSlug}
+        allChapters={allChapters}
+        bookBasePath={bookBasePath}
+        onChapterChange={onChapterChange}
+        mdxComponents={mdxComponents}
       >
         {children}
       </PaginatedReader>
@@ -153,6 +179,18 @@ function ScrollReader({
 
 // ── Paginated Reader ──────────────────────────────────────────
 
+interface LoadedChapter {
+  slug: string
+  title: string
+  Content: ComponentType<{ components?: Record<string, unknown> }>
+}
+
+interface ChapterPageRange {
+  slug: string
+  startPage: number
+  endPage: number
+}
+
 interface PaginatedReaderProps {
   children: ComponentChildren
   prevChapter?: { slug: string; title: string }
@@ -161,6 +199,21 @@ interface PaginatedReaderProps {
   onSaveProgress?: (data: ProgressData) => void
   onRestoreProgress?: () => Promise<ProgressData | null>
   bookProgressPercent?: number
+  initialContent?: ComponentType<{ components?: Record<string, unknown> }>
+  chapterMapData?: ChapterMapData
+  currentChapterSlug?: string
+  allChapters?: Array<{ slug: string; title: string; wordCount?: number }>
+  bookBasePath?: string
+  onChapterChange?: (slug: string, page: number, totalPages: number) => void
+  mdxComponents?: Record<string, unknown>
+}
+
+function ChapterDivider({ title }: { title: string }) {
+  return (
+    <div class="pressy-chapter-divider">
+      <h2 class="pressy-chapter-divider-title">{title}</h2>
+    </div>
+  )
 }
 
 function PaginatedReader({
@@ -171,6 +224,13 @@ function PaginatedReader({
   onSaveProgress,
   onRestoreProgress,
   bookProgressPercent,
+  initialContent,
+  chapterMapData,
+  currentChapterSlug,
+  allChapters,
+  bookBasePath,
+  onChapterChange,
+  mdxComponents,
 }: PaginatedReaderProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const viewportRef = useRef<HTMLDivElement>(null)
@@ -179,6 +239,28 @@ function PaginatedReader({
   const [totalPages, setTotalPages] = useState(1)
   const hasRestoredRef = useRef(false)
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Multi-chapter state
+  const [loadedChapters, setLoadedChapters] = useState<LoadedChapter[]>([])
+  const [chapterRanges, setChapterRanges] = useState<ChapterPageRange[]>([])
+  const [activeChapterSlug, setActiveChapterSlug] = useState(currentChapterSlug || '')
+  const preloadingRef = useRef<Set<string>>(new Set())
+
+  // Whether we're in multi-chapter mode
+  const isMultiChapter = !!(chapterMapData && initialContent && currentChapterSlug && allChapters)
+
+  // Initialize loaded chapters
+  useEffect(() => {
+    if (isMultiChapter && initialContent && currentChapterSlug) {
+      const chapterInfo = allChapters!.find(ch => ch.slug === currentChapterSlug)
+      setLoadedChapters([{
+        slug: currentChapterSlug,
+        title: chapterInfo?.title || currentChapterSlug,
+        Content: initialContent,
+      }])
+      setActiveChapterSlug(currentChapterSlug)
+    }
+  }, []) // Only on mount
 
   // Drag/swipe state
   const [isDragging, setIsDragging] = useState(false)
@@ -193,6 +275,31 @@ function PaginatedReader({
   const velocityRef = useRef(0)
   const isSwipingRef = useRef(false)
   const isDraggingRef = useRef(false)
+
+  // Build page-to-chapter map after recalculating pages
+  const updateChapterRanges = useCallback(() => {
+    if (!isMultiChapter) return
+    const article = articleRef.current
+    const viewport = viewportRef.current
+    if (!article || !viewport) return
+
+    const viewportWidth = viewport.clientWidth
+    if (viewportWidth === 0) return
+
+    const sections = article.querySelectorAll('.pressy-chapter-section')
+    const ranges: ChapterPageRange[] = []
+
+    sections.forEach((section) => {
+      const slug = section.getAttribute('data-chapter-slug') || ''
+      const sectionLeft = (section as HTMLElement).offsetLeft
+      const sectionWidth = (section as HTMLElement).scrollWidth
+      const startPage = Math.floor(sectionLeft / viewportWidth)
+      const endPage = Math.max(startPage, Math.ceil((sectionLeft + sectionWidth) / viewportWidth) - 1)
+      ranges.push({ slug, startPage, endPage })
+    })
+
+    setChapterRanges(ranges)
+  }, [isMultiChapter])
 
   // Calculate page count and set column-width to match viewport
   const recalculatePages = useCallback(() => {
@@ -214,7 +321,10 @@ function PaginatedReader({
 
     // Clamp current page if now out of bounds (e.g. after resize)
     setCurrentPage((prev) => Math.min(prev, total - 1))
-  }, [])
+
+    // Update chapter ranges for multi-chapter mode
+    updateChapterRanges()
+  }, [updateChapterRanges])
 
   // Recalculate on mount and on resize via ResizeObserver
   useEffect(() => {
@@ -234,6 +344,15 @@ function PaginatedReader({
       observer.disconnect()
     }
   }, [recalculatePages])
+
+  // Recalculate when loaded chapters change
+  useEffect(() => {
+    if (loadedChapters.length > 0) {
+      // Delay to let new content render
+      const timer = setTimeout(recalculatePages, 50)
+      return () => clearTimeout(timer)
+    }
+  }, [loadedChapters.length, recalculatePages])
 
   // Recalculate when images finish loading
   useEffect(() => {
@@ -257,20 +376,20 @@ function PaginatedReader({
         img.removeEventListener('error', onLoad)
       })
     }
-  }, [recalculatePages])
+  }, [recalculatePages, loadedChapters.length])
 
-  // Restore saved reading position once totalPages is known
+  // Check ?page=last query param for backward navigation
   useEffect(() => {
-    if (hasRestoredRef.current || !onRestoreProgress || totalPages <= 1) return
-    hasRestoredRef.current = true
-
-    onRestoreProgress().then((data) => {
-      if (data && data.page > 0) {
-        const clamped = Math.min(data.page, totalPages - 1)
-        setCurrentPage(clamped)
-      }
-    })
-  }, [totalPages, onRestoreProgress])
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('page') === 'last' && totalPages > 1) {
+      setCurrentPage(totalPages - 1)
+      hasRestoredRef.current = true
+      // Clean up the URL
+      const url = new URL(window.location.href)
+      url.searchParams.delete('page')
+      history.replaceState(null, '', url.pathname)
+    }
+  }, [totalPages])
 
   // Apply translateX — combines page position + drag offset
   useEffect(() => {
@@ -292,39 +411,170 @@ function PaginatedReader({
     article.style.transform = `translateX(-${totalOffset}px)`
   }, [currentPage, dragOffset, isDragging])
 
-  // Save progress when page changes (debounced)
+  // Preload next chapter when within 2 pages of chapter end
+  useEffect(() => {
+    if (!isMultiChapter || !chapterMapData || chapterRanges.length === 0) return
+
+    const activeRange = chapterRanges.find(r => r.slug === activeChapterSlug)
+    if (!activeRange) return
+
+    const pagesFromEnd = activeRange.endPage - currentPage
+    if (pagesFromEnd > 2) return
+
+    // Find the next chapter to preload
+    const { chapterOrder, chapterMap } = chapterMapData
+    const lastLoadedSlug = loadedChapters[loadedChapters.length - 1]?.slug
+    const lastLoadedIdx = chapterOrder.indexOf(lastLoadedSlug)
+    if (lastLoadedIdx === -1 || lastLoadedIdx >= chapterOrder.length - 1) return
+
+    const nextSlug = chapterOrder[lastLoadedIdx + 1]
+    if (preloadingRef.current.has(nextSlug)) return
+    if (loadedChapters.some(ch => ch.slug === nextSlug)) return
+
+    preloadingRef.current.add(nextSlug)
+
+    const loader = chapterMap[nextSlug]
+    if (!loader) return
+
+    loader().then((mod) => {
+      const Content = mod.default
+      const chapterInfo = allChapters!.find(ch => ch.slug === nextSlug)
+      setLoadedChapters(prev => {
+        if (prev.some(ch => ch.slug === nextSlug)) return prev
+        return [...prev, {
+          slug: nextSlug,
+          title: chapterInfo?.title || nextSlug,
+          Content,
+        }]
+      })
+    }).catch(() => {
+      // Dynamic import failed — will fall back to full-page navigation
+      preloadingRef.current.delete(nextSlug)
+    })
+  }, [currentPage, activeChapterSlug, chapterRanges, isMultiChapter, chapterMapData, loadedChapters, allChapters])
+
+  // Detect chapter boundary crossings and update URL / active chapter
+  useEffect(() => {
+    if (!isMultiChapter || chapterRanges.length === 0 || !bookBasePath) return
+
+    const currentRange = chapterRanges.find(
+      r => currentPage >= r.startPage && currentPage <= r.endPage
+    )
+    if (!currentRange || currentRange.slug === activeChapterSlug) return
+
+    const prevSlug = activeChapterSlug
+    setActiveChapterSlug(currentRange.slug)
+
+    // Update URL
+    const newPath = `${bookBasePath}/${currentRange.slug}`
+    history.replaceState(null, '', newPath)
+
+    // Update document title
+    const chapterInfo = allChapters?.find(ch => ch.slug === currentRange.slug)
+    if (chapterInfo) {
+      document.title = document.title.replace(/^[^|]+/, chapterInfo.title + ' ')
+    }
+
+    // Notify parent about chapter change (saves progress for the chapter being left)
+    if (onChapterChange && prevSlug) {
+      const prevRange = chapterRanges.find(r => r.slug === prevSlug)
+      if (prevRange) {
+        const prevTotalPages = prevRange.endPage - prevRange.startPage + 1
+        onChapterChange(prevSlug, prevTotalPages - 1, prevTotalPages)
+      }
+    }
+  }, [currentPage, chapterRanges, activeChapterSlug, isMultiChapter, bookBasePath, allChapters, onChapterChange])
+
+  // Save progress when page changes (debounced) — save relative to active chapter
   useEffect(() => {
     if (!onSaveProgress || !hasRestoredRef.current) return
 
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
     saveTimerRef.current = setTimeout(() => {
-      onSaveProgress({
-        page: currentPage,
-        totalPages,
-        scrollPosition: 0,
-      })
+      if (isMultiChapter && chapterRanges.length > 0) {
+        const activeRange = chapterRanges.find(r => r.slug === activeChapterSlug)
+        if (activeRange) {
+          const chapterPage = currentPage - activeRange.startPage
+          const chapterTotalPages = activeRange.endPage - activeRange.startPage + 1
+          onSaveProgress({
+            page: chapterPage,
+            totalPages: chapterTotalPages,
+            scrollPosition: 0,
+          })
+        }
+      } else {
+        onSaveProgress({
+          page: currentPage,
+          totalPages,
+          scrollPosition: 0,
+        })
+      }
     }, 300)
 
     return () => {
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
     }
-  }, [currentPage, totalPages, onSaveProgress])
+  }, [currentPage, totalPages, onSaveProgress, isMultiChapter, chapterRanges, activeChapterSlug])
 
   // Save progress on page unload
   useEffect(() => {
     if (!onSaveProgress) return
 
     const handleUnload = () => {
-      onSaveProgress({
-        page: currentPage,
-        totalPages,
-        scrollPosition: 0,
-      })
+      if (isMultiChapter && chapterRanges.length > 0) {
+        const activeRange = chapterRanges.find(r => r.slug === activeChapterSlug)
+        if (activeRange) {
+          const chapterPage = currentPage - activeRange.startPage
+          const chapterTotalPages = activeRange.endPage - activeRange.startPage + 1
+          onSaveProgress({
+            page: chapterPage,
+            totalPages: chapterTotalPages,
+            scrollPosition: 0,
+          })
+        }
+      } else {
+        onSaveProgress({
+          page: currentPage,
+          totalPages,
+          scrollPosition: 0,
+        })
+      }
     }
 
     window.addEventListener('beforeunload', handleUnload)
     return () => window.removeEventListener('beforeunload', handleUnload)
-  }, [currentPage, totalPages, onSaveProgress])
+  }, [currentPage, totalPages, onSaveProgress, isMultiChapter, chapterRanges, activeChapterSlug])
+
+  // Determine the effective last chapter slug for rubber-band / next chapter hint
+  const effectiveNextChapter = (() => {
+    if (!isMultiChapter || !chapterMapData) return nextChapter
+    const { chapterOrder } = chapterMapData
+    const lastLoadedSlug = loadedChapters[loadedChapters.length - 1]?.slug
+    const lastLoadedIdx = chapterOrder.indexOf(lastLoadedSlug)
+    // If we haven't loaded the last chapter in the book yet, no next chapter hint needed
+    // (preloading will seamlessly add the next chapter)
+    if (lastLoadedIdx < chapterOrder.length - 1) return undefined
+    // All chapters loaded — navigate to book table of contents
+    if (bookBasePath) return { slug: bookBasePath, title: 'Table of Contents' }
+    return nextChapter
+  })()
+
+  // Determine the effective prev chapter for backward navigation
+  const effectivePrevChapter = (() => {
+    if (!isMultiChapter || !chapterMapData) return prevChapter
+    const { chapterOrder } = chapterMapData
+    const firstLoadedSlug = loadedChapters[0]?.slug
+    const firstLoadedIdx = chapterOrder.indexOf(firstLoadedSlug)
+    // If the first loaded chapter is the first chapter of the book
+    if (firstLoadedIdx <= 0) return prevChapter
+    // There's a previous chapter in the book — navigate to it via page load
+    const prevSlug = chapterOrder[firstLoadedIdx - 1]
+    const prevInfo = allChapters?.find(ch => ch.slug === prevSlug)
+    return {
+      slug: `${bookBasePath}/${prevSlug}?page=last`,
+      title: prevInfo?.title || prevSlug,
+    }
+  })()
 
   const goToPage = useCallback(
     (page: number) => {
@@ -337,24 +587,24 @@ function PaginatedReader({
   const goNext = useCallback(() => {
     if (currentPage >= totalPages - 1) {
       // At the last page — navigate to next chapter if available
-      if (nextChapter) {
-        window.location.href = nextChapter.slug
+      if (effectiveNextChapter) {
+        window.location.href = effectiveNextChapter.slug
       }
       return
     }
     goToPage(currentPage + 1)
-  }, [currentPage, totalPages, nextChapter, goToPage])
+  }, [currentPage, totalPages, effectiveNextChapter, goToPage])
 
   const goPrev = useCallback(() => {
     if (currentPage <= 0) {
       // At the first page — navigate to prev chapter if available
-      if (prevChapter) {
-        window.location.href = prevChapter.slug
+      if (effectivePrevChapter) {
+        window.location.href = effectivePrevChapter.slug
       }
       return
     }
     goToPage(currentPage - 1)
-  }, [currentPage, prevChapter, goToPage])
+  }, [currentPage, effectivePrevChapter, goToPage])
 
   // Keyboard navigation
   useEffect(() => {
@@ -443,9 +693,9 @@ function PaginatedReader({
         offset = sign * Math.sqrt(absDx) * 5
 
         // Show chapter hint when overscrolling past boundary
-        if (dx > 40 && atStart && prevChapter) {
+        if (dx > 40 && atStart && effectivePrevChapter) {
           setChapterHint('prev')
-        } else if (dx < -40 && atEnd && nextChapter) {
+        } else if (dx < -40 && atEnd && effectiveNextChapter) {
           setChapterHint('next')
         } else {
           setChapterHint(null)
@@ -477,18 +727,18 @@ function PaginatedReader({
       const atEnd = currentPage >= totalPages - 1
 
       // Chapter navigation on overscroll
-      if (atEnd && dx < -chapterThreshold && nextChapter) {
+      if (atEnd && dx < -chapterThreshold && effectiveNextChapter) {
         setIsDragging(false)
         setDragOffset(0)
         setChapterHint(null)
-        window.location.href = nextChapter.slug
+        window.location.href = effectiveNextChapter.slug
         return
       }
-      if (atStart && dx > chapterThreshold && prevChapter) {
+      if (atStart && dx > chapterThreshold && effectivePrevChapter) {
         setIsDragging(false)
         setDragOffset(0)
         setChapterHint(null)
-        window.location.href = prevChapter.slug
+        window.location.href = effectivePrevChapter.slug
         return
       }
 
@@ -525,50 +775,39 @@ function PaginatedReader({
       container.removeEventListener('touchend', onTouchEnd)
       container.removeEventListener('touchcancel', onTouchCancel)
     }
-  }, [currentPage, totalPages, goNext, goPrev, nextChapter, prevChapter])
+  }, [currentPage, totalPages, goNext, goPrev, effectiveNextChapter, effectivePrevChapter])
 
-  // Trackpad/mouse wheel → page snapping
-  // Accumulates small wheel deltas and triggers page turns at a threshold,
-  // giving CSS scroll-snap-like behavior without conflicting with CSS columns.
-  useEffect(() => {
-    const container = containerRef.current
-    if (!container) return
-
-    let accumulatedDelta = 0
-    let wheelTimer: ReturnType<typeof setTimeout> | null = null
-    const wheelThreshold = 80 // px of accumulated scroll before page turn
-
-    const onWheel = (e: WheelEvent) => {
-      e.preventDefault()
-
-      // Use deltaX for horizontal scroll, deltaY for vertical (most common)
-      const delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY
-      accumulatedDelta += delta
-
-      // Reset accumulator after inactivity
-      if (wheelTimer) clearTimeout(wheelTimer)
-      wheelTimer = setTimeout(() => {
-        accumulatedDelta = 0
-      }, 200)
-
-      if (accumulatedDelta > wheelThreshold) {
-        goNext()
-        accumulatedDelta = 0
-      } else if (accumulatedDelta < -wheelThreshold) {
-        goPrev()
-        accumulatedDelta = 0
-      }
+  // Compute per-chapter page indicator values
+  const chapterPageInfo = (() => {
+    if (!isMultiChapter || chapterRanges.length === 0) {
+      return { chapterPage: currentPage, chapterTotalPages: totalPages }
     }
-
-    container.addEventListener('wheel', onWheel, { passive: false })
-
-    return () => {
-      container.removeEventListener('wheel', onWheel)
-      if (wheelTimer) clearTimeout(wheelTimer)
+    const activeRange = chapterRanges.find(r => r.slug === activeChapterSlug)
+    if (!activeRange) {
+      return { chapterPage: currentPage, chapterTotalPages: totalPages }
     }
-  }, [goNext, goPrev])
+    return {
+      chapterPage: currentPage - activeRange.startPage,
+      chapterTotalPages: activeRange.endPage - activeRange.startPage + 1,
+    }
+  })()
 
-  const progressPercent = totalPages > 1 ? ((currentPage + 1) / totalPages) * 100 : 100
+  const progressPercent = chapterPageInfo.chapterTotalPages > 1
+    ? ((chapterPageInfo.chapterPage + 1) / chapterPageInfo.chapterTotalPages) * 100
+    : 100
+
+  // Render content — either multi-chapter sections or single-chapter children
+  const renderContent = () => {
+    if (isMultiChapter && loadedChapters.length > 0) {
+      return loadedChapters.map((ch) => (
+        <section key={ch.slug} class="pressy-chapter-section" data-chapter-slug={ch.slug}>
+          <ChapterDivider title={ch.title} />
+          <ch.Content components={mdxComponents || {}} />
+        </section>
+      ))
+    }
+    return children
+  }
 
   return (
     <div class="pressy-reader pressy-reader--paginated" ref={containerRef}>
@@ -579,7 +818,7 @@ function PaginatedReader({
           class={`pressy-prose pressy-prose--paginated ${showDropCap ? '' : 'no-drop-cap'}`}
           data-drop-cap={showDropCap}
         >
-          {children}
+          {renderContent()}
         </article>
       </div>
 
@@ -600,15 +839,15 @@ function PaginatedReader({
       />
 
       {/* Chapter boundary hints */}
-      {chapterHint === 'prev' && prevChapter && (
+      {chapterHint === 'prev' && effectivePrevChapter && (
         <div class="pressy-chapter-hint pressy-chapter-hint--prev" aria-live="polite">
           <span class="pressy-chapter-hint-arrow">{'\u2190'}</span>
-          <span class="pressy-chapter-hint-text">{prevChapter.title}</span>
+          <span class="pressy-chapter-hint-text">{effectivePrevChapter.title}</span>
         </div>
       )}
-      {chapterHint === 'next' && nextChapter && (
+      {chapterHint === 'next' && effectiveNextChapter && (
         <div class="pressy-chapter-hint pressy-chapter-hint--next" aria-live="polite">
-          <span class="pressy-chapter-hint-text">{nextChapter.title}</span>
+          <span class="pressy-chapter-hint-text">{effectiveNextChapter.title}</span>
           <span class="pressy-chapter-hint-arrow">{'\u2192'}</span>
         </div>
       )}
@@ -622,7 +861,7 @@ function PaginatedReader({
           />
         </div>
         <div class="pressy-page-indicator">
-          <span>Page {currentPage + 1} of {totalPages}</span>
+          <span>Page {chapterPageInfo.chapterPage + 1} of {chapterPageInfo.chapterTotalPages}</span>
           {bookProgressPercent != null && (
             <span class="pressy-book-progress">{Math.round(bookProgressPercent)}% of book</span>
           )}
@@ -851,6 +1090,24 @@ const PAGINATED_STYLES = `
 
   .pressy-book-progress {
     opacity: 0.7;
+  }
+
+  /* ── Chapter sections ─────────────────────────────────── */
+  .pressy-chapter-section + .pressy-chapter-section {
+    break-before: column;
+  }
+
+  .pressy-chapter-divider {
+    text-align: center;
+    padding: 3rem 1.5rem;
+    max-width: min(65ch, calc(100% - 3rem));
+    margin: 0 auto;
+  }
+
+  .pressy-chapter-divider-title {
+    font-size: 1.5rem;
+    font-family: var(--font-heading, system-ui, -apple-system, sans-serif);
+    margin: 0;
   }
 
   /* ── Reduced motion preference ────────────────────────────

@@ -72,3 +72,8 @@ export interface ReadingProgress {
   scrollPosition: number
   timestamp: number
 }
+
+export interface ChapterMapData {
+  chapterMap: Record<string, () => Promise<{ default: import('preact').ComponentType<{ components?: Record<string, unknown> }> }>>
+  chapterOrder: string[]
+}
