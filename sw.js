@@ -1,7 +1,7 @@
 "use strict";
 (() => {
   // <define:self.__WB_MANIFEST>
-  var define_self_WB_MANIFEST_default = [{ url: "./index.html", revision: "97664bf9" }, { url: "./books/index.html", revision: "41cece3d" }, { url: "./articles/index.html", revision: "41097a33" }, { url: "./books/flatland/index.html", revision: "c6f271a6" }, { url: "./books/flatland/preface/index.html", revision: "37b51242" }, { url: "./books/flatland/of-the-nature-of-flatland/index.html", revision: "fd8fb047" }, { url: "./books/flatland/of-the-climate-and-houses/index.html", revision: "9d426fa4" }, { url: "./books/flatland/concerning-the-inhabitants/index.html", revision: "2c8205a8" }, { url: "./books/flatland/concerning-the-women/index.html", revision: "c71f68d7" }, { url: "./books/flatland/of-our-methods-of-recognizing/index.html", revision: "eb28b05c" }, { url: "./books/flatland/of-recognition-by-sight/index.html", revision: "5bc59143" }, { url: "./books/flatland/concerning-a-stranger/index.html", revision: "a81a6cca" }, { url: "./articles/about-flatland/index.html", revision: "2721ad8b" }, { url: "./offline.html", revision: "ade0af13" }, { url: "./assets/pressy-entry-BIzKIDDA.css", revision: null }, { url: "./assets/pressy-entry-BI2eFHLl.js", revision: null }, { url: "./assets/index-BI_OETri.js", revision: null }, { url: "./assets/books-BfACb1B7.js", revision: null }, { url: "./assets/articles-vuNOu1GL.js", revision: null }, { url: "./assets/books-flatland-C1fYs_pT.js", revision: null }, { url: "./assets/books-flatland-preface-BDJcYHw9.js", revision: null }, { url: "./assets/books-flatland-of-the-nature-of-flatland-Cd250kaE.js", revision: null }, { url: "./assets/books-flatland-of-the-climate-and-houses-CCeKAIcw.js", revision: null }, { url: "./assets/books-flatland-concerning-the-inhabitants-cr7eZU0y.js", revision: null }, { url: "./assets/books-flatland-concerning-the-women-C-kOW81c.js", revision: null }, { url: "./assets/books-flatland-of-our-methods-of-recognizing-DbonGc_D.js", revision: null }, { url: "./assets/books-flatland-of-recognition-by-sight-B3TNI8ju.js", revision: null }, { url: "./assets/books-flatland-concerning-a-stranger-DObkO41E.js", revision: null }, { url: "./assets/_virtual_pressy-chapter-map_flatland-CxSuzkLM.js", revision: null }, { url: "./assets/articles-about-flatland-B0avEP3x.js", revision: null }, { url: "./assets/client-CBZrFJdX.js", revision: null }, { url: "./assets/00-preface-DK9UZqBW.js", revision: null }, { url: "./assets/01-of-the-nature-of-flatland-BhZZvnlW.js", revision: null }, { url: "./assets/02-of-the-climate-and-houses-D9iE4Icm.js", revision: null }, { url: "./assets/03-concerning-the-inhabitants-Cv_GvRXi.js", revision: null }, { url: "./assets/04-concerning-the-women-kqA2M9My.js", revision: null }, { url: "./assets/05-of-our-methods-of-recognizing-Vp0sOpNX.js", revision: null }, { url: "./assets/06-of-recognition-by-sight-D0pAFM-y.js", revision: null }, { url: "./assets/07-concerning-a-stranger-D3QxVLdc.js", revision: null }];
+  var define_self_WB_MANIFEST_default = [{ url: "./index.html", revision: "c869f743" }, { url: "./books/index.html", revision: "c70158c3" }, { url: "./articles/index.html", revision: "64b19bc1" }, { url: "./books/flatland/index.html", revision: "3b9e2184" }, { url: "./books/flatland/preface/index.html", revision: "82820715" }, { url: "./books/flatland/of-the-nature-of-flatland/index.html", revision: "a9f0d74c" }, { url: "./books/flatland/of-the-climate-and-houses/index.html", revision: "2f3af731" }, { url: "./books/flatland/concerning-the-inhabitants/index.html", revision: "c67b3bb3" }, { url: "./books/flatland/concerning-the-women/index.html", revision: "fc2db7ea" }, { url: "./books/flatland/of-our-methods-of-recognizing/index.html", revision: "ac06cf6d" }, { url: "./books/flatland/of-recognition-by-sight/index.html", revision: "20424f0f" }, { url: "./books/flatland/concerning-a-stranger/index.html", revision: "cd643cdf" }, { url: "./articles/about-flatland/index.html", revision: "e2137bca" }, { url: "./offline.html", revision: "ade0af13" }, { url: "./assets/pressy-entry-BIzKIDDA.css", revision: null }, { url: "./assets/pressy-entry-B59yqdzS.js", revision: null }, { url: "./assets/index-BI4n3Y7q.js", revision: null }, { url: "./assets/books-DcPdUw18.js", revision: null }, { url: "./assets/articles-gFbbVzvq.js", revision: null }, { url: "./assets/books-flatland-Gnt4hEgp.js", revision: null }, { url: "./assets/books-flatland-preface-4_jl1Dw-.js", revision: null }, { url: "./assets/books-flatland-of-the-nature-of-flatland-Dxs3Il7P.js", revision: null }, { url: "./assets/books-flatland-of-the-climate-and-houses-7a29bfgq.js", revision: null }, { url: "./assets/books-flatland-concerning-the-inhabitants-C8be1n4t.js", revision: null }, { url: "./assets/books-flatland-concerning-the-women-Bt-8eIIH.js", revision: null }, { url: "./assets/books-flatland-of-our-methods-of-recognizing-56TUbUUf.js", revision: null }, { url: "./assets/books-flatland-of-recognition-by-sight-LKLXY5CI.js", revision: null }, { url: "./assets/books-flatland-concerning-a-stranger-CGnJ5W_w.js", revision: null }, { url: "./assets/_virtual_pressy-chapter-map_flatland-HW06AHCi.js", revision: null }, { url: "./assets/articles-about-flatland-BYDk6obR.js", revision: null }, { url: "./assets/client-3uB6rGLx.js", revision: null }, { url: "./assets/00-preface-C4BFEVgW.js", revision: null }, { url: "./assets/01-of-the-nature-of-flatland-t5XB4rcC.js", revision: null }, { url: "./assets/02-of-the-climate-and-houses-B29KKJTN.js", revision: null }, { url: "./assets/03-concerning-the-inhabitants-B2aXvKEq.js", revision: null }, { url: "./assets/04-concerning-the-women-9wKnjHlh.js", revision: null }, { url: "./assets/05-of-our-methods-of-recognizing-CkGeWMXE.js", revision: null }, { url: "./assets/06-of-recognition-by-sight-DMsX1pMQ.js", revision: null }, { url: "./assets/07-concerning-a-stranger-CbuJ7J-U.js", revision: null }];
 
   // ../../node_modules/.pnpm/workbox-core@7.4.0/node_modules/workbox-core/_version.js
   try {
@@ -2512,80 +2512,6 @@ This is generally NOT safe. Learn more at https://bit.ly/wb-precache`;
     }
   };
 
-  // ../../node_modules/.pnpm/workbox-strategies@7.4.0/node_modules/workbox-strategies/StaleWhileRevalidate.js
-  var StaleWhileRevalidate = class extends Strategy {
-    /**
-     * @param {Object} [options]
-     * @param {string} [options.cacheName] Cache name to store and retrieve
-     * requests. Defaults to cache names provided by
-     * {@link workbox-core.cacheNames}.
-     * @param {Array<Object>} [options.plugins] [Plugins]{@link https://developers.google.com/web/tools/workbox/guides/using-plugins}
-     * to use in conjunction with this caching strategy.
-     * @param {Object} [options.fetchOptions] Values passed along to the
-     * [`init`](https://developer.mozilla.org/en-US/docs/Web/API/WindowOrWorkerGlobalScope/fetch#Parameters)
-     * of [non-navigation](https://github.com/GoogleChrome/workbox/issues/1796)
-     * `fetch()` requests made by this strategy.
-     * @param {Object} [options.matchOptions] [`CacheQueryOptions`](https://w3c.github.io/ServiceWorker/#dictdef-cachequeryoptions)
-     */
-    constructor(options = {}) {
-      super(options);
-      if (!this.plugins.some((p) => "cacheWillUpdate" in p)) {
-        this.plugins.unshift(cacheOkAndOpaquePlugin);
-      }
-    }
-    /**
-     * @private
-     * @param {Request|string} request A request to run this strategy for.
-     * @param {workbox-strategies.StrategyHandler} handler The event that
-     *     triggered the request.
-     * @return {Promise<Response>}
-     */
-    async _handle(request, handler) {
-      const logs = [];
-      if (true) {
-        finalAssertExports.isInstance(request, Request, {
-          moduleName: "workbox-strategies",
-          className: this.constructor.name,
-          funcName: "handle",
-          paramName: "request"
-        });
-      }
-      const fetchAndCachePromise = handler.fetchAndCachePut(request).catch(() => {
-      });
-      void handler.waitUntil(fetchAndCachePromise);
-      let response = await handler.cacheMatch(request);
-      let error;
-      if (response) {
-        if (true) {
-          logs.push(`Found a cached response in the '${this.cacheName}' cache. Will update with the network response in the background.`);
-        }
-      } else {
-        if (true) {
-          logs.push(`No response found in the '${this.cacheName}' cache. Will wait for the network response.`);
-        }
-        try {
-          response = await fetchAndCachePromise;
-        } catch (err) {
-          if (err instanceof Error) {
-            error = err;
-          }
-        }
-      }
-      if (true) {
-        logger.groupCollapsed(messages2.strategyStart(this.constructor.name, request));
-        for (const log of logs) {
-          logger.log(log);
-        }
-        messages2.printFinalResponse(response);
-        logger.groupEnd();
-      }
-      if (!response) {
-        throw new WorkboxError("no-response", { url: request.url, error });
-      }
-      return response;
-    }
-  };
-
   // ../../node_modules/.pnpm/workbox-core@7.4.0/node_modules/workbox-core/_private/dontWaitFor.js
   function dontWaitFor(promise) {
     void promise.then(() => {
@@ -3357,8 +3283,9 @@ This is generally NOT safe. Learn more at https://bit.ly/wb-precache`;
   );
   registerRoute(
     ({ request }) => request.destination === "style" || request.destination === "script",
-    new StaleWhileRevalidate({
-      cacheName: "pressy-static"
+    new NetworkFirst({
+      cacheName: "pressy-static",
+      networkTimeoutSeconds: 3
     })
   );
   self.addEventListener("message", async (event) => {
