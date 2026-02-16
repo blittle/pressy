@@ -1,0 +1,19 @@
+import{u as t,k as r}from"./client-vpLntBzO.js";function i(n){const e={p:"p",...n.components},{Aside:s,Footnote:a}=e;return s||o("Aside"),a||o("Footnote"),t(r,{children:[t(e.p,{children:"The greatest length or breadth of a full grown inhabitant of Flatland may be estimated at about eleven of your inches. Twelve inches may be regarded as a maximum."}),`
+`,t(e.p,{children:"Our Women are Straight Lines."}),`
+`,t(e.p,{children:"Our Soldiers and Lowest Classes of Workmen are Triangles with two equal sides, each about eleven inches long, and a base so short (often not exceeding half an inch) that they form at their vertices a very sharp and formidable angle. Indeed when their bases are of the most degraded type (not more than the eighth part of an inch in size), they can hardly be distinguished from Straight Lines or Women; so extremely pointed are their vertices."}),`
+`,t(s,{title:"The Social Hierarchy",children:t(e.p,{children:`Abbott's hierarchy of shapes is a direct satire of the Victorian class system:
+the more sides a figure has, the higher their social standing. Isosceles
+Triangles are the working class, Equilateral Triangles are the middle class,
+Squares and Pentagons are the professional class, Hexagons and above are the
+nobility, and Circles (or many-sided polygons) are the priestly class.`})}),`
+`,t(e.p,{children:"With us, as with you, these Triangles are distinguished from others by being called Isosceles; and by this name I shall refer to them in the following pages."}),`
+`,t(e.p,{children:"Our Middle Class consists of Equilateral or Equal-Sided Triangles."}),`
+`,t(e.p,{children:"Our Professional Men and Gentlemen are Squares (to which class I myself belong) and Five-Sided Figures or Pentagons."}),`
+`,t(e.p,{children:"Next above these come the Nobility, of whom there are several degrees, beginning at Six-Sided Figures, or Hexagons, and from thence rising in the number of their sides till they receive the honourable title of Polygonal, or many-sided. Finally when the number of the sides becomes so numerous, and the sides themselves so small, that the figure cannot be distinguished from a circle, he is included in the Circular or Priestly order; and this is the highest class of all."}),`
+`,t(a,{id:"3",children:t(e.p,{children:`It is worth noting that Abbott himself was a progressive educator and
+headmaster of the City of London School. His satire cuts both ways — while he
+depicts the absurdity of a rigid class system, he also critiques those who
+accept such systems without question. The narrator, A Square, often reveals
+his own prejudices even as he describes the injustices of Flatland society.`})}),`
+`,t(e.p,{children:"It is a Law of Nature with us that a male child shall have one more side than his father, so that each generation shall rise (as a rule) one step in the scale of development and nobility. Thus the son of a Square is a Pentagon; the son of a Pentagon, a Hexagon; and so on."}),`
+`,t(e.p,{children:"But this rule applies not always to the Tradesmen, and still less often to the Soldiers, and to the Workmen; who indeed can hardly be said to deserve the name of human Figures, since they have not all their sides equal. With them therefore the Law of Nature does not hold; and the son of an Isosceles (i.e. a Triangle with two equal sides) remains Isosceles still."})]})}function l(n={}){const{wrapper:e}=n.components||{};return e?t(e,{...n,children:t(i,{...n})}):i(n)}function o(n,e){throw new Error("Expected component `"+n+"` to be defined: you likely forgot to import, pass, or provide it.")}const d={title:"Concerning the Inhabitants of Flatland"};export{l as default,d as frontmatter};
