@@ -74,9 +74,14 @@ registerRoute(
   )
 )
 
-// Cache images with CacheFirst strategy
+// Cache images with CacheFirst strategy (exclude PWA icons — they're
+// updated on each deploy and should not be stuck behind a stale cache)
 registerRoute(
-  ({ request }) => request.destination === 'image',
+  ({ request, url }) =>
+    request.destination === 'image' &&
+    !url.pathname.endsWith('/icon-192.png') &&
+    !url.pathname.endsWith('/icon-512.png') &&
+    !url.pathname.endsWith('/favicon.png'),
   new CacheFirst({
     cacheName: 'pressy-images',
     plugins: [
