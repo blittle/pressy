@@ -822,6 +822,27 @@ function PaginatedReader({
     }
   }, []);
 
+  // Sync real viewport height to CSS custom property.
+  // 100dvh is unreliable on Android PWAs where the system nav bar
+  // overlaps the content. window.innerHeight always reflects the
+  // actual usable area.
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const syncHeight = () => {
+      container.style.setProperty("--app-height", `${window.innerHeight}px`);
+    };
+    syncHeight();
+
+    window.addEventListener("resize", syncHeight);
+    window.visualViewport?.addEventListener("resize", syncHeight);
+    return () => {
+      window.removeEventListener("resize", syncHeight);
+      window.visualViewport?.removeEventListener("resize", syncHeight);
+    };
+  }, []);
+
   const handleThemeChange = useCallback((theme: string) => {
     setActiveTheme(theme);
     localStorage.setItem("pressy-theme", theme);
@@ -2475,13 +2496,11 @@ const PAGINATED_STYLES = `
   }
 
   .pressy-reader--paginated {
-    height: 100vh;
-    height: 100dvh;
+    height: var(--app-height, 100dvh);
     display: flex;
     flex-direction: column;
     overflow: hidden;
     position: relative;
-    padding-bottom: env(safe-area-inset-bottom, 0px);
     box-sizing: border-box;
   }
 

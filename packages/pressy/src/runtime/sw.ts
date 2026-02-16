@@ -107,12 +107,15 @@ registerRoute(
   })
 )
 
-// Cache CSS and JS with StaleWhileRevalidate
+// Cache CSS and JS with NetworkFirst so deploys are picked up immediately.
+// Vite hashes filenames so old URLs are never re-requested — the main
+// benefit of caching here is offline support, not speed.
 registerRoute(
   ({ request }) =>
     request.destination === 'style' || request.destination === 'script',
-  new StaleWhileRevalidate({
+  new NetworkFirst({
     cacheName: 'pressy-static',
+    networkTimeoutSeconds: 3,
   })
 )
 
