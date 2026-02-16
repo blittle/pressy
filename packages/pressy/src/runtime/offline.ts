@@ -5,6 +5,7 @@ const CACHED_BOOKS_KEY = 'pressy-cached-books'
 export const offlineStatus = signal<'online' | 'offline'>('online')
 export const cacheProgress = signal<{ bookSlug: string; current: number; total: number } | null>(null)
 export const swReady = signal<boolean>(false)
+export const installPrompt = signal<Event | null>(null)
 
 // Restore cached books from localStorage synchronously on load
 function loadCachedBooks(): Set<string> {
@@ -29,6 +30,26 @@ if (typeof window !== 'undefined') {
   window.addEventListener('offline', () => {
     offlineStatus.value = 'offline'
   })
+}
+
+// PWA install prompt
+export function setupInstallPrompt(): void {
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault()
+    installPrompt.value = e
+  })
+  window.addEventListener('appinstalled', () => {
+    installPrompt.value = null
+  })
+}
+
+export async function triggerInstall(): Promise<boolean> {
+  const prompt = installPrompt.value as any
+  if (!prompt) return false
+  prompt.prompt()
+  const { outcome } = await prompt.userChoice
+  installPrompt.value = null
+  return outcome === 'accepted'
 }
 
 // Service Worker registration

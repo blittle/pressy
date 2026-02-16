@@ -431,6 +431,18 @@ function ScrollReader({
               </button>
             </div>
             <nav class="pressy-toc-list">
+              <a
+                href={bookBasePath ? bookBasePath.replace(/\/books\/[^/]+$/, '') || '/' : '/'}
+                class="pressy-toc-item pressy-toc-item--home"
+                onClick={() => setTocOpen(false)}
+              >
+                <span class="pressy-toc-item-num">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+                    <path d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9.5z" />
+                  </svg>
+                </span>
+                <span class="pressy-toc-item-title">{bookTitle || 'Home'}</span>
+              </a>
               {allChapters.map((ch, i) => (
                 <a
                   key={ch.slug}
@@ -1792,6 +1804,18 @@ function PaginatedReader({
               </button>
             </div>
             <nav class="pressy-toc-list">
+              <a
+                href={bookBasePath ? bookBasePath.replace(/\/books\/[^/]+$/, '') || '/' : '/'}
+                class="pressy-toc-item pressy-toc-item--home"
+                onClick={() => setTocOpen(false)}
+              >
+                <span class="pressy-toc-item-num">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+                    <path d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9.5z" />
+                  </svg>
+                </span>
+                <span class="pressy-toc-item-title">{bookTitle || 'Home'}</span>
+              </a>
               {allChapters.map((ch, i) => (
                 <a
                   key={ch.slug}
@@ -2065,7 +2089,7 @@ const SCROLL_STYLES = `
     bottom: 0;
     left: 0;
     right: 0;
-    padding: 0.5rem 1.5rem 1rem;
+    padding: 0.5rem 1.5rem calc(1rem + env(safe-area-inset-bottom, 0px));
     text-align: center;
     user-select: none;
     transform: translateY(100%);
@@ -2334,6 +2358,18 @@ const SCROLL_STYLES = `
     text-align: right;
   }
 
+  .pressy-toc-backdrop--scroll .pressy-toc-item--home {
+    border-bottom: 1px solid var(--color-border, #e5e5e5);
+    margin-bottom: 0.25rem;
+    padding-bottom: 0.75rem;
+  }
+
+  .pressy-toc-backdrop--scroll .pressy-toc-item--home .pressy-toc-item-num {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
   .pressy-toc-backdrop--scroll .pressy-toc-item-title {
     flex: 1;
     min-width: 0;
@@ -2554,11 +2590,11 @@ const PAGINATED_STYLES = `
 
   /* ── Page footer ───────────────────────────────────────────── */
   .pressy-page-footer {
-    position: absolute;
+    position: fixed;
     bottom: 0;
     left: 0;
     right: 0;
-    padding: 0.5rem 1.5rem 1rem;
+    padding: 0.5rem 1.5rem calc(1rem + env(safe-area-inset-bottom, 0px));
     text-align: center;
     user-select: none;
     transform: translateY(100%);
@@ -2877,6 +2913,18 @@ const PAGINATED_STYLES = `
     color: var(--color-text-muted, #6c757d);
     min-width: 2ch;
     text-align: right;
+  }
+
+  .pressy-toc-item--home {
+    border-bottom: 1px solid var(--color-border, #e5e5e5);
+    margin-bottom: 0.25rem;
+    padding-bottom: 0.75rem;
+  }
+
+  .pressy-toc-item--home .pressy-toc-item-num {
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .pressy-toc-item-title {

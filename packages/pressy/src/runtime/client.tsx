@@ -8,8 +8,12 @@ import {
   registerServiceWorker,
   downloadBookForOffline,
   clearBookCache,
+  isBookCached,
   cachedBooks,
   cacheProgress,
+  installPrompt,
+  setupInstallPrompt,
+  triggerInstall,
 } from './offline.js'
 import type { ContentManifest, Route, Book, Chapter, Article, ReadingProgress, ChapterMapData } from '../types.js'
 import type { PaginationConfig } from '../config.js'
@@ -199,6 +203,19 @@ function StartReadingCTA({ book }: { book: Book }) {
   )
 }
 
+function InstallButton() {
+  if (!installPrompt.value) return null
+
+  return (
+    <button
+      class="pressy-cta pressy-cta-secondary"
+      onClick={() => triggerInstall()}
+    >
+      Install
+    </button>
+  )
+}
+
 function renderBookPage(book: Book, articles: Article[] = []) {
   // Stats calculations
   const totalWords = book.chapters.reduce((sum, ch) => sum + (ch.wordCount || 0), 0)
@@ -243,7 +260,12 @@ function renderBookPage(book: Book, articles: Article[] = []) {
               )}
             </div>
           )}
-          {chapterCount > 0 && <StartReadingCTA book={book} />}
+          {chapterCount > 0 && (
+            <div class="pressy-cta-group">
+              <StartReadingCTA book={book} />
+              <InstallButton />
+            </div>
+          )}
         </div>
       </div>
       {articles.length > 0 && (
@@ -631,6 +653,12 @@ const HOME_STYLES = `
   }
 
   /* ── CTA button ─────────────────────────── */
+  .pressy-cta-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    align-items: center;
+  }
   .pressy-cta {
     display: inline-block;
     margin-top: 1.25rem;
@@ -645,6 +673,17 @@ const HOME_STYLES = `
   }
   .pressy-cta:hover {
     opacity: 0.85;
+  }
+  .pressy-cta-secondary {
+    background: transparent;
+    color: var(--color-link, #2563eb);
+    border: 1.5px solid var(--color-link, #2563eb);
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .pressy-cta-secondary:hover {
+    background: var(--color-link, #2563eb);
+    color: #fff;
   }
 
   /* ── Sections below hero ────────────────── */
@@ -729,10 +768,20 @@ export function hydrate(data: HydrateData, Content?: ComponentType, chapterMapDa
   // Initialize
   loadTheme()
   setupOfflineDetection()
+  setupInstallPrompt()
   initDB()
 
   // Register service worker for PWA offline support
   registerServiceWorker(basePath)
+
+  // Auto-download books for offline when the user installs the PWA
+  window.addEventListener('appinstalled', () => {
+    for (const book of data.manifest.books) {
+      if (isBookCached(book.slug)) continue
+      const chapterUrls = book.chapters.map(ch => `${basePath}/books/${book.slug}/${ch.slug}`)
+      downloadBookForOffline(book.slug, chapterUrls)
+    }
+  })
 
   // Handle popstate for back/forward navigation
   window.addEventListener('popstate', () => {
