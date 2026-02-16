@@ -3,11 +3,23 @@
   "checkpoint_id": "e6ef46b78e80",
   "strategy": "manual-commit",
   "branch": "main",
-  "checkpoints_count": 1,
+  "checkpoints_count": 3,
   "files_touched": [
+    "README.md",
+    "examples/flatland/package.json",
+    "examples/frankenstein/package.json",
+    "package.json",
+    "packages/@pressy/components/package.json",
+    "packages/@pressy/components/src/Paywall.tsx",
+    "packages/@pressy/components/src/Reader.tsx",
+    "packages/@pressy/components/tsup.config.ts",
+    "packages/@pressy/shopify/package.json",
+    "packages/@pressy/typography/package.json",
+    "packages/pressy/package.json",
     "packages/pressy/src/runtime/client.tsx",
     "packages/pressy/src/types.ts",
-    "packages/pressy/src/vite/plugin.ts"
+    "packages/pressy/src/vite/plugin.ts",
+    "tsconfig.json"
   ],
   "sessions": [
     {
@@ -16,13 +28,20 @@
       "context": "/e6/ef46b78e80/0/context.md",
       "content_hash": "/e6/ef46b78e80/0/content_hash.txt",
       "prompt": "/e6/ef46b78e80/0/prompt.txt"
+    },
+    {
+      "metadata": "/e6/ef46b78e80/1/metadata.json",
+      "transcript": "/e6/ef46b78e80/1/full.jsonl",
+      "context": "/e6/ef46b78e80/1/context.md",
+      "content_hash": "/e6/ef46b78e80/1/content_hash.txt",
+      "prompt": "/e6/ef46b78e80/1/prompt.txt"
     }
   ],
   "token_usage": {
-    "input_tokens": 26,
-    "cache_creation_tokens": 44392,
-    "cache_read_tokens": 776791,
-    "output_tokens": 1374,
-    "api_call_count": 18
+    "input_tokens": 57,
+    "cache_creation_tokens": 211788,
+    "cache_read_tokens": 3455687,
+    "output_tokens": 5059,
+    "api_call_count": 39
   }
 }
