@@ -1,0 +1,28 @@
+{
+  "cli_version": "0.4.2",
+  "checkpoint_id": "2e65d718abc6",
+  "strategy": "manual-commit",
+  "branch": "main",
+  "checkpoints_count": 4,
+  "files_touched": [
+    "packages/@pressy/components/src/Reader.tsx",
+    "packages/pressy/src/runtime/client.tsx",
+    "packages/pressy/src/runtime/offline.ts"
+  ],
+  "sessions": [
+    {
+      "metadata": "/2e/65d718abc6/0/metadata.json",
+      "transcript": "/2e/65d718abc6/0/full.jsonl",
+      "context": "/2e/65d718abc6/0/context.md",
+      "content_hash": "/2e/65d718abc6/0/content_hash.txt",
+      "prompt": "/2e/65d718abc6/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 73,
+    "cache_creation_tokens": 66344,
+    "cache_read_tokens": 3454983,
+    "output_tokens": 1798,
+    "api_call_count": 63
+  }
+}
