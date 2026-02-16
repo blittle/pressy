@@ -1,0 +1,81 @@
+Implement the following plan:
+
+# Plan: Track Last Read Position & Auto-Resume on App Open
+
+## Context
+
+The app tracks per-chapter reading progress in IndexedDB but doesn't track *which* chapter was last viewed. When users re-open the app, they see the home page and must manually navigate back. Additionally, in paginated mode, saved page position within a chapter is never restored (`onRestoreProgress` is passed to `PaginatedReader` but never called).
+
+## Changes
+
+### 1. Save last-read position (`client.tsx`)
+
+In `handleSaveProgress` and `handleChapterChange` inside `ChapterReaderWithProgress`, save the current book + chapter to localStorage:
+
+```typescript
+localStorage.setItem('pressy-last-read', JSON.stringify({ bookSlug: book.slug, chapterSlug }))
+```
+
+### 2. Auto-redirect on fresh app open only (`client.tsx`)
+
+Use **sessionStorage** to distinguish fresh app opens from internal page transitions:
+- `sessionStorage` is empty on a fresh tab/PWA open but persists across same-session page navigations
+- On first `hydrate()` call in a session, check for `pressy-last-read` and redirect if on home/book page
+- Set `sessionStorage.setItem('pressy-session-active', '1')` after the first load
+- On subsequent `hydrate()` calls (internal navigation), the flag exists → skip redirect
+
+In `hydrate()`, before rendering:
+```typescript
+const isNewSession = !sessionStorage.getItem('pressy-session-active')
+sessionStorage.setItem('pressy-session-active', '1')
+
+if (isNewSession && (data.routeType === 'home' || data.routeType === 'book')) {
+  const lastRead = localStorage.getItem('pressy-last-read')
+  if (lastRead) {
+    const { bookSlug, chapterSlug } = JSON.parse(lastRead)
+    // Verify chapter exists in manifest
+    const book = data.manifest.books.find(b => b.slug === bookSlug)
+    if (book?.chapters.some(ch => ch.slug === chapterSlug)) {
+      window.location.replace(`${basePath}/books/${bookSlug}/${chapterSlug}`)
+      return
+    }
+  }
+}
+```
+
+### 3. Restore page position in PaginatedReader (`Reader.tsx`)
+
+Add a `useEffect` that calls `onRestoreProgress()` after `totalPages` is computed:
+- If saved `totalPages` matches current, use exact page
+- Otherwise scale proportionally (viewport may have changed)
+- Set `hasRestoredRef.current = true` to gate progress saving
+
+## Files to Modify
+
+1. **`/packages/pressy/src/runtime/client.tsx`** — Save last-read + redirect logic
+2. **`/packages/@pressy/components/src/Reader.tsx`** — Restore saved page in PaginatedReader
+
+## Verification
+
+1. Open the app, navigate to a chapter, advance a few pages
+2. Close the tab entirely (ends session)
+3. Re-open — should redirect to the chapter and restore the page position
+4. Navigate internally between chapters — no unwanted redirects
+5. Refresh the page — no redirect (sessionStorage persists on refresh)
+
+
+If you need specific details from before exiting plan mode (like exact code snippets, error messages, or content you generated), read the full transcript at: /Users/blittle/.claude/projects/-Users-blittle-dev-pressy/9dbac778-9e1f-471a-bde5-651bdeaf4956.jsonl
+
+---
+
+<task-notification>
+<task-id>b3a95db</task-id>
+<output-file>/private/tmp/claude-501/-Users-blittle-dev-pressy/tasks/b3a95db.output</output-file>
+<status>completed</status>
+<summary>Background command "Build the project to check for errors" completed (exit code 0)</summary>
+</task-notification>
+Read the output file to retrieve the result: /private/tmp/claude-501/-Users-blittle-dev-pressy/tasks/b3a95db.output
+
+---
+
+It seems like when installed as a pwa on mobile, the height of the viewport gets slightly messed up with a bit of scroll
