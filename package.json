@@ -11,7 +11,8 @@
     "test": "vitest",
     "lint": "eslint packages --ext .ts,.tsx",
     "typecheck": "tsc --noEmit",
-    "publish-packages": "pnpm -r --filter './packages/**' build && pnpm -r --filter './packages/**' publish --no-git-checks"
+    "publish-packages": "pnpm -r --filter './packages/**' build && pnpm -r --filter './packages/**' publish --no-git-checks",
+    "version": "pnpm -r --filter './packages/**' exec pnpm version patch"
   },
   "devDependencies": {
     "@types/node": "^20.10.0",
