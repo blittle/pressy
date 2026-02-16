@@ -981,6 +981,35 @@ function PaginatedReader({
     }
   }, [totalPages]);
 
+  // Restore saved page position after pagination is computed
+  useEffect(() => {
+    if (hasRestoredRef.current || totalPages <= 1 || !onRestoreProgress) return;
+
+    onRestoreProgress().then((data) => {
+      if (!data || data.page <= 0) {
+        hasRestoredRef.current = true;
+        return;
+      }
+
+      let targetPage: number;
+      if (data.totalPages === totalPages) {
+        // Same pagination layout — restore exact page
+        targetPage = data.page;
+      } else if (data.totalPages > 0) {
+        // Viewport changed — scale proportionally
+        const fraction = data.page / (data.totalPages - 1);
+        targetPage = Math.round(fraction * (totalPages - 1));
+      } else {
+        hasRestoredRef.current = true;
+        return;
+      }
+
+      const clamped = Math.max(0, Math.min(targetPage, totalPages - 1));
+      setCurrentPage(clamped);
+      hasRestoredRef.current = true;
+    });
+  }, [totalPages, onRestoreProgress]);
+
   // Apply translateX — combines page position + drag offset
   useEffect(() => {
     const article = articleRef.current;
@@ -2438,8 +2467,11 @@ const SCROLL_STYLES = `
 `;
 
 const PAGINATED_STYLES = `
+  html:has(.pressy-reader--paginated),
   html:has(.pressy-reader--paginated) body {
     margin: 0;
+    overflow: hidden;
+    height: 100%;
   }
 
   .pressy-reader--paginated {

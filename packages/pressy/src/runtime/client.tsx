@@ -413,6 +413,8 @@ function ChapterReaderWithProgress({
       timestamp: Date.now(),
     })
 
+    localStorage.setItem('pressy-last-read', JSON.stringify({ bookSlug: book.slug, chapterSlug }))
+
     // Update global book progress with live page position
     if (data.totalPages > 0) {
       getAllReadingProgress().then((allProgress) => {
@@ -443,6 +445,8 @@ function ChapterReaderWithProgress({
       scrollPosition: 0,
       timestamp: Date.now(),
     })
+
+    localStorage.setItem('pressy-last-read', JSON.stringify({ bookSlug: book.slug, chapterSlug: slug }))
 
     // Update global book progress
     getAllReadingProgress().then((allProgress) => {
@@ -764,6 +768,26 @@ let basePath = ''
 export function hydrate(data: HydrateData, Content?: ComponentType, chapterMapData?: ChapterMapData): void {
   basePath = getBasePath(data.route)
   currentRoute.value = data.route
+
+  // Auto-redirect to last-read chapter on fresh app/tab open
+  const isNewSession = !sessionStorage.getItem('pressy-session-active')
+  sessionStorage.setItem('pressy-session-active', '1')
+
+  if (isNewSession && (data.routeType === 'home' || data.routeType === 'book')) {
+    const lastRead = localStorage.getItem('pressy-last-read')
+    if (lastRead) {
+      try {
+        const { bookSlug, chapterSlug } = JSON.parse(lastRead)
+        const book = data.manifest.books.find(b => b.slug === bookSlug)
+        if (book?.chapters.some(ch => ch.slug === chapterSlug)) {
+          window.location.replace(`${basePath}/books/${bookSlug}/${chapterSlug}`)
+          return
+        }
+      } catch {
+        // Invalid JSON in localStorage, ignore
+      }
+    }
+  }
 
   // Initialize
   loadTheme()
