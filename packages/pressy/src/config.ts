@@ -26,10 +26,14 @@ export interface PWAConfig {
   backgroundColor?: string
   /** Display mode. Defaults to 'standalone'. */
   display?: 'standalone' | 'minimal-ui' | 'fullscreen' | 'browser'
+  /** Path to a custom icon (used for both 192x192 and 512x512). Overridden by icon192/icon512 if set. */
+  icon?: string
   /** Path to a custom 192x192 icon. */
   icon192?: string
   /** Path to a custom 512x512 icon. */
   icon512?: string
+  /** Path to a custom favicon. Falls back to icon192 or icon if not set. */
+  favicon?: string
 }
 
 export interface PressyConfig {

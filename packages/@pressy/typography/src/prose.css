@@ -5,7 +5,7 @@
   max-width: 65ch;
   margin-inline: auto;
   padding-inline: var(--prose-padding, 1.5rem);
-  font-family: var(--font-prose, Georgia, 'Times New Roman', serif);
+  font-family: var(--font-prose, Georgia, "Times New Roman", serif);
   font-size: var(--font-size-base);
   line-height: var(--line-height-prose, 1.6);
   color: var(--color-text);
@@ -26,7 +26,7 @@
   font-family: var(--font-heading, system-ui, -apple-system, sans-serif);
   font-weight: 600;
   line-height: 1.25;
-  margin-top: 2em;
+  margin-top: 0.5em;
   margin-bottom: 0.5em;
   color: var(--color-heading);
 }
@@ -133,7 +133,7 @@
 
 /* Code */
 .pressy-prose code {
-  font-family: var(--font-mono, 'SF Mono', Menlo, monospace);
+  font-family: var(--font-mono, "SF Mono", Menlo, monospace);
   font-size: 0.875em;
   background: var(--color-code-bg);
   padding: 0.2em 0.4em;
@@ -141,7 +141,7 @@
 }
 
 .pressy-prose pre {
-  font-family: var(--font-mono, 'SF Mono', Menlo, monospace);
+  font-family: var(--font-mono, "SF Mono", Menlo, monospace);
   font-size: 0.875em;
   background: var(--color-code-bg);
   padding: 1em 1.5em;
@@ -169,7 +169,7 @@
 }
 
 .pressy-prose hr.scene-break::before {
-  content: '* * *';
+  content: "* * *";
   color: var(--color-text-muted);
 }
 

@@ -1,7 +1,7 @@
 import { render, type ComponentType, type VNode } from 'preact'
 import { useState, useEffect } from 'preact/hooks'
 import { signal, effect } from '@preact/signals'
-import { Reader, DownloadBook, BookProgress } from '@pressy-pub/components'
+import { Reader } from '@pressy-pub/components'
 import type { ProgressData } from '@pressy-pub/components'
 import { useMDXComponents } from '@pressy-pub/components/content'
 import {
@@ -156,44 +156,98 @@ function setupOfflineDetection(): void {
 
 // ── Page renderers ──────────────────────────────────────────
 
-function renderBookPage(book: Book, articles: Article[] = []) {
-  const chapterUrls = book.chapters.map(
-    (ch: Chapter) => `/books/${book.slug}/${ch.slug}`
+function StartReadingCTA({ book }: { book: Book }) {
+  const [target, setTarget] = useState<{ label: string; href: string } | null>(null)
+
+  useEffect(() => {
+    if (book.chapters.length === 0) return
+    const firstHref = `${basePath}/books/${book.slug}/${book.chapters[0].slug}`
+
+    getAllReadingProgress().then((allProgress) => {
+      const progressMap = new Map(allProgress.map((p) => [p.chapterSlug, p]))
+
+      // Walk chapters in order and find the furthest one that's in-progress (not completed)
+      let furthestInProgress: Chapter | null = null
+      for (const ch of book.chapters) {
+        const p = progressMap.get(ch.slug)
+        if (!p) continue
+        const completed = p.totalPages > 0 && p.page >= p.totalPages - 1
+        if (!completed && p.page > 0) {
+          furthestInProgress = ch
+        }
+      }
+
+      if (furthestInProgress) {
+        setTarget({
+          label: 'Continue Reading',
+          href: `${basePath}/books/${book.slug}/${furthestInProgress.slug}`,
+        })
+      } else {
+        setTarget({ label: 'Start Reading', href: firstHref })
+      }
+    }).catch(() => {
+      setTarget({ label: 'Start Reading', href: firstHref })
+    })
+  }, [book])
+
+  if (!target) return null
+
+  return (
+    <a href={target.href} class="pressy-cta">
+      {target.label}
+    </a>
   )
+}
+
+function renderBookPage(book: Book, articles: Article[] = []) {
+  // Stats calculations
+  const totalWords = book.chapters.reduce((sum, ch) => sum + (ch.wordCount || 0), 0)
+  const readingMinutes = Math.ceil(totalWords / 200)
+  const chapterCount = book.chapters.length
+  const publishYear = book.metadata.publishDate
+    ? new Date(book.metadata.publishDate).getFullYear()
+    : null
+
+  const formattedWords = totalWords.toLocaleString()
 
   return (
     <div class="pressy-home">
-      <header class="pressy-home-header">
-        <h1>{book.metadata.title}</h1>
-        <p class="pressy-home-author">by {book.metadata.author}</p>
-        {book.metadata.description && (
-          <p class="pressy-home-desc">{book.metadata.description}</p>
+      <div class="pressy-hero">
+        {book.coverUrl && (
+          <img
+            src={book.coverUrl}
+            alt={`${book.metadata.title} cover`}
+            class="pressy-hero-cover"
+          />
         )}
-      </header>
-      <DownloadBook
-        bookSlug={book.slug}
-        chapterUrls={chapterUrls}
-        cachedBooks={cachedBooks}
-        cacheProgress={cacheProgress}
-        onDownload={downloadBookForOffline}
-        onRemove={clearBookCache}
-      />
-      <section class="pressy-home-section">
-        <h2>Chapters</h2>
-        <BookProgress
-          bookSlug={book.slug}
-          chapters={book.chapters.map((ch) => ({
-            slug: ch.slug,
-            title: ch.title,
-            order: ch.order,
-            wordCount: ch.wordCount || 0,
-          }))}
-          basePath={basePath}
-          loadAllProgress={getAllReadingProgress}
-        />
-      </section>
+        <div class="pressy-hero-text">
+          <header class="pressy-home-header">
+            <h1>{book.metadata.title}</h1>
+            <p class="pressy-home-author">by {book.metadata.author}</p>
+            {book.metadata.description && (
+              <p class="pressy-home-desc">{book.metadata.description}</p>
+            )}
+          </header>
+          {totalWords > 0 && (
+            <div class="pressy-stats">
+              <span>{chapterCount} chapter{chapterCount !== 1 ? 's' : ''}</span>
+              <span class="pressy-stats-sep">&middot;</span>
+              <span>{formattedWords} words</span>
+              <span class="pressy-stats-sep">&middot;</span>
+              <span>~{readingMinutes} min</span>
+              {publishYear && (
+                <>
+                  <span class="pressy-stats-sep">&middot;</span>
+                  <span>First published {publishYear}</span>
+                </>
+              )}
+            </div>
+          )}
+          {chapterCount > 0 && <StartReadingCTA book={book} />}
+        </div>
+      </div>
       {articles.length > 0 && (
-        <section class="pressy-home-section">
+        <section class="pressy-home-section pressy-fade-sections">
           <h2>Articles</h2>
           <nav class="pressy-chapter-list">
             {articles.map((article: Article) => (
@@ -404,6 +458,14 @@ function ChapterReaderWithProgress({
       bookBasePath={`${basePath}/books/${book.slug}`}
       onChapterChange={handleChapterChange}
       mdxComponents={useMDXComponents()}
+      offlineProps={{
+        bookSlug: book.slug,
+        chapterUrls: book.chapters.map(ch => `/books/${book.slug}/${ch.slug}`),
+        cachedBooks,
+        cacheProgress,
+        onDownload: downloadBookForOffline,
+        onRemove: clearBookCache,
+      }}
     >
       <Content components={useMDXComponents()} />
     </Reader>
@@ -484,6 +546,10 @@ function renderArticlePage(
 // ── Styles ──────────────────────────────────────────────────
 
 const HOME_STYLES = `
+  @keyframes pressy-fade-in {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
   .pressy-home {
     max-width: 65ch;
     margin: 0 auto;
@@ -491,9 +557,50 @@ const HOME_STYLES = `
     font-family: var(--font-body, Georgia, 'Times New Roman', serif);
     color: var(--color-text, #1a1a1a);
   }
+
+  /* ── Hero layout ────────────────────────── */
+  .pressy-hero {
+    display: flex;
+    align-items: flex-start;
+    gap: 2.5rem;
+    margin-bottom: 2.5rem;
+  }
+  .pressy-hero-cover {
+    flex-shrink: 0;
+    max-width: 280px;
+    width: 100%;
+    height: auto;
+    border-radius: 4px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.15);
+    animation: pressy-fade-in 0.6s ease-out both;
+  }
+  .pressy-hero-text {
+    flex: 1;
+    animation: pressy-fade-in 0.6s ease-out 0.15s both;
+  }
+  @media (max-width: 700px) {
+    .pressy-hero {
+      flex-direction: column;
+      align-items: center;
+    }
+    .pressy-hero-cover {
+      max-width: 220px;
+    }
+    .pressy-hero-text {
+      text-align: center;
+    }
+    .pressy-home-desc {
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .pressy-stats {
+      justify-content: center;
+    }
+  }
+
+  /* ── Header ─────────────────────────────── */
   .pressy-home-header {
-    margin-bottom: 3rem;
-    text-align: center;
+    margin-bottom: 1rem;
   }
   .pressy-home-header h1 {
     font-size: 2rem;
@@ -507,7 +614,42 @@ const HOME_STYLES = `
     color: var(--color-text-muted, #666);
     line-height: 1.6;
     max-width: 50ch;
-    margin: 0.5rem auto 0;
+    margin: 0.5rem 0 0;
+  }
+
+  /* ── Stats row ──────────────────────────── */
+  .pressy-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4em;
+    font-size: 0.85rem;
+    color: var(--color-text-muted, #666);
+    margin-top: 1rem;
+  }
+  .pressy-stats-sep {
+    opacity: 0.5;
+  }
+
+  /* ── CTA button ─────────────────────────── */
+  .pressy-cta {
+    display: inline-block;
+    margin-top: 1.25rem;
+    padding: 0.75rem 1.75rem;
+    background: var(--color-link, #2563eb);
+    color: #fff;
+    font-size: 1rem;
+    font-weight: 600;
+    text-decoration: none;
+    border-radius: 0.5rem;
+    transition: opacity 0.15s;
+  }
+  .pressy-cta:hover {
+    opacity: 0.85;
+  }
+
+  /* ── Sections below hero ────────────────── */
+  .pressy-fade-sections {
+    animation: pressy-fade-in 0.6s ease-out 0.3s both;
   }
   .pressy-home-section {
     margin-bottom: 2rem;
@@ -538,6 +680,15 @@ const HOME_STYLES = `
   .pressy-chapter-order {
     color: var(--color-text-muted, #666);
     min-width: 2ch;
+  }
+
+  /* ── Reduced motion ─────────────────────── */
+  @media (prefers-reduced-motion: reduce) {
+    .pressy-hero-cover,
+    .pressy-hero-text,
+    .pressy-fade-sections {
+      animation: none;
+    }
   }
 `
 

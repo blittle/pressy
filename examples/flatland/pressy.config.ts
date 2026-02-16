@@ -16,5 +16,7 @@ export default defineConfig({
     shortName: 'Flatland',
     themeColor: '#1a1a1a',
     backgroundColor: '#ffffff',
+    icon192: './content/icon-192.png',
+    icon512: './content/icon-512.png',
   },
 })

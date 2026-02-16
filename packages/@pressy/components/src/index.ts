@@ -11,7 +11,7 @@ export { DownloadBook } from './DownloadBook.js'
 export { BookProgress } from './BookProgress.js'
 
 // Types
-export type { ReaderProps, ProgressData, ChapterMapData } from './Reader.js'
+export type { ReaderProps, ProgressData, ChapterMapData, OfflineProps } from './Reader.js'
 
 export type { NavigationProps } from './Navigation.js'
 export type { TableOfContentsProps, TOCItem } from './TableOfContents.js'

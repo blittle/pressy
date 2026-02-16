@@ -21,6 +21,17 @@ export interface ChapterMapData {
   chapterOrder: string[];
 }
 
+export interface OfflineProps {
+  bookSlug: string;
+  chapterUrls: string[];
+  cachedBooks: { value: Set<string> };
+  cacheProgress: {
+    value: { bookSlug: string; current: number; total: number } | null;
+  };
+  onDownload: (bookSlug: string, chapterUrls: string[]) => void;
+  onRemove: (bookSlug: string) => void;
+}
+
 export interface ReaderProps {
   children: ComponentChildren;
   title: string;
@@ -40,6 +51,7 @@ export interface ReaderProps {
   bookBasePath?: string;
   onChapterChange?: (slug: string, page: number, totalPages: number) => void;
   mdxComponents?: Record<string, unknown>;
+  offlineProps?: OfflineProps;
 }
 
 export function Reader({
@@ -59,6 +71,7 @@ export function Reader({
   bookBasePath,
   onChapterChange,
   mdxComponents,
+  offlineProps,
 }: ReaderProps) {
   if (paginationMode === "paginated") {
     return (
@@ -77,6 +90,7 @@ export function Reader({
         bookBasePath={bookBasePath}
         onChapterChange={onChapterChange}
         mdxComponents={mdxComponents}
+        offlineProps={offlineProps}
       >
         {children}
       </PaginatedReader>
@@ -85,14 +99,106 @@ export function Reader({
 
   return (
     <ScrollReader
+      bookTitle={bookTitle}
       prevChapter={prevChapter}
       nextChapter={nextChapter}
       showDropCap={showDropCap}
       onSaveProgress={onSaveProgress}
       onRestoreProgress={onRestoreProgress}
+      allChapters={allChapters}
+      bookBasePath={bookBasePath}
+      currentChapterSlug={currentChapterSlug}
+      offlineProps={offlineProps}
     >
       {children}
     </ScrollReader>
+  );
+}
+
+// ── Offline Footer Icon ───────────────────────────────────────
+
+function OfflineFooterIcon({ offlineProps }: { offlineProps?: OfflineProps }) {
+  if (!offlineProps) return null;
+
+  const {
+    bookSlug,
+    chapterUrls,
+    cachedBooks,
+    onDownload,
+    onRemove,
+  } = offlineProps;
+
+  // Read signal .value directly in render — @preact/signals auto-subscribes
+  // and re-renders this component when the underlying signal changes.
+  const isCached = cachedBooks.value.has(bookSlug);
+
+  // Check isCached FIRST (matching DownloadBook's order). The download function
+  // optimistically marks the book as cached immediately, so isCached becomes true
+  // at the same time as isDownloading. Checking isCached first means we show the
+  // cached icon right away while the SW downloads in the background.
+  if (isCached) {
+    return (
+      <button
+        class="pressy-offline-icon pressy-offline-icon--cached"
+        onClick={(e: MouseEvent) => {
+          e.stopPropagation();
+          onRemove(bookSlug);
+        }}
+        aria-label="Available offline. Click to remove."
+        title="Available offline. Click to remove."
+      >
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.5"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          width="18"
+          height="18"
+        >
+          <path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z" />
+          <polyline points="9 15 12 18 15 15" />
+          <line x1="12" y1="12" x2="12" y2="18" />
+        </svg>
+        <svg
+          class="pressy-offline-check"
+          viewBox="0 0 24 24"
+          fill="currentColor"
+          width="10"
+          height="10"
+        >
+          <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z" />
+        </svg>
+      </button>
+    );
+  }
+
+  return (
+    <button
+      class="pressy-offline-icon"
+      onClick={(e: MouseEvent) => {
+        e.stopPropagation();
+        onDownload(bookSlug, chapterUrls);
+      }}
+      aria-label="Download for offline reading"
+      title="Download for offline reading"
+    >
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.5"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        width="18"
+        height="18"
+      >
+        <path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z" />
+        <polyline points="9 15 12 18 15 15" />
+        <line x1="12" y1="12" x2="12" y2="18" />
+      </svg>
+    </button>
   );
 }
 
@@ -100,22 +206,130 @@ export function Reader({
 
 interface ScrollReaderProps {
   children: ComponentChildren;
+  bookTitle?: string;
   prevChapter?: { slug: string; title: string };
   nextChapter?: { slug: string; title: string };
   showDropCap: boolean;
   onSaveProgress?: (data: ProgressData) => void;
   onRestoreProgress?: () => Promise<ProgressData | null>;
+  allChapters?: Array<{ slug: string; title: string; wordCount?: number }>;
+  bookBasePath?: string;
+  currentChapterSlug?: string;
+  offlineProps?: OfflineProps;
 }
 
 function ScrollReader({
   children,
+  bookTitle,
   prevChapter,
   nextChapter,
   showDropCap,
   onSaveProgress,
   onRestoreProgress,
+  allChapters,
+  bookBasePath,
+  currentChapterSlug,
+  offlineProps,
 }: ScrollReaderProps) {
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Footer visibility
+  const [footerVisible, setFooterVisible] = useState(false);
+  const footerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [tocOpen, setTocOpen] = useState(false);
+
+  const showFooterTemporarily = useCallback(() => {
+    setFooterVisible(true);
+    if (footerTimerRef.current) clearTimeout(footerTimerRef.current);
+    footerTimerRef.current = setTimeout(() => setFooterVisible(false), 3000);
+  }, []);
+
+  // Settings state
+  const [activeTheme, setActiveTheme] = useState<string>(() => {
+    if (typeof localStorage !== "undefined") {
+      return localStorage.getItem("pressy-theme") || "light";
+    }
+    return "light";
+  });
+  const [fontScale, setFontScale] = useState<number>(() => {
+    if (typeof localStorage !== "undefined") {
+      const saved = localStorage.getItem("pressy-font-size");
+      return saved ? parseFloat(saved) : 1.0;
+    }
+    return 1.0;
+  });
+
+  const applyFontScale = useCallback((scale: number) => {
+    if (scale === 1.0) {
+      document.documentElement.style.removeProperty("--font-size-base");
+    } else {
+      document.documentElement.style.setProperty(
+        "--font-size-base",
+        `calc(clamp(1rem, 0.875rem + 0.5vw, 1.25rem) * ${scale})`
+      );
+    }
+  }, []);
+
+  useEffect(() => {
+    if (fontScale !== 1.0) {
+      applyFontScale(fontScale);
+    }
+  }, []);
+
+  const handleThemeChange = useCallback((theme: string) => {
+    setActiveTheme(theme);
+    localStorage.setItem("pressy-theme", theme);
+    const resolved =
+      theme === "system"
+        ? window.matchMedia("(prefers-color-scheme: dark)").matches
+          ? "dark"
+          : "light"
+        : theme;
+    document.documentElement.setAttribute("data-theme", resolved);
+  }, []);
+
+  const handleFontSizeChange = useCallback(
+    (delta: number) => {
+      setFontScale((prev) => {
+        const next =
+          Math.round(Math.max(0.8, Math.min(1.5, prev + delta)) * 10) / 10;
+        localStorage.setItem("pressy-font-size", String(next));
+        applyFontScale(next);
+        return next;
+      });
+    },
+    [applyFontScale]
+  );
+
+  // Toggle footer on tap
+  const handleReaderClick = useCallback(
+    (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (
+        target.closest(
+          ".pressy-page-footer, .pressy-toc-backdrop, .pressy-toc-toggle"
+        )
+      )
+        return;
+      if (target.closest('a, button, input, select, textarea, [role="button"]'))
+        return;
+
+      if (settingsOpen || tocOpen) {
+        setSettingsOpen(false);
+        setTocOpen(false);
+        return;
+      }
+
+      if (footerVisible) {
+        setFooterVisible(false);
+        if (footerTimerRef.current) clearTimeout(footerTimerRef.current);
+      } else {
+        showFooterTemporarily();
+      }
+    },
+    [footerVisible, settingsOpen, tocOpen, showFooterTemporarily]
+  );
 
   // Restore scroll position on mount
   useEffect(() => {
@@ -166,7 +380,7 @@ function ScrollReader({
   }, [onSaveProgress]);
 
   return (
-    <div class="pressy-reader">
+    <div class="pressy-reader" onClick={handleReaderClick}>
       <main class="pressy-reader-main">
         <article
           class={`pressy-prose ${showDropCap ? "" : "no-drop-cap"}`}
@@ -179,6 +393,282 @@ function ScrollReader({
       <TextShare />
       <Navigation prev={prevChapter} next={nextChapter} />
       <OfflineIndicator />
+
+      {/* TOC drawer overlay */}
+      {tocOpen && allChapters && (
+        <div
+          class="pressy-toc-backdrop pressy-toc-backdrop--scroll"
+          onClick={(e: MouseEvent) => {
+            e.stopPropagation();
+            setTocOpen(false);
+          }}
+        >
+          <div
+            class="pressy-toc-drawer"
+            onClick={(e: MouseEvent) => e.stopPropagation()}
+          >
+            <div class="pressy-toc-header">
+              <span class="pressy-toc-title">Contents</span>
+              <button
+                class="pressy-toc-close"
+                onClick={(e: MouseEvent) => {
+                  e.stopPropagation();
+                  setTocOpen(false);
+                }}
+                aria-label="Close table of contents"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  width="18"
+                  height="18"
+                >
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </div>
+            <nav class="pressy-toc-list">
+              {allChapters.map((ch, i) => (
+                <a
+                  key={ch.slug}
+                  href={`${bookBasePath || ""}/${ch.slug}`}
+                  class={`pressy-toc-item ${
+                    ch.slug === currentChapterSlug
+                      ? "pressy-toc-item--active"
+                      : ""
+                  }`}
+                  onClick={() => setTocOpen(false)}
+                >
+                  <span class="pressy-toc-item-num">{i + 1}.</span>
+                  <span class="pressy-toc-item-title">{ch.title}</span>
+                </a>
+              ))}
+            </nav>
+          </div>
+        </div>
+      )}
+
+      {/* Footer */}
+      <div
+        class={`pressy-page-footer pressy-page-footer--scroll ${
+          footerVisible || settingsOpen || tocOpen
+            ? "pressy-page-footer--visible"
+            : ""
+        }`}
+      >
+        <div class="pressy-footer-row">
+          {allChapters && allChapters.length > 0 && (
+            <button
+              class="pressy-toc-toggle"
+              onClick={(e: MouseEvent) => {
+                e.stopPropagation();
+                setSettingsOpen(false);
+                setTocOpen(!tocOpen);
+              }}
+              aria-label="Table of contents"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                width="18"
+                height="18"
+              >
+                <line x1="3" y1="6" x2="21" y2="6" />
+                <line x1="3" y1="12" x2="21" y2="12" />
+                <line x1="3" y1="18" x2="21" y2="18" />
+              </svg>
+            </button>
+          )}
+          {bookTitle && (
+            <button
+              class="pressy-footer-title"
+              onClick={(e: MouseEvent) => {
+                e.stopPropagation();
+                if (allChapters && allChapters.length > 0) {
+                  setSettingsOpen(false);
+                  setTocOpen(!tocOpen);
+                }
+              }}
+            >
+              {bookTitle}
+            </button>
+          )}
+          <OfflineFooterIcon offlineProps={offlineProps} />
+          <button
+            class="pressy-settings-toggle"
+            onClick={(e: MouseEvent) => {
+              e.stopPropagation();
+              setTocOpen(false);
+              setSettingsOpen(!settingsOpen);
+            }}
+            aria-label="Settings"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              width="18"
+              height="18"
+            >
+              <circle cx="12" cy="12" r="3" />
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Settings panel */}
+        <div
+          class={`pressy-settings-panel ${
+            settingsOpen ? "pressy-settings-panel--open" : ""
+          }`}
+        >
+          <div class="pressy-settings-section">
+            <div class="pressy-settings-label">Theme</div>
+            <div class="pressy-theme-options">
+              {(
+                [
+                  {
+                    id: "light",
+                    label: "Light",
+                    icon: (
+                      <svg
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="1.5"
+                        width="16"
+                        height="16"
+                      >
+                        <circle cx="12" cy="12" r="5" />
+                        <line x1="12" y1="1" x2="12" y2="3" />
+                        <line x1="12" y1="21" x2="12" y2="23" />
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+                        <line x1="1" y1="12" x2="3" y2="12" />
+                        <line x1="21" y1="12" x2="23" y2="12" />
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+                      </svg>
+                    ),
+                  },
+                  {
+                    id: "dark",
+                    label: "Dark",
+                    icon: (
+                      <svg
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="1.5"
+                        width="16"
+                        height="16"
+                      >
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+                      </svg>
+                    ),
+                  },
+                  {
+                    id: "system",
+                    label: "System",
+                    icon: (
+                      <svg
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="1.5"
+                        width="16"
+                        height="16"
+                      >
+                        <rect
+                          x="2"
+                          y="3"
+                          width="20"
+                          height="14"
+                          rx="2"
+                          ry="2"
+                        />
+                        <line x1="8" y1="21" x2="16" y2="21" />
+                        <line x1="12" y1="17" x2="12" y2="21" />
+                      </svg>
+                    ),
+                  },
+                  {
+                    id: "sepia",
+                    label: "Sepia",
+                    icon: (
+                      <svg
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="1.5"
+                        width="16"
+                        height="16"
+                      >
+                        <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
+                        <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
+                      </svg>
+                    ),
+                  },
+                ] as const
+              ).map((t) => (
+                <button
+                  key={t.id}
+                  class={`pressy-theme-btn ${
+                    activeTheme === t.id ? "pressy-theme-btn--active" : ""
+                  }`}
+                  onClick={(e: MouseEvent) => {
+                    e.stopPropagation();
+                    handleThemeChange(t.id);
+                  }}
+                >
+                  {t.icon}
+                  <span>{t.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+          <div class="pressy-settings-section">
+            <div class="pressy-settings-label">Font Size</div>
+            <div class="pressy-font-size-controls">
+              <button
+                class="pressy-font-size-btn"
+                onClick={(e: MouseEvent) => {
+                  e.stopPropagation();
+                  handleFontSizeChange(-0.1);
+                }}
+                disabled={fontScale <= 0.8}
+                aria-label="Decrease font size"
+              >
+                A-
+              </button>
+              <span class="pressy-font-size-value">
+                {Math.round(fontScale * 100)}%
+              </span>
+              <button
+                class="pressy-font-size-btn"
+                onClick={(e: MouseEvent) => {
+                  e.stopPropagation();
+                  handleFontSizeChange(0.1);
+                }}
+                disabled={fontScale >= 1.5}
+                aria-label="Increase font size"
+              >
+                A+
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
 
       <style>{SCROLL_STYLES}</style>
     </div>
@@ -215,6 +705,7 @@ interface PaginatedReaderProps {
   bookBasePath?: string;
   onChapterChange?: (slug: string, page: number, totalPages: number) => void;
   mdxComponents?: Record<string, unknown>;
+  offlineProps?: OfflineProps;
 }
 
 function ChapterDivider({ title }: { title: string }) {
@@ -241,6 +732,7 @@ function PaginatedReader({
   bookBasePath,
   onChapterChange,
   mdxComponents,
+  offlineProps,
 }: PaginatedReaderProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
@@ -283,8 +775,9 @@ function PaginatedReader({
     }
   }, []); // Only on mount
 
-  // Settings panel state
+  // Settings & TOC panel state
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [tocOpen, setTocOpen] = useState(false);
   const [activeTheme, setActiveTheme] = useState<string>(() => {
     if (typeof localStorage !== "undefined") {
       return localStorage.getItem("pressy-theme") || "light";
@@ -806,25 +1299,47 @@ function PaginatedReader({
     }
   }, []);
 
-  // Tap-to-turn: clicking left/right thirds of the screen turns pages.
-  // Uses a click handler on the container so interactive content (links,
-  // footnotes, buttons) naturally gets priority via event bubbling.
+  // Whether the device supports hover (i.e. desktop with a mouse).
+  // Touch-only devices use swipe for page turns; tapping just toggles the footer.
+  const isTouchDevice =
+    typeof window !== "undefined" && window.matchMedia("(hover: none)").matches;
+
+  // Click handler: on desktop, edge clicks turn pages and middle clicks
+  // toggle footer / double-click fullscreen. On touch devices, any tap
+  // simply toggles the footer — swiping handles all page navigation.
   const handleContainerClick = useCallback(
     (e: MouseEvent) => {
       const target = e.target as HTMLElement;
 
-      // Clicks inside the settings panel or on interactive elements — don't turn pages
-      if (target.closest(".pressy-settings-panel, .pressy-settings-toggle"))
+      // Clicks inside panels or on interactive elements — ignore
+      if (
+        target.closest(
+          ".pressy-settings-panel, .pressy-settings-toggle, .pressy-toc-drawer, .pressy-toc-toggle"
+        )
+      )
         return;
       if (target.closest('a, button, input, select, textarea, [role="button"]'))
         return;
 
-      // If settings panel is open, close it on any outside click
-      if (settingsOpen) {
+      // If settings or TOC panel is open, close it on any outside click
+      if (settingsOpen || tocOpen) {
         setSettingsOpen(false);
+        setTocOpen(false);
         return;
       }
 
+      // Touch devices: tap anywhere toggles the footer, nothing else
+      if (isTouchDevice) {
+        if (footerVisible) {
+          setFooterVisible(false);
+          if (footerTimerRef.current) clearTimeout(footerTimerRef.current);
+        } else {
+          showFooterTemporarily();
+        }
+        return;
+      }
+
+      // Desktop: edge clicks turn pages, middle clicks toggle footer / fullscreen
       const container = containerRef.current;
       if (!container) return;
 
@@ -837,18 +1352,16 @@ function PaginatedReader({
       } else if (x > rect.width - edgeZone) {
         goNext();
       } else {
-        // Middle third tap — single tap toggles footer, double tap toggles fullscreen
+        // Middle third — single click toggles footer, double click toggles fullscreen
         const now = Date.now();
         const timeSinceLastTap = now - lastMiddleTapRef.current;
         lastMiddleTapRef.current = now;
 
         if (timeSinceLastTap < 300) {
-          // Double tap — cancel pending single-tap action, toggle fullscreen
           if (middleTapTimerRef.current)
             clearTimeout(middleTapTimerRef.current);
           toggleFullscreen();
         } else {
-          // Possible single tap — delay to check for double tap
           if (middleTapTimerRef.current)
             clearTimeout(middleTapTimerRef.current);
           middleTapTimerRef.current = setTimeout(() => {
@@ -866,7 +1379,9 @@ function PaginatedReader({
       goNext,
       goPrev,
       footerVisible,
+      isTouchDevice,
       settingsOpen,
+      tocOpen,
       showFooterTemporarily,
       toggleFullscreen,
     ]
@@ -897,22 +1412,22 @@ function PaginatedReader({
       if (y > rect.height * 0.75) {
         setFooterVisible(true);
         if (footerTimerRef.current) clearTimeout(footerTimerRef.current);
-      } else if (!settingsOpen) {
-        // Hide after a short delay when leaving the bottom area (not when settings is open)
+      } else if (!settingsOpen && !tocOpen) {
+        // Hide after a short delay when leaving the bottom area (not when panels are open)
         if (footerTimerRef.current) clearTimeout(footerTimerRef.current);
         footerTimerRef.current = setTimeout(() => setFooterVisible(false), 600);
       }
     },
-    [settingsOpen]
+    [settingsOpen, tocOpen]
   );
 
   const handleMouseLeave = useCallback(() => {
     setHoverZone(null);
-    if (!settingsOpen) {
+    if (!settingsOpen && !tocOpen) {
       if (footerTimerRef.current) clearTimeout(footerTimerRef.current);
       footerTimerRef.current = setTimeout(() => setFooterVisible(false), 600);
     }
-  }, [settingsOpen]);
+  }, [settingsOpen, tocOpen]);
 
   // Keyboard navigation
   useEffect(() => {
@@ -1240,10 +1755,69 @@ function PaginatedReader({
         </div>
       )}
 
+      {/* TOC drawer overlay */}
+      {tocOpen && allChapters && (
+        <div
+          class="pressy-toc-backdrop"
+          onClick={(e: MouseEvent) => {
+            e.stopPropagation();
+            setTocOpen(false);
+          }}
+        >
+          <div
+            class="pressy-toc-drawer"
+            onClick={(e: MouseEvent) => e.stopPropagation()}
+          >
+            <div class="pressy-toc-header">
+              <span class="pressy-toc-title">Contents</span>
+              <button
+                class="pressy-toc-close"
+                onClick={(e: MouseEvent) => {
+                  e.stopPropagation();
+                  setTocOpen(false);
+                }}
+                aria-label="Close table of contents"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  width="18"
+                  height="18"
+                >
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </div>
+            <nav class="pressy-toc-list">
+              {allChapters.map((ch, i) => (
+                <a
+                  key={ch.slug}
+                  href={`${bookBasePath || ""}/${ch.slug}`}
+                  class={`pressy-toc-item ${
+                    ch.slug === (activeChapterSlug || currentChapterSlug)
+                      ? "pressy-toc-item--active"
+                      : ""
+                  }`}
+                  onClick={() => setTocOpen(false)}
+                >
+                  <span class="pressy-toc-item-num">{i + 1}.</span>
+                  <span class="pressy-toc-item-title">{ch.title}</span>
+                </a>
+              ))}
+            </nav>
+          </div>
+        </div>
+      )}
+
       {/* Page footer with progress — hidden by default */}
       <div
         class={`pressy-page-footer ${
-          footerVisible || settingsOpen ? "pressy-page-footer--visible" : ""
+          footerVisible || settingsOpen || tocOpen
+            ? "pressy-page-footer--visible"
+            : ""
         }`}
       >
         <div class="pressy-progress-bar">
@@ -1253,11 +1827,52 @@ function PaginatedReader({
           />
         </div>
         <div class="pressy-footer-row">
-          {bookTitle && <span class="pressy-footer-title">{bookTitle}</span>}
+          {allChapters && allChapters.length > 0 && (
+            <button
+              class="pressy-toc-toggle"
+              onClick={(e: MouseEvent) => {
+                e.stopPropagation();
+                setSettingsOpen(false);
+                setTocOpen(!tocOpen);
+              }}
+              aria-label="Table of contents"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                width="18"
+                height="18"
+              >
+                <line x1="3" y1="6" x2="21" y2="6" />
+                <line x1="3" y1="12" x2="21" y2="12" />
+                <line x1="3" y1="18" x2="21" y2="18" />
+              </svg>
+            </button>
+          )}
+          {bookTitle && (
+            <button
+              class="pressy-footer-title"
+              onClick={(e: MouseEvent) => {
+                e.stopPropagation();
+                if (allChapters && allChapters.length > 0) {
+                  setSettingsOpen(false);
+                  setTocOpen(!tocOpen);
+                }
+              }}
+            >
+              {bookTitle}
+            </button>
+          )}
+          <OfflineFooterIcon offlineProps={offlineProps} />
           <button
             class="pressy-settings-toggle"
             onClick={(e: MouseEvent) => {
               e.stopPropagation();
+              setTocOpen(false);
               setSettingsOpen(!settingsOpen);
             }}
             aria-label="Settings"
@@ -1443,6 +2058,347 @@ const SCROLL_STYLES = `
     flex: 1;
     padding: 2rem 0;
   }
+
+  /* ── Scroll reader footer ──────────────────────────────── */
+  .pressy-page-footer--scroll {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 0.5rem 1.5rem 1rem;
+    text-align: center;
+    user-select: none;
+    transform: translateY(100%);
+    opacity: 0;
+    transition: transform 0.25s ease, opacity 0.25s ease;
+    z-index: 15;
+    background: var(--color-bg, #ffffff);
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
+  }
+
+  .pressy-page-footer--scroll.pressy-page-footer--visible {
+    transform: translateY(0);
+    opacity: 1;
+  }
+
+  /* Shared footer styles for scroll reader */
+  .pressy-page-footer--scroll .pressy-footer-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+
+  .pressy-page-footer--scroll .pressy-footer-title {
+    font-family: var(--font-heading, system-ui, -apple-system, sans-serif);
+    font-size: 0.75rem;
+    color: var(--color-text-muted, #6c757d);
+    text-decoration: none;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+    flex: 1;
+    text-align: left;
+    border: none;
+    background: none;
+    cursor: pointer;
+    padding: 0;
+  }
+
+  .pressy-page-footer--scroll .pressy-footer-title:hover {
+    color: var(--color-text, #212529);
+  }
+
+  .pressy-page-footer--scroll .pressy-toc-toggle,
+  .pressy-page-footer--scroll .pressy-settings-toggle {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border: none;
+    background: transparent;
+    color: var(--color-text-muted, #6c757d);
+    cursor: pointer;
+    border-radius: 0.375rem;
+    transition: color 0.15s, background 0.15s;
+    padding: 0;
+  }
+
+  .pressy-page-footer--scroll .pressy-toc-toggle:hover,
+  .pressy-page-footer--scroll .pressy-settings-toggle:hover {
+    color: var(--color-text, #212529);
+    background: var(--color-bg-subtle, #f8f9fa);
+  }
+
+  .pressy-page-footer--scroll .pressy-settings-panel {
+    overflow: hidden;
+    max-height: 0;
+    opacity: 0;
+    transition: max-height 0.25s ease, opacity 0.2s ease;
+    border-top: 0 solid var(--color-border, #dee2e6);
+  }
+
+  .pressy-page-footer--scroll .pressy-settings-panel--open {
+    max-height: 300px;
+    opacity: 1;
+    border-top-width: 1px;
+    margin-top: 0.5rem;
+    padding-top: 0.75rem;
+  }
+
+  .pressy-page-footer--scroll .pressy-settings-section {
+    margin-bottom: 0.75rem;
+  }
+
+  .pressy-page-footer--scroll .pressy-settings-section:last-child {
+    margin-bottom: 0;
+  }
+
+  .pressy-page-footer--scroll .pressy-settings-label {
+    font-family: var(--font-heading, system-ui, -apple-system, sans-serif);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-text-muted, #6c757d);
+    margin-bottom: 0.5rem;
+    text-align: left;
+  }
+
+  .pressy-page-footer--scroll .pressy-theme-options {
+    display: flex;
+    gap: 0.375rem;
+  }
+
+  .pressy-page-footer--scroll .pressy-theme-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.25rem;
+    padding: 0.375rem 0.5rem;
+    border: 1.5px solid var(--color-border, #dee2e6);
+    border-radius: 0.5rem;
+    background: transparent;
+    color: var(--color-text, #212529);
+    font-family: var(--font-heading, system-ui, -apple-system, sans-serif);
+    font-size: 0.6875rem;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+  }
+
+  .pressy-page-footer--scroll .pressy-theme-btn:hover {
+    background: var(--color-bg-subtle, #f8f9fa);
+  }
+
+  .pressy-page-footer--scroll .pressy-theme-btn--active {
+    border-color: var(--color-accent, #212529);
+    background: var(--color-bg-subtle, #f8f9fa);
+    font-weight: 600;
+  }
+
+  .pressy-page-footer--scroll .pressy-font-size-controls {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+  }
+
+  .pressy-page-footer--scroll .pressy-font-size-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border: 1.5px solid var(--color-border, #dee2e6);
+    border-radius: 50%;
+    background: transparent;
+    color: var(--color-text, #212529);
+    font-family: var(--font-heading, system-ui, -apple-system, sans-serif);
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+  }
+
+  .pressy-page-footer--scroll .pressy-font-size-btn:hover:not(:disabled) {
+    background: var(--color-bg-subtle, #f8f9fa);
+    border-color: var(--color-accent, #212529);
+  }
+
+  .pressy-page-footer--scroll .pressy-font-size-btn:disabled {
+    opacity: 0.3;
+    cursor: default;
+  }
+
+  .pressy-page-footer--scroll .pressy-font-size-value {
+    font-family: var(--font-heading, system-ui, -apple-system, sans-serif);
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--color-text, #212529);
+    min-width: 3ch;
+    text-align: center;
+  }
+
+  /* ── TOC drawer for scroll reader ───────────────────────── */
+  .pressy-toc-backdrop--scroll {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.3);
+    z-index: 20;
+    display: flex;
+    align-items: flex-end;
+    animation: pressy-scroll-toc-fade-in 0.2s ease-out;
+  }
+
+  .pressy-toc-backdrop--scroll .pressy-toc-drawer {
+    width: 100%;
+    max-height: 70vh;
+    background: var(--color-bg, #ffffff);
+    border-radius: 1rem 1rem 0 0;
+    display: flex;
+    flex-direction: column;
+    animation: pressy-scroll-toc-slide-up 0.25s ease-out;
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
+  }
+
+  .pressy-toc-backdrop--scroll .pressy-toc-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 1.5rem 0.75rem;
+    border-bottom: 1px solid var(--color-border, #dee2e6);
+    flex-shrink: 0;
+  }
+
+  .pressy-toc-backdrop--scroll .pressy-toc-title {
+    font-family: var(--font-heading, system-ui, -apple-system, sans-serif);
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--color-text, #212529);
+  }
+
+  .pressy-toc-backdrop--scroll .pressy-toc-close {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border: none;
+    background: transparent;
+    color: var(--color-text-muted, #6c757d);
+    cursor: pointer;
+    border-radius: 0.375rem;
+    padding: 0;
+  }
+
+  .pressy-toc-backdrop--scroll .pressy-toc-close:hover {
+    color: var(--color-text, #212529);
+    background: var(--color-bg-subtle, #f8f9fa);
+  }
+
+  .pressy-toc-backdrop--scroll .pressy-toc-list {
+    overflow-y: auto;
+    padding: 0.5rem;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .pressy-toc-backdrop--scroll .pressy-toc-item {
+    display: flex;
+    gap: 0.75rem;
+    padding: 0.625rem 1rem;
+    text-decoration: none;
+    color: var(--color-text, #212529);
+    border-radius: 0.5rem;
+    font-family: var(--font-heading, system-ui, -apple-system, sans-serif);
+    font-size: 0.875rem;
+    transition: background 0.15s;
+  }
+
+  .pressy-toc-backdrop--scroll .pressy-toc-item:hover {
+    background: var(--color-bg-subtle, #f5f5f5);
+  }
+
+  .pressy-toc-backdrop--scroll .pressy-toc-item--active {
+    background: var(--color-bg-subtle, #f5f5f5);
+    font-weight: 600;
+  }
+
+  .pressy-toc-backdrop--scroll .pressy-toc-item-num {
+    color: var(--color-text-muted, #6c757d);
+    min-width: 2ch;
+    text-align: right;
+  }
+
+  .pressy-toc-backdrop--scroll .pressy-toc-item-title {
+    flex: 1;
+    min-width: 0;
+  }
+
+  @keyframes pressy-scroll-toc-fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  @keyframes pressy-scroll-toc-slide-up {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+  }
+
+  /* ── Offline icon for scroll reader ─────────────────────── */
+  .pressy-page-footer--scroll .pressy-offline-icon {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    width: 2rem;
+    height: 2rem;
+    border: none;
+    background: transparent;
+    color: var(--color-text-muted, #6c757d);
+    cursor: pointer;
+    border-radius: 0.375rem;
+    transition: color 0.15s, background 0.15s;
+    padding: 0;
+  }
+
+  .pressy-page-footer--scroll .pressy-offline-icon:hover {
+    color: var(--color-text, #212529);
+    background: var(--color-bg-subtle, #f8f9fa);
+  }
+
+  .pressy-page-footer--scroll .pressy-offline-icon--cached {
+    color: #16a34a;
+  }
+
+  .pressy-page-footer--scroll .pressy-offline-icon--cached:hover {
+    color: #dc2626;
+  }
+
+  .pressy-page-footer--scroll .pressy-offline-check {
+    position: absolute;
+    bottom: 2px;
+    right: 2px;
+  }
+
+  .pressy-page-footer--scroll .pressy-offline-icon--downloading {
+    cursor: default;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .pressy-page-footer--scroll {
+      transition: none;
+    }
+    .pressy-toc-backdrop--scroll,
+    .pressy-toc-backdrop--scroll .pressy-toc-drawer {
+      animation: none;
+    }
+  }
 `;
 
 const PAGINATED_STYLES = `
@@ -1468,6 +2424,7 @@ const PAGINATED_STYLES = `
     min-height: 0;
     padding-block: 2rem;
     box-sizing: border-box;
+    text-wrap: pretty;
   }
 
   /* Article uses CSS multi-column layout for pagination.
@@ -1644,10 +2601,43 @@ const PAGINATED_STYLES = `
     font-family: var(--font-heading, system-ui, -apple-system, sans-serif);
     font-size: 0.75rem;
     color: var(--color-text-muted, #6c757d);
+    text-decoration: none;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
     min-width: 0;
+    flex: 1;
+    text-align: left;
+    border: none;
+    background: none;
+    cursor: pointer;
+    padding: 0;
+  }
+
+  .pressy-footer-title:hover {
+    color: var(--color-text, #212529);
+  }
+
+  /* ── TOC toggle button ──────────────────────────────────── */
+  .pressy-toc-toggle {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border: none;
+    background: transparent;
+    color: var(--color-text-muted, #6c757d);
+    cursor: pointer;
+    border-radius: 0.375rem;
+    transition: color 0.15s, background 0.15s;
+    padding: 0;
+  }
+
+  .pressy-toc-toggle:hover {
+    color: var(--color-text, #212529);
+    background: var(--color-bg-subtle, #f8f9fa);
   }
 
   .pressy-settings-toggle {
@@ -1788,16 +2778,171 @@ const PAGINATED_STYLES = `
   }
 
   .pressy-chapter-divider {
-    text-align: center;
-    padding: 3rem 1.5rem;
-    max-width: min(65ch, calc(100% - 3rem));
-    margin: 0 auto;
+    padding: 0;
+    margin: 0;
   }
 
   .pressy-chapter-divider-title {
     font-size: 1.5rem;
     font-family: var(--font-heading, system-ui, -apple-system, sans-serif);
     margin: 0;
+  }
+
+  /* ── TOC drawer ──────────────────────────────────────────── */
+  .pressy-toc-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.3);
+    z-index: 20;
+    display: flex;
+    align-items: flex-end;
+    animation: pressy-toc-fade-in 0.2s ease-out;
+  }
+
+  .pressy-toc-drawer {
+    width: 100%;
+    max-height: 70vh;
+    background: var(--color-bg, #ffffff);
+    border-radius: 1rem 1rem 0 0;
+    display: flex;
+    flex-direction: column;
+    animation: pressy-toc-slide-up 0.25s ease-out;
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
+  }
+
+  .pressy-toc-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 1.5rem 0.75rem;
+    border-bottom: 1px solid var(--color-border, #dee2e6);
+    flex-shrink: 0;
+  }
+
+  .pressy-toc-title {
+    font-family: var(--font-heading, system-ui, -apple-system, sans-serif);
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--color-text, #212529);
+  }
+
+  .pressy-toc-close {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border: none;
+    background: transparent;
+    color: var(--color-text-muted, #6c757d);
+    cursor: pointer;
+    border-radius: 0.375rem;
+    padding: 0;
+  }
+
+  .pressy-toc-close:hover {
+    color: var(--color-text, #212529);
+    background: var(--color-bg-subtle, #f8f9fa);
+  }
+
+  .pressy-toc-list {
+    overflow-y: auto;
+    padding: 0.5rem;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .pressy-toc-item {
+    display: flex;
+    gap: 0.75rem;
+    padding: 0.625rem 1rem;
+    text-decoration: none;
+    color: var(--color-text, #212529);
+    border-radius: 0.5rem;
+    font-family: var(--font-heading, system-ui, -apple-system, sans-serif);
+    font-size: 0.875rem;
+    transition: background 0.15s;
+  }
+
+  .pressy-toc-item:hover {
+    background: var(--color-bg-subtle, #f5f5f5);
+  }
+
+  .pressy-toc-item--active {
+    background: var(--color-bg-subtle, #f5f5f5);
+    font-weight: 600;
+  }
+
+  .pressy-toc-item-num {
+    color: var(--color-text-muted, #6c757d);
+    min-width: 2ch;
+    text-align: right;
+  }
+
+  .pressy-toc-item-title {
+    flex: 1;
+    min-width: 0;
+  }
+
+  @keyframes pressy-toc-fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  @keyframes pressy-toc-slide-up {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+  }
+
+  /* ── Offline footer icon ────────────────────────────────── */
+  .pressy-offline-icon {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    width: 2rem;
+    height: 2rem;
+    border: none;
+    background: transparent;
+    color: var(--color-text-muted, #6c757d);
+    cursor: pointer;
+    border-radius: 0.375rem;
+    transition: color 0.15s, background 0.15s;
+    padding: 0;
+  }
+
+  .pressy-offline-icon:hover {
+    color: var(--color-text, #212529);
+    background: var(--color-bg-subtle, #f8f9fa);
+  }
+
+  .pressy-offline-icon--cached {
+    color: #16a34a;
+  }
+
+  .pressy-offline-icon--cached:hover {
+    color: #dc2626;
+  }
+
+  .pressy-offline-check {
+    position: absolute;
+    bottom: 2px;
+    right: 2px;
+  }
+
+  .pressy-offline-icon--downloading {
+    cursor: default;
+  }
+
+  @keyframes pressy-offline-spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+
+  .pressy-offline-spinner {
+    animation: pressy-offline-spin 1s linear infinite;
+    transform-origin: 12px 12px;
   }
 
   /* ── Reduced motion preference ────────────────────────────
@@ -1808,6 +2953,13 @@ const PAGINATED_STYLES = `
     }
     .pressy-progress-fill {
       transition: none !important;
+    }
+    .pressy-toc-backdrop,
+    .pressy-toc-drawer {
+      animation: none;
+    }
+    .pressy-offline-spinner {
+      animation: none;
     }
   }
 `;

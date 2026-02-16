@@ -39,6 +39,7 @@ export interface Book {
   chapters: Chapter[]
   basePath: string
   coverPath?: string
+  coverUrl?: string
 }
 
 export interface Article {

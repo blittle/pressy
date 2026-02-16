@@ -35,6 +35,9 @@ export function pressyPlugin(config: PressyConfig): Plugin[] {
     display: config.pwa?.display || 'standalone',
     shortName: config.pwa?.shortName || config.site.title,
   }
+  // Resolve favicon: explicit favicon > icon192 > icon > null (use generated placeholder)
+  const faviconPath = config.pwa?.favicon || config.pwa?.icon192 || config.pwa?.icon
+  const hasCustomFavicon = !!faviconPath
 
   const contentDiscovery = {
     async discoverContent(): Promise<ContentManifest> {
@@ -92,10 +95,22 @@ export function pressyPlugin(config: PressyConfig): Plugin[] {
           .filter((c): c is Chapter => c !== null)
           .sort((a, b) => a.order - b.order)
 
-        const coverPath = existsSync(join(bookPath, 'cover.jpg'))
-          ? join(bookPath, 'cover.jpg')
-          : existsSync(join(bookPath, 'cover.png'))
-          ? join(bookPath, 'cover.png')
+        // Resolve cover image: prefer metadata.cover, then fall back to common filenames
+        let coverPath: string | undefined
+        if (metadata.cover && existsSync(join(bookPath, metadata.cover))) {
+          coverPath = join(bookPath, metadata.cover)
+        } else {
+          for (const ext of ['jpg', 'png', 'svg']) {
+            const candidate = join(bookPath, `cover.${ext}`)
+            if (existsSync(candidate)) {
+              coverPath = candidate
+              break
+            }
+          }
+        }
+
+        const coverUrl = coverPath
+          ? `/books/${bookSlug}/${coverPath.split('/').pop()}`
           : undefined
 
         books.push({
@@ -104,6 +119,7 @@ export function pressyPlugin(config: PressyConfig): Plugin[] {
           chapters,
           basePath: bookPath,
           coverPath,
+          coverUrl,
         })
       }
 
@@ -223,16 +239,17 @@ export function pressyPlugin(config: PressyConfig): Plugin[] {
       pagination: config.pagination,
     })
 
+    const faviconTag = `\n  <link rel="icon" href="/favicon.png" type="image/png">`
     const pwaTags = pwaEnabled
       ? `
   <link rel="manifest" href="/manifest.webmanifest">
   <meta name="theme-color" content="${pwaConfig.themeColor}">
-  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="${pwaConfig.shortName}">
-  <link rel="apple-touch-icon" href="/icon-192.png">`
+  <link rel="apple-touch-icon" href="/icon-192.png">${faviconTag}`
       : `
-  <meta name="theme-color" content="${pwaConfig.themeColor}">`
+  <meta name="theme-color" content="${pwaConfig.themeColor}">${faviconTag}`
 
     return `<!DOCTYPE html>
 <html lang="${config.site.language || 'en'}">
@@ -472,10 +489,19 @@ export const config = ${JSON.stringify(config)};`
         server.middlewares.use(async (req, res, next) => {
           const url = req.url || '/'
 
-          // Suppress missing favicon requests in dev
-          if (url === '/favicon.ico') {
-            res.statusCode = 204
-            res.end()
+          // Serve favicon in dev
+          if (url === '/favicon.ico' || url === '/favicon.png') {
+            if (faviconPath) {
+              const fullPath = resolve(faviconPath)
+              if (existsSync(fullPath)) {
+                res.setHeader('Content-Type', url === '/favicon.ico' ? 'image/x-icon' : 'image/png')
+                res.end(readFileSync(fullPath))
+                return
+              }
+            }
+            // Generate a small placeholder from the icon-192 placeholder
+            res.setHeader('Content-Type', 'image/svg+xml')
+            res.end(generatePlaceholderIcon(32))
             return
           }
 
@@ -513,9 +539,30 @@ export const config = ${JSON.stringify(config)};`
             return
           }
 
-          // Serve placeholder icons in dev
+          // Serve icons in dev — custom files if configured, otherwise placeholders
           if (url === '/icon-192.png' || url === '/icon-512.png') {
-            const size = url.includes('192') ? 192 : 512
+            const is192 = url.includes('192')
+            const customPath = is192
+              ? (config.pwa?.icon192 || config.pwa?.icon)
+              : (config.pwa?.icon512 || config.pwa?.icon)
+            if (customPath) {
+              const fullPath = resolve(customPath)
+              if (existsSync(fullPath)) {
+                const ext = fullPath.split('.').pop()?.toLowerCase()
+                const mimeTypes: Record<string, string> = {
+                  png: 'image/png',
+                  jpg: 'image/jpeg',
+                  jpeg: 'image/jpeg',
+                  svg: 'image/svg+xml',
+                  webp: 'image/webp',
+                  ico: 'image/x-icon',
+                }
+                res.setHeader('Content-Type', mimeTypes[ext || ''] || 'image/png')
+                res.end(readFileSync(fullPath))
+                return
+              }
+            }
+            const size = is192 ? 192 : 512
             res.setHeader('Content-Type', 'image/svg+xml')
             res.end(generatePlaceholderIcon(size))
             return
@@ -526,6 +573,27 @@ export const config = ${JSON.stringify(config)};`
             res.setHeader('Content-Type', 'text/html')
             res.end(generateOfflinePage(config.site.title))
             return
+          }
+
+          // Serve book cover images from content directory
+          const coverMatch = url.match(/^\/books\/([^/]+)\/(cover\.[^?]+)/)
+          if (coverMatch) {
+            const bookSlug = coverMatch[1]
+            const coverFile = coverMatch[2]
+            const coverFilePath = join(contentDir, 'books', bookSlug, coverFile)
+            if (existsSync(coverFilePath)) {
+              const ext = coverFile.split('.').pop()?.toLowerCase()
+              const mimeTypes: Record<string, string> = {
+                jpg: 'image/jpeg',
+                jpeg: 'image/jpeg',
+                png: 'image/png',
+                svg: 'image/svg+xml',
+                webp: 'image/webp',
+              }
+              res.setHeader('Content-Type', mimeTypes[ext || ''] || 'application/octet-stream')
+              res.end(readFileSync(coverFilePath))
+              return
+            }
           }
 
           // Resolve virtual /@pressy-pub/ URLs to real file paths
@@ -588,16 +656,17 @@ export const config = ${JSON.stringify(config)};`
 
           const cssLinks = cssFiles.map(f => `  <link rel="stylesheet" href="${assetPrefix}${f}">`).join('\n')
 
+          const buildFaviconTag = `\n  <link rel="icon" href="${assetPrefix}favicon.png" type="image/png">`
           const buildPwaTags = pwaEnabled
             ? `
   <link rel="manifest" href="${assetPrefix}manifest.webmanifest">
   <meta name="theme-color" content="${pwaConfig.themeColor}">
-  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="${pwaConfig.shortName}">
-  <link rel="apple-touch-icon" href="${assetPrefix}icon-192.png">`
+  <link rel="apple-touch-icon" href="${assetPrefix}icon-192.png">${buildFaviconTag}`
             : `
-  <meta name="theme-color" content="${pwaConfig.themeColor}">`
+  <meta name="theme-color" content="${pwaConfig.themeColor}">${buildFaviconTag}`
 
           const html = `<!DOCTYPE html>
 <html lang="${config.site.language || 'en'}">
@@ -622,8 +691,23 @@ ${cssLinks}${buildPwaTags}
           })
         }
 
+        // Emit book cover images
+        for (const book of manifest.books) {
+          if (book.coverPath && existsSync(book.coverPath)) {
+            const coverFileName = book.coverPath.split('/').pop()!
+            this.emitFile({
+              type: 'asset',
+              fileName: `books/${book.slug}/${coverFileName}`,
+              source: readFileSync(book.coverPath),
+            })
+          }
+        }
+
         // Generate manifest.webmanifest
-        const hasCustomIcons = config.pwa?.icon192 && config.pwa?.icon512
+        // Resolve icon paths: icon192/icon512 override the single `icon` shorthand
+        const resolvedIcon192 = config.pwa?.icon192 || config.pwa?.icon
+        const resolvedIcon512 = config.pwa?.icon512 || config.pwa?.icon
+        const hasCustomIcons = resolvedIcon192 && resolvedIcon512
 
         const webManifest = {
           name: config.site.title,
@@ -661,8 +745,21 @@ ${cssLinks}${buildPwaTags}
           source: generateOfflinePage(config.site.title),
         })
 
-        // Emit placeholder SVG icons if no custom icons provided
-        if (!hasCustomIcons) {
+        // Emit icons — use custom files if provided, otherwise generate placeholders
+        if (hasCustomIcons) {
+          const icon192Path = resolve(resolvedIcon192!)
+          const icon512Path = resolve(resolvedIcon512!)
+          this.emitFile({
+            type: 'asset',
+            fileName: 'icon-192.png',
+            source: readFileSync(icon192Path),
+          })
+          this.emitFile({
+            type: 'asset',
+            fileName: 'icon-512.png',
+            source: readFileSync(icon512Path),
+          })
+        } else {
           this.emitFile({
             type: 'asset',
             fileName: 'icon-192.png',
@@ -672,6 +769,21 @@ ${cssLinks}${buildPwaTags}
             type: 'asset',
             fileName: 'icon-512.png',
             source: generatePlaceholderIcon(512),
+          })
+        }
+
+        // Emit favicon — use custom file, or fall back to the 192 icon, or generate placeholder
+        if (hasCustomFavicon) {
+          this.emitFile({
+            type: 'asset',
+            fileName: 'favicon.png',
+            source: readFileSync(resolve(faviconPath!)),
+          })
+        } else {
+          this.emitFile({
+            type: 'asset',
+            fileName: 'favicon.png',
+            source: generatePlaceholderIcon(32),
           })
         }
 

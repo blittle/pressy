@@ -17,7 +17,15 @@
       "Bash(git add:*)",
       "Bash(grep:*)",
       "Bash(xargs:*)",
-      "Bash(npm view:*)"
+      "Bash(npm view:*)",
+      "WebSearch",
+      "WebFetch(domain:kdp.amazon.com)",
+      "WebFetch(domain:snappa.com)",
+      "WebFetch(domain:www.thecssagency.com)",
+      "WebFetch(domain:www.amazon.com)",
+      "WebFetch(domain:bookshop.org)",
+      "WebFetch(domain:www.goodreads.com)",
+      "WebFetch(domain:angelahaddon.com)"
     ]
   }
 }
