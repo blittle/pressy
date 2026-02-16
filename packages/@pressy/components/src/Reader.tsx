@@ -2481,6 +2481,8 @@ const PAGINATED_STYLES = `
     flex-direction: column;
     overflow: hidden;
     position: relative;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    box-sizing: border-box;
   }
 
   /* Viewport clips overflow and shows one page at a time.
