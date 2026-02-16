@@ -3,7 +3,7 @@
   "checkpoint_id": "e6ef46b78e80",
   "strategy": "manual-commit",
   "branch": "main",
-  "checkpoints_count": 12,
+  "checkpoints_count": 13,
   "files_touched": [
     "README.md",
     "examples/flatland/content/books/flatland/_book.yaml",
@@ -50,13 +50,20 @@
       "context": "/e6/ef46b78e80/2/context.md",
       "content_hash": "/e6/ef46b78e80/2/content_hash.txt",
       "prompt": "/e6/ef46b78e80/2/prompt.txt"
+    },
+    {
+      "metadata": "/e6/ef46b78e80/3/metadata.json",
+      "transcript": "/e6/ef46b78e80/3/full.jsonl",
+      "context": "/e6/ef46b78e80/3/context.md",
+      "content_hash": "/e6/ef46b78e80/3/content_hash.txt",
+      "prompt": "/e6/ef46b78e80/3/prompt.txt"
     }
   ],
   "token_usage": {
-    "input_tokens": 202,
-    "cache_creation_tokens": 356949,
-    "cache_read_tokens": 18219428,
-    "output_tokens": 13873,
-    "api_call_count": 167
+    "input_tokens": 239,
+    "cache_creation_tokens": 414078,
+    "cache_read_tokens": 19408398,
+    "output_tokens": 14580,
+    "api_call_count": 196
   }
 }
