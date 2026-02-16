@@ -215,7 +215,7 @@ function renderBookPage(book: Book, articles: Article[] = []) {
       <div class="pressy-hero">
         {book.coverUrl && (
           <img
-            src={book.coverUrl}
+            src={basePath + book.coverUrl}
             alt={`${book.metadata.title} cover`}
             class="pressy-hero-cover"
           />
@@ -460,7 +460,7 @@ function ChapterReaderWithProgress({
       mdxComponents={useMDXComponents()}
       offlineProps={{
         bookSlug: book.slug,
-        chapterUrls: book.chapters.map(ch => `/books/${book.slug}/${ch.slug}`),
+        chapterUrls: book.chapters.map(ch => `${basePath}/books/${book.slug}/${ch.slug}`),
         cachedBooks,
         cacheProgress,
         onDownload: downloadBookForOffline,
