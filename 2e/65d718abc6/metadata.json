@@ -5,9 +5,15 @@
   "branch": "main",
   "checkpoints_count": 4,
   "files_touched": [
+    "examples/flatland/content/books/flatland/_book.yaml",
+    "examples/flatland/pressy.config.ts",
     "packages/@pressy/components/src/Reader.tsx",
+    "packages/@pressy/components/src/index.ts",
+    "packages/pressy/src/config.ts",
     "packages/pressy/src/runtime/client.tsx",
-    "packages/pressy/src/runtime/offline.ts"
+    "packages/pressy/src/runtime/offline.ts",
+    "packages/pressy/src/runtime/sw.ts",
+    "packages/pressy/src/vite/plugin.ts"
   ],
   "sessions": [
     {
@@ -16,13 +22,20 @@
       "context": "/2e/65d718abc6/0/context.md",
       "content_hash": "/2e/65d718abc6/0/content_hash.txt",
       "prompt": "/2e/65d718abc6/0/prompt.txt"
+    },
+    {
+      "metadata": "/2e/65d718abc6/1/metadata.json",
+      "transcript": "/2e/65d718abc6/1/full.jsonl",
+      "context": "/2e/65d718abc6/1/context.md",
+      "content_hash": "/2e/65d718abc6/1/content_hash.txt",
+      "prompt": "/2e/65d718abc6/1/prompt.txt"
     }
   ],
   "token_usage": {
-    "input_tokens": 73,
-    "cache_creation_tokens": 66344,
-    "cache_read_tokens": 3454983,
-    "output_tokens": 1798,
-    "api_call_count": 63
+    "input_tokens": 251,
+    "cache_creation_tokens": 264838,
+    "cache_read_tokens": 19670898,
+    "output_tokens": 12454,
+    "api_call_count": 212
   }
 }
