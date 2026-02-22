@@ -9,6 +9,8 @@ export interface ProgressData {
   page: number;
   totalPages: number;
   scrollPosition: number;
+  /** In multi-chapter mode, the slug of the chapter this progress belongs to. */
+  activeChapterSlug?: string;
 }
 
 export interface ChapterMapData {
@@ -375,8 +377,16 @@ function ScrollReader({
       });
     };
 
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden") handleUnload();
+    };
+
     window.addEventListener("beforeunload", handleUnload);
-    return () => window.removeEventListener("beforeunload", handleUnload);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      window.removeEventListener("beforeunload", handleUnload);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
   }, [onSaveProgress]);
 
   return (
@@ -1214,6 +1224,7 @@ function PaginatedReader({
             page: chapterPage,
             totalPages: chapterTotalPages,
             scrollPosition: 0,
+            activeChapterSlug,
           });
         }
       } else {
@@ -1254,6 +1265,7 @@ function PaginatedReader({
             page: chapterPage,
             totalPages: chapterTotalPages,
             scrollPosition: 0,
+            activeChapterSlug,
           });
         }
       } else {
@@ -1265,8 +1277,16 @@ function PaginatedReader({
       }
     };
 
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden") handleUnload();
+    };
+
     window.addEventListener("beforeunload", handleUnload);
-    return () => window.removeEventListener("beforeunload", handleUnload);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      window.removeEventListener("beforeunload", handleUnload);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
   }, [
     currentPage,
     totalPages,
@@ -1361,10 +1381,12 @@ function PaginatedReader({
     }
   }, []);
 
-  // Whether the device supports hover (i.e. desktop with a mouse).
-  // Touch-only devices use swipe for page turns; tapping just toggles the footer.
+  // Whether the primary input is a finger (i.e. phone/tablet).
+  // Touch devices use swipe for page turns; tapping just toggles the footer.
+  // We use (pointer: coarse) instead of (hover: none) because some devices
+  // (e.g. Samsung with S-Pen) report hover capability even on touch-only use.
   const isTouchDevice =
-    typeof window !== "undefined" && window.matchMedia("(hover: none)").matches;
+    typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches;
 
   // Click handler: on desktop, edge clicks turn pages and middle clicks
   // toggle footer / double-click fullscreen. On touch devices, any tap

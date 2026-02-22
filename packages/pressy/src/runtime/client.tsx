@@ -405,21 +405,30 @@ function ChapterReaderWithProgress({
   }, [book, chapterSlug])
 
   const handleSaveProgress = (data: ProgressData) => {
+    const saveSlug = data.activeChapterSlug || chapterSlug
+
+    // Single synchronous localStorage write — always current, survives
+    // page close/refresh. This is the sole source of truth for position restore.
+    localStorage.setItem('pressy-last-read', JSON.stringify({
+      bookSlug: book.slug, chapterSlug: saveSlug,
+      page: data.page, totalPages: data.totalPages,
+      scrollPosition: data.scrollPosition,
+    }))
+
+    // IndexedDB write for per-chapter history (used by book progress bar).
+    // Async — may not flush before close, but that's fine for progress %.
     saveReadingProgress({
-      chapterSlug,
+      chapterSlug: saveSlug,
       page: data.page,
       totalPages: data.totalPages,
       scrollPosition: data.scrollPosition,
       timestamp: Date.now(),
     })
 
-    localStorage.setItem('pressy-last-read', JSON.stringify({ bookSlug: book.slug, chapterSlug }))
-
-    // Update global book progress with live page position
     if (data.totalPages > 0) {
       getAllReadingProgress().then((allProgress) => {
         const percent = calculateBookProgressPercent(
-          book, chapterSlug, data.page, data.totalPages, allProgress,
+          book, saveSlug, data.page, data.totalPages, allProgress,
         )
         setBookProgressPercent(percent)
       })
@@ -427,13 +436,19 @@ function ChapterReaderWithProgress({
   }
 
   const handleRestoreProgress = async (): Promise<ProgressData | null> => {
-    const progress = await getReadingProgress(chapterSlug)
-    if (!progress) return null
-    return {
-      page: progress.page,
-      totalPages: progress.totalPages,
-      scrollPosition: progress.scrollPosition,
+    // Read from localStorage — synchronous, always up to date.
+    try {
+      const lastRead = localStorage.getItem('pressy-last-read')
+      if (lastRead) {
+        const parsed = JSON.parse(lastRead)
+        if (parsed.chapterSlug === chapterSlug && parsed.page > 0) {
+          return { page: parsed.page, totalPages: parsed.totalPages, scrollPosition: parsed.scrollPosition || 0 }
+        }
+      }
+    } catch {
+      // ignore
     }
+    return null
   }
 
   const handleChapterChange = (slug: string, page: number, chapterTotalPages: number) => {
@@ -446,7 +461,10 @@ function ChapterReaderWithProgress({
       timestamp: Date.now(),
     })
 
-    localStorage.setItem('pressy-last-read', JSON.stringify({ bookSlug: book.slug, chapterSlug: slug }))
+    localStorage.setItem('pressy-last-read', JSON.stringify({
+      bookSlug: book.slug, chapterSlug: slug,
+      page, totalPages: chapterTotalPages,
+    }))
 
     // Update global book progress
     getAllReadingProgress().then((allProgress) => {
@@ -769,9 +787,17 @@ export function hydrate(data: HydrateData, Content?: ComponentType, chapterMapDa
   basePath = getBasePath(data.route)
   currentRoute.value = data.route
 
-  // Auto-redirect to last-read chapter on fresh app/tab open
+  // Auto-redirect to last-read chapter on fresh app/tab open.
+  // Clear the session flag when the app goes to background so the next
+  // foreground open is treated as fresh (Android PWAs don't reliably
+  // clear sessionStorage when swiped away).
   const isNewSession = !sessionStorage.getItem('pressy-session-active')
   sessionStorage.setItem('pressy-session-active', '1')
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') {
+      sessionStorage.removeItem('pressy-session-active')
+    }
+  })
 
   if (isNewSession && (data.routeType === 'home' || data.routeType === 'book')) {
     const lastRead = localStorage.getItem('pressy-last-read')
