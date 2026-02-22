@@ -1476,6 +1476,7 @@ function PaginatedReader({
 
   const handleMouseMove = useCallback(
     (e: MouseEvent) => {
+      if (isTouchDevice) return;
       const container = containerRef.current;
       if (!container) return;
 
@@ -1502,7 +1503,7 @@ function PaginatedReader({
         footerTimerRef.current = setTimeout(() => setFooterVisible(false), 600);
       }
     },
-    [settingsOpen, tocOpen]
+    [isTouchDevice, settingsOpen, tocOpen]
   );
 
   const handleMouseLeave = useCallback(() => {
@@ -2607,7 +2608,7 @@ const PAGINATED_STYLES = `
   }
 
   /* Hide on touch devices — swipe handles navigation there */
-  @media (hover: none) {
+  @media (pointer: coarse) {
     .pressy-nav-arrow {
       display: none;
     }
