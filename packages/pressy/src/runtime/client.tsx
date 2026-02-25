@@ -799,7 +799,13 @@ export function hydrate(data: HydrateData, Content?: ComponentType, chapterMapDa
     }
   })
 
-  if (isNewSession && (data.routeType === 'home' || data.routeType === 'book')) {
+  // Skip auto-redirect if this navigation came from within the reader
+  // (e.g. backward from first chapter → book TOC). The flag is set by the
+  // Reader component before window.location.href assignments.
+  const isInternalNav = sessionStorage.getItem('pressy-internal-nav')
+  sessionStorage.removeItem('pressy-internal-nav')
+
+  if (isNewSession && !isInternalNav && (data.routeType === 'home' || data.routeType === 'book')) {
     const lastRead = localStorage.getItem('pressy-last-read')
     if (lastRead) {
       try {

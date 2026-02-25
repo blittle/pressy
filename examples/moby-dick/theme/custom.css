@@ -1,0 +1,23 @@
+/*
+ * Moby-Dick Example — Custom Theme
+ * Maritime-inspired typography for Melville's classic.
+ */
+
+@import url('https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap');
+
+:root {
+  /* Custom body font */
+  --pressy-font-body: 'Libre Baskerville', Georgia, 'Times New Roman', serif;
+
+  /* Custom drop cap styling */
+  --pressy-dropcap-color: #1e3a5f;
+  --pressy-dropcap-font-size: 3.5em;
+
+  /* Custom accent color — deep ocean blue */
+  --pressy-accent: #1e3a5f;
+}
+
+[data-theme='dark'] {
+  --pressy-dropcap-color: #7db4d8;
+  --pressy-accent: #7db4d8;
+}

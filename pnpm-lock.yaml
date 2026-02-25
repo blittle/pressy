@@ -51,6 +51,18 @@ importers:
         specifier: workspace:*
         version: link:../../packages/pressy
 
+  examples/moby-dick:
+    dependencies:
+      '@pressy-pub/components':
+        specifier: workspace:*
+        version: link:../../packages/@pressy/components
+      '@pressy-pub/typography':
+        specifier: workspace:*
+        version: link:../../packages/@pressy/typography
+      pressy:
+        specifier: workspace:*
+        version: link:../../packages/pressy
+
   packages/@pressy/components:
     dependencies:
       '@preact/signals':
