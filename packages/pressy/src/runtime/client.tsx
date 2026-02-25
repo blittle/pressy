@@ -1,8 +1,8 @@
 import { render, type ComponentType, type VNode } from 'preact'
 import { useState, useEffect } from 'preact/hooks'
 import { signal, effect } from '@preact/signals'
-import { Reader } from '@pressy-pub/components'
-import type { ProgressData } from '@pressy-pub/components'
+import { Reader, Paywall } from '@pressy-pub/components'
+import type { ProgressData, PaywallProviders } from '@pressy-pub/components'
 import { useMDXComponents } from '@pressy-pub/components/content'
 import {
   registerServiceWorker,
@@ -108,6 +108,10 @@ export async function unlockBook(bookSlug: string, orderId?: string): Promise<vo
     request.onsuccess = () => resolve()
     request.onerror = () => reject(request.error)
   })
+}
+
+export function isUnlockedSync(bookSlug: string): boolean {
+  return !!localStorage.getItem(`pressy-unlocked-${bookSlug}`)
 }
 
 // Client-side router
@@ -227,6 +231,9 @@ function renderBookPage(book: Book, articles: Article[] = []) {
 
   const formattedWords = totalWords.toLocaleString()
 
+  const price = book.metadata.paywall?.price
+  const purchaseLink = book.metadata.paywall?.enabled && book.metadata.paywall.stripePaymentLink
+
   return (
     <div class="pressy-home">
       <div class="pressy-hero">
@@ -238,36 +245,50 @@ function renderBookPage(book: Book, articles: Article[] = []) {
           />
         )}
         <div class="pressy-hero-text">
-          <header class="pressy-home-header">
-            <h1>{book.metadata.title}</h1>
-            <p class="pressy-home-author">by {book.metadata.author}</p>
-            {book.metadata.description && (
-              <p class="pressy-home-desc">{book.metadata.description}</p>
-            )}
-          </header>
+          <h1 class="pressy-hero-title">{book.metadata.title}</h1>
+          <p class="pressy-hero-author">by {book.metadata.author}</p>
+
+          {price && (
+            <p class="pressy-hero-price">{price}</p>
+          )}
+
+          {chapterCount > 0 && (
+            <div class="pressy-cta-group">
+              <StartReadingCTA book={book} />
+              {purchaseLink && (
+                <a
+                  href={book.metadata.paywall!.stripePaymentLink}
+                  class="pressy-cta pressy-cta-secondary"
+                >
+                  Purchase
+                </a>
+              )}
+              <InstallButton />
+            </div>
+          )}
+
           {totalWords > 0 && (
             <div class="pressy-stats">
               <span>{chapterCount} chapter{chapterCount !== 1 ? 's' : ''}</span>
               <span class="pressy-stats-sep">&middot;</span>
               <span>{formattedWords} words</span>
               <span class="pressy-stats-sep">&middot;</span>
-              <span>~{readingMinutes} min</span>
+              <span>~{readingMinutes} min read</span>
               {publishYear && (
                 <>
                   <span class="pressy-stats-sep">&middot;</span>
-                  <span>First published {publishYear}</span>
+                  <span>{publishYear}</span>
                 </>
               )}
             </div>
           )}
-          {chapterCount > 0 && (
-            <div class="pressy-cta-group">
-              <StartReadingCTA book={book} />
-              <InstallButton />
-            </div>
-          )}
         </div>
       </div>
+
+      {book.metadata.description && (
+        <p class="pressy-home-desc pressy-fade-sections">{book.metadata.description}</p>
+      )}
+
       {articles.length > 0 && (
         <section class="pressy-home-section pressy-fade-sections">
           <h2>Articles</h2>
@@ -384,6 +405,7 @@ function ChapterReaderWithProgress({
   paginationMode,
   Content,
   chapterMapData,
+  providers,
 }: {
   book: Book
   chapterSlug: string
@@ -393,8 +415,15 @@ function ChapterReaderWithProgress({
   paginationMode?: 'scroll' | 'paginated'
   Content: ComponentType<{ components?: Record<string, unknown> }>
   chapterMapData?: ChapterMapData
+  providers?: PaywallProviders
 }) {
   const [bookProgressPercent, setBookProgressPercent] = useState<number | undefined>(undefined)
+  const [unlocked, setUnlocked] = useState(() => {
+    const pw = book.metadata.paywall
+    if (!pw?.enabled) return true
+    return isUnlockedSync(book.slug)
+  })
+  const [activeSlug, setActiveSlug] = useState(chapterSlug)
 
   // Load initial global book progress
   useEffect(() => {
@@ -406,6 +435,11 @@ function ChapterReaderWithProgress({
 
   const handleSaveProgress = (data: ProgressData) => {
     const saveSlug = data.activeChapterSlug || chapterSlug
+
+    // Track active chapter for paywall
+    if (saveSlug !== activeSlug) {
+      setActiveSlug(saveSlug)
+    }
 
     // Single synchronous localStorage write — always current, survives
     // page close/refresh. This is the sole source of truth for position restore.
@@ -484,35 +518,57 @@ function ChapterReaderWithProgress({
     }
   }, [prevChapter])
 
+  // Determine if paywall should show based on the active chapter (tracks navigation)
+  const pw = book.metadata.paywall
+  const chapterIdx = book.chapters.findIndex(c => c.slug === activeSlug)
+  const currentChapterNum = chapterIdx >= 0 ? chapterIdx + 1 : 1
+  const showPaywall = pw?.enabled && !unlocked && currentChapterNum > (pw.previewChapters || 0)
+
   return (
-    <Reader
-      title={chapter?.title || chapterSlug}
-      bookTitle={book.metadata.title}
-      chapterSlug={chapterSlug}
-      prevChapter={prevChapter}
-      nextChapter={nextChapter}
-      paginationMode={paginationMode}
-      onSaveProgress={handleSaveProgress}
-      onRestoreProgress={handleRestoreProgress}
-      bookProgressPercent={bookProgressPercent}
-      initialContent={Content}
-      chapterMapData={chapterMapData}
-      currentChapterSlug={chapterSlug}
-      allChapters={book.chapters.map(ch => ({ slug: ch.slug, title: ch.title, wordCount: ch.wordCount }))}
-      bookBasePath={`${basePath}/books/${book.slug}`}
-      onChapterChange={handleChapterChange}
-      mdxComponents={useMDXComponents()}
-      offlineProps={{
-        bookSlug: book.slug,
-        chapterUrls: book.chapters.map(ch => `${basePath}/books/${book.slug}/${ch.slug}`),
-        cachedBooks,
-        cacheProgress,
-        onDownload: downloadBookForOffline,
-        onRemove: clearBookCache,
-      }}
-    >
-      <Content components={useMDXComponents()} />
-    </Reader>
+    <>
+      <Reader
+        title={chapter?.title || chapterSlug}
+        bookTitle={book.metadata.title}
+        chapterSlug={chapterSlug}
+        prevChapter={prevChapter}
+        nextChapter={nextChapter}
+        paginationMode={paginationMode}
+        onSaveProgress={handleSaveProgress}
+        onRestoreProgress={handleRestoreProgress}
+        bookProgressPercent={bookProgressPercent}
+        initialContent={Content}
+        chapterMapData={chapterMapData}
+        currentChapterSlug={chapterSlug}
+        allChapters={book.chapters.map(ch => ({ slug: ch.slug, title: ch.title, wordCount: ch.wordCount }))}
+        bookBasePath={`${basePath}/books/${book.slug}`}
+        onChapterChange={handleChapterChange}
+        mdxComponents={useMDXComponents()}
+        offlineProps={{
+          bookSlug: book.slug,
+          chapterUrls: book.chapters.map(ch => `${basePath}/books/${book.slug}/${ch.slug}`),
+          cachedBooks,
+          cacheProgress,
+          onDownload: downloadBookForOffline,
+          onRemove: clearBookCache,
+        }}
+      >
+        <Content components={useMDXComponents()} />
+      </Reader>
+      {showPaywall && (
+        <Paywall
+          bookSlug={book.slug}
+          bookTitle={book.metadata.title}
+          previewChapters={pw.previewChapters || 0}
+          currentChapter={currentChapterNum}
+          mode={pw.mode}
+          shopifyProductId={pw.shopifyProductId}
+          stripePaymentLink={pw.stripePaymentLink}
+          paypalPlanId={pw.paypalPlanId}
+          providers={providers}
+          onUnlock={() => setUnlocked(true)}
+        />
+      )}
+    </>
   )
 }
 
@@ -522,6 +578,7 @@ function renderChapterPage(
   Content: ComponentType,
   paginationMode?: 'scroll' | 'paginated',
   chapterMapData?: ChapterMapData,
+  providers?: PaywallProviders,
 ) {
   const parts = route.split('/')
   const bookSlug = parts[2]
@@ -566,6 +623,7 @@ function renderChapterPage(
       paginationMode={paginationMode}
       Content={MDXContent}
       chapterMapData={chapterMapData}
+      providers={providers}
     />
   )
 }
@@ -595,9 +653,9 @@ const HOME_STYLES = `
     to   { opacity: 1; transform: translateY(0); }
   }
   .pressy-home {
-    max-width: 65ch;
+    max-width: 38rem;
     margin: 0 auto;
-    padding: 2rem 1.5rem;
+    padding: 3rem 1.5rem;
     font-family: var(--font-body, Georgia, 'Times New Roman', serif);
     color: var(--color-text, #1a1a1a);
   }
@@ -605,93 +663,92 @@ const HOME_STYLES = `
   /* ── Hero layout ────────────────────────── */
   .pressy-hero {
     display: flex;
-    align-items: flex-start;
-    gap: 2.5rem;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
     margin-bottom: 2.5rem;
   }
   .pressy-hero-cover {
-    flex-shrink: 0;
-    max-width: 280px;
+    max-width: 240px;
     width: 100%;
     height: auto;
     border-radius: 4px;
-    box-shadow: 0 4px 24px rgba(0,0,0,0.15);
+    box-shadow: 0 8px 30px rgba(0,0,0,0.18);
+    margin-bottom: 2rem;
     animation: pressy-fade-in 0.6s ease-out both;
   }
   .pressy-hero-text {
-    flex: 1;
     animation: pressy-fade-in 0.6s ease-out 0.15s both;
   }
-  @media (max-width: 700px) {
-    .pressy-hero {
-      flex-direction: column;
-      align-items: center;
-    }
+  .pressy-hero-title {
+    font-size: 2rem;
+    margin: 0 0 0.25rem;
+    line-height: 1.2;
+  }
+  .pressy-hero-author {
+    font-style: italic;
+    color: var(--color-text-muted, #666);
+    margin: 0 0 0.75rem;
+  }
+  .pressy-hero-price {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin: 0 0 0.25rem;
+    color: var(--color-text, #1a1a1a);
+  }
+  @media (min-width: 600px) {
     .pressy-hero-cover {
-      max-width: 220px;
+      max-width: 280px;
     }
-    .pressy-hero-text {
-      text-align: center;
-    }
-    .pressy-home-desc {
-      margin-left: auto;
-      margin-right: auto;
-    }
-    .pressy-stats {
-      justify-content: center;
+    .pressy-hero-title {
+      font-size: 2.25rem;
     }
   }
 
-  /* ── Header ─────────────────────────────── */
-  .pressy-home-header {
-    margin-bottom: 1rem;
-  }
-  .pressy-home-header h1 {
-    font-size: 2rem;
-    margin-bottom: 0.5rem;
-  }
-  .pressy-home-author {
-    font-style: italic;
-    color: var(--color-text-muted, #666);
-  }
+  /* ── Description ─────────────────────────── */
   .pressy-home-desc {
-    color: var(--color-text-muted, #666);
-    line-height: 1.6;
-    max-width: 50ch;
-    margin: 0.5rem 0 0;
+    color: var(--color-text-muted, #555);
+    line-height: 1.7;
+    max-width: 55ch;
+    margin: 0 auto 2rem;
+    text-align: center;
+    font-size: 0.95rem;
   }
 
   /* ── Stats row ──────────────────────────── */
   .pressy-stats {
     display: flex;
     flex-wrap: wrap;
+    justify-content: center;
     gap: 0.4em;
-    font-size: 0.85rem;
-    color: var(--color-text-muted, #666);
+    font-size: 0.8rem;
+    color: var(--color-text-muted, #999);
     margin-top: 1rem;
+    letter-spacing: 0.01em;
   }
   .pressy-stats-sep {
-    opacity: 0.5;
+    opacity: 0.4;
   }
 
   /* ── CTA button ─────────────────────────── */
   .pressy-cta-group {
     display: flex;
     flex-wrap: wrap;
+    justify-content: center;
     gap: 0.75rem;
     align-items: center;
+    margin-top: 1.25rem;
   }
   .pressy-cta {
     display: inline-block;
-    margin-top: 1.25rem;
-    padding: 0.75rem 1.75rem;
+    padding: 0.75rem 2rem;
     background: var(--color-link, #2563eb);
     color: #fff;
     font-size: 1rem;
     font-weight: 600;
     text-decoration: none;
     border-radius: 0.5rem;
-    transition: opacity 0.15s;
+    transition: opacity 0.15s, background 0.15s, color 0.15s;
   }
   .pressy-cta:hover {
     opacity: 0.85;
@@ -760,6 +817,7 @@ interface HydrateData {
   routeType: string
   manifest: ContentManifest
   pagination?: PaginationConfig
+  providers?: PaywallProviders
 }
 
 // Compute the base path by comparing the known route to the actual URL
@@ -885,7 +943,7 @@ export function hydrate(data: HydrateData, Content?: ComponentType, chapterMapDa
     }
     case 'chapter':
       page = Content
-        ? renderChapterPage(data.manifest, data.route, Content, data.pagination?.defaultMode, chapterMapData)
+        ? renderChapterPage(data.manifest, data.route, Content, data.pagination?.defaultMode, chapterMapData, data.providers)
         : <div>Loading...</div>
       break
     case 'article':

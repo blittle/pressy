@@ -12,4 +12,8 @@ cover: cover.webp
 publishDate: "1851-10-18"
 language: en
 paywall:
-  enabled: false
+  enabled: true
+  previewChapters: 3
+  price: "$1.00"
+  mode: stripe
+  stripePaymentLink: "https://buy.stripe.com/test_28EeV68AP4Pj5Ud7MR9oc00"

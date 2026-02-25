@@ -15,6 +15,6 @@ export type { ReaderProps, ProgressData, ChapterMapData, OfflineProps } from './
 
 export type { NavigationProps } from './Navigation.js'
 export type { TableOfContentsProps, TOCItem } from './TableOfContents.js'
-export type { PaywallProps } from './Paywall.js'
+export type { PaywallProps, PaywallProviders, PaywallMode } from './Paywall.js'
 export type { DownloadBookProps } from './DownloadBook.js'
 export type { BookProgressProps } from './BookProgress.js'

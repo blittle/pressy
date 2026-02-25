@@ -1,3 +1,5 @@
+export type PaywallMode = 'email' | 'shopify' | 'stripe' | 'paypal'
+
 export interface BookMetadata {
   title: string
   author: string
@@ -9,8 +11,11 @@ export interface BookMetadata {
   paywall?: {
     enabled: boolean
     previewChapters: number
+    price?: string
+    mode?: PaywallMode
     shopifyProductId?: string
-    mode?: 'shopify' | 'email'
+    stripePaymentLink?: string
+    paypalPlanId?: string
   }
 }
 
