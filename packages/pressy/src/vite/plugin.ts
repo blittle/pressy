@@ -230,6 +230,12 @@ export function pressyPlugin(config: PressyConfig): Plugin[] {
       const importPath = '/' + relative(root, article.filePath).split('\\').join('/')
       contentImport = `import Content from '${importPath}';\n    `
       contentArg = ', Content'
+    } else if (route.type === 'book' && route.book) {
+      chapterMapImport = `import { chapterMap, chapterOrder } from '${VIRTUAL_CHAPTER_MAP_PREFIX}${route.book.slug}';\n    `
+      chapterMapArg = ', undefined, { chapterMap, chapterOrder }'
+    } else if (route.type === 'home' && manifest.books.length === 1) {
+      chapterMapImport = `import { chapterMap, chapterOrder } from '${VIRTUAL_CHAPTER_MAP_PREFIX}${manifest.books[0].slug}';\n    `
+      chapterMapArg = ', undefined, { chapterMap, chapterOrder }'
     }
 
     const dataJson = JSON.stringify({
@@ -443,6 +449,12 @@ export const config = ${JSON.stringify(config)};`
             const importPath = article.filePath
             contentImport = `import Content from '${importPath}';\n`
             contentArg = ', Content'
+          } else if (route.type === 'book' && route.book) {
+            chapterMapImport = `import { chapterMap, chapterOrder } from '${VIRTUAL_CHAPTER_MAP_PREFIX}${route.book.slug}';\n`
+            chapterMapArg = ', undefined, { chapterMap, chapterOrder }'
+          } else if (route.type === 'home' && manifest.books.length === 1) {
+            chapterMapImport = `import { chapterMap, chapterOrder } from '${VIRTUAL_CHAPTER_MAP_PREFIX}${manifest.books[0].slug}';\n`
+            chapterMapArg = ', undefined, { chapterMap, chapterOrder }'
           }
 
           return [

@@ -28,3 +28,11 @@ export interface OfflineProps {
   onDownload: (bookSlug: string, chapterUrls: string[]) => void;
   onRemove: (bookSlug: string) => void;
 }
+
+export interface TTSProps {
+  supported: boolean;
+  isPlaying: boolean;
+  rate: number;
+  onToggle: () => void;
+  onSetRate: (rate: number) => void;
+}

@@ -353,12 +353,50 @@ export const SCROLL_STYLES = `
     cursor: default;
   }
 
+  /* ── TTS footer icon ───────────────────────────────────── */
+  .pressy-page-footer--scroll .pressy-tts-icon {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border: none;
+    background: transparent;
+    color: var(--color-text-muted, #6c757d);
+    cursor: pointer;
+    border-radius: 0.375rem;
+    transition: color 0.15s, background 0.15s;
+    padding: 0;
+  }
+
+  .pressy-page-footer--scroll .pressy-tts-icon:hover {
+    color: var(--color-text, #212529);
+    background: var(--color-bg-subtle, #f8f9fa);
+  }
+
+  .pressy-page-footer--scroll .pressy-tts-icon--playing {
+    color: var(--color-link, #2563eb);
+  }
+
+  @keyframes pressy-tts-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+
+  .pressy-page-footer--scroll .pressy-tts-icon--playing svg {
+    animation: pressy-tts-pulse 1.5s ease-in-out infinite;
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .pressy-page-footer--scroll {
       transition: none;
     }
     .pressy-toc-backdrop--scroll,
     .pressy-toc-backdrop--scroll .pressy-toc-drawer {
+      animation: none;
+    }
+    .pressy-page-footer--scroll .pressy-tts-icon--playing svg {
       animation: none;
     }
   }
