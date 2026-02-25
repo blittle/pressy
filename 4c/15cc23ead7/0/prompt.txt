@@ -1,0 +1,415 @@
+I'm trying to setup automatic deploys to github pages of the flatland example. It has two requirements:
+
+---
+
+[Request interrupted by user]
+
+---
+
+I'm trying to setup automatic deploys to github pages of the flatland example. It has two requirements:
+1. Merging to main, deploys to github pages
+2. An open PR, should also deploy to github pages, but in a directory scoped to the PR
+3. When the PR is closed, the scoped directory on github pages should get removed
+
+---
+
+Now I see it's running the GH action, but I see this error: `Error: Unable to resolve action rossjrw/pr-preview-deploy-action, repository not found`
+
+---
+
+Now I see this error in the action workflow:
+```
+  Error: Multiple versions of pnpm specified:
+    - version 9 in the GitHub Action config with the key "version"
+    - version pnpm@8.12.0 in the package.json with the key "packageManager"
+  Remove one of these versions to avoid version mismatch errors like ERR_PNPM_BAD_PM_VERSION
+      at readTarget (/home/runner/work/_actions/pnpm/action-setup/v4/dist/index.js:1:4977)
+      at runSelfInstaller (/home/runner/work/_actions/pnpm/action-setup/v4/dist/index.js:1:4142)
+      at async install (/home/runner/work/_actions/pnpm/action-setup/v4/dist/index.js:1:3154)
+      at async main (/home/runner/work/_actions/pnpm/action-setup/v4/dist/index.js:1:445)
+  Error: Error: Multiple versions of pnpm specified:
+    - version 9 in the GitHub Action config with the key "version"
+    - version pnpm@8.12.0 in the package.json with the key "packageManager"
+  Remove one of these versions to avoid version mismatch errors like ERR_PNPM_BAD_PM_VERSION
+```
+
+---
+
+What's causing this error when running `pnpm build`:
+```
+
+---
+
+[Request interrupted by user]
+
+---
+
+What's causing this error when running `pnpm build`:
+```
+DTS Build start
+src/runtime/client.ts(3,24): error TS2307: Cannot find module '@pressy/components' or its corresponding type declarations.
+src/runtime/client.ts(4,34): error TS2307: Cannot find module '@pressy/components/content' or its corresponding type declarations.
+
+Error: error occurred in dts build
+    at Worker.<anonymous> (/Users/blittle/dev/pressy/node_modules/.pnpm/tsup@8.5.1_typescript@5.9.3_yaml@2.8.2/node_modules/tsup/dist/index.js:1545:26)
+    at Worker.emit (node:events:519:28)
+    at MessagePort.<anonymous> (node:internal/worker:270:53)
+    at [nodejs.internal.kHybridDispatch] (node:internal/event_target:827:20)
+    at MessagePort.<anonymous> (node:internal/per_context/messageport:23:28)
+DTS Build error
+/Users/blittle/dev/pressy/packages/pressy:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  pressy@0.1.0 build: `tsup`
+Exit status 1
+ ELIFECYCLE  Command failed with exit code 1.
+```
+
+---
+
+Should line 37 of @.github/workflows/deploy-pages.yml just do a `pnpm build`, so it's using the same script as me when I test?
+
+---
+
+I don't think that line 42 of @.github/workflows/deploy-pages.yml is the right command to build the example
+
+---
+
+Running that command gives this error:
+```
+ pnpm --filter flatland-example build                                                                              1 ↵
+
+> flatland-example@0.1.0 build /Users/blittle/dev/pressy/examples/flatland
+> pressy build
+
+sh: pressy: command not found
+/Users/blittle/dev/pressy/examples/flatland:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  flatland-example@0.1.0 build: `pressy build`
+spawn ENOENT
+```
+
+---
+
+[Request interrupted by user for tool use]
+
+---
+
+But this also needs to be done in the gh action script?
+
+---
+
+That still didn't work:
+```
+pnpm --filter flatland-example build
+
+> flatland-example@0.1.0 build /Users/blittle/dev/pressy/examples/flatland
+> pnpm exec pressy build
+
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command "pressy" not found
+/Users/blittle/dev/pressy/examples/flatland:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  flatland-example@0.1.0 build: `pnpm exec pressy build`
+Exit status 1
+```
+
+---
+
+[Request interrupted by user for tool use]
+
+---
+
+So should the flow be `pnpm install` -> `pnpm build` -> `pnpm install`? That seems a bit odd, but maybe okay. Should the gh action also be updated to do that?
+
+---
+
+Okay! Now it properly executes the CLI, but I think there is a totall different problem with the build:
+
+---
+
+[Request interrupted by user]
+
+---
+
+Okay! Now it properly executes the CLI, but I think there is a totall different problem with the build:
+```
+pnpm --filter flatland-example build                        
+
+> flatland-example@0.1.0 build /Users/blittle/dev/pressy/examples/flatland
+> pressy build
+
+Building for production...
+
+vite v5.4.21 building for production...
+✓ 0 modules transformed.
+x Build failed in 21ms
+node:internal/process/promises:394
+    triggerUncaughtException(err, true /* fromPromise */);
+    ^
+
+Could not resolve entry module "index.html".
+    at getRollupError (file:///Users/blittle/dev/pressy/node_modules/.pnpm/rollup@4.57.1/node_modules/rollup/dist/es/shared/parseAst.js:402:41)
+    at error (file:///Users/blittle/dev/pressy/node_modules/.pnpm/rollup@4.57.1/node_modules/rollup/dist/es/shared/parseAst.js:398:42)
+    at ModuleLoader.loadEntryModule (file:///Users/blittle/dev/pressy/node_modules/.pnpm/rollup@4.57.1/node_modules/rollup/dist/es/shared/node-entry.js:21708:20)
+    at async Promise.all (index 0) {
+  code: 'UNRESOLVED_ENTRY'
+}
+
+Node.js v22.20.0
+/Users/blittle/dev/pressy/examples/flatland:
+ ERR_PNPM_RECURSIVE_RUN_FIRAIL  flatland-example@0.1.0 build: `pressy build`
+```
+
+---
+
+[Request interrupted by user for tool use]
+
+---
+
+The build now works, but attempting to load the app, I see errors loading all the static resources:
+```
+10:4:34 [404]: /@pressy/typography/fluid.css
+10:4:34 [404]: /@pressy/typography/themes/light.css
+10:4:34 [404]: /@pressy/client
+10:4:34 [404]: /@pressy/typography/prose.css
+10:4:34 [404]: /@pressy/typography/fluid.css
+10:4:34 [404]: /@pressy/typography/themes/light.css
+10:4:34 [404]: /@pressy/client
+10:4:34 [404]: /@pressy/typography/prose.css
+10:4:34 [404]: /@pressy/typography/fluid.css
+10:4:34 [404]: /@pressy/typography/themes/light.css
+10:4:34 [404]: /@pressy/client
+10:4:35 [404]: /@pressy/typography/prose.css
+10:4:35 [404]: /@pressy/typography/fluid.css
+10:4:35 [404]: /@pressy/typography/themes/light.css
+10:4:35 [404]: /@pressy/client
+10:4:49 [200]: /
+10:4:49 [404]: /@pressy/typography/prose.css
+10:4:49 [404]: /@pressy/typography/fluid.css
+10:4:49 [404]: /@pressy/typography/themes/light.css
+10:4:49 [404]: /@pressy/client
+10:4:49 [200]: /manifest.webmanifest
+10:4:49 [404]: /favicon.ico
+10:4:49 [404]: /icon-192.png
+10:4:51 [404]: /@pressy/typography/prose.css
+10:4:51 [404]: /@pressy/typography/fluid.css
+10:4:51 [404]: /@pressy/typography/themes/light.css
+10:4:51 [404]: /.well-known/appspecific/com.chrome.devtools.json
+```
+
+---
+
+[Request interrupted by user for tool use]
+
+---
+
+Now it loads those resources, but in the browser I see these errors:
+```
+
+﻿
+(index):15 Uncaught SyntaxError: The requested module '/assets/_virtual_pressy-entry-jafklEId.js' does not provide an export named 'hydrate' (at (index):15:14)
+icon-192.png:1 
+ GET http://127.0.0.1:8080/icon-192.png 404 (Not Found)
+```
+
+---
+
+The home page now loads, but the child pages do not:
+```
+GET http://127.0.0.1:8080/content/books/flatland/00-preface.mdx net::ERR_ABORTED 404 (Not Found)
+```
+
+---
+
+[Request interrupted by user for tool use]
+
+---
+
+Building flatland fails with:
+```
+x Build failed in 85ms
+node:internal/process/promises:394
+    triggerUncaughtException(err, true /* fromPromise */);
+    ^
+
+[vite]: Rollup failed to resolve import "preact/jsx-runtime" from "/Users/blittle/dev/pressy/examples/flatland/content/books/flatland/00-preface.mdx".
+This is most likely unintended because it can break your application at runtime.
+If you do want to externalize this module explicitly add it to
+`build.rollupOptions.external`
+    at viteWarn (file:///Users/blittle/dev/pressy/node_modules/.pnpm/vite@5.4.21_@types+node@20.19.33/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:65855:17)
+    at onRollupWarning (file:///Users/blittle/dev/pressy/node_modules/.pnpm/vite@5.4.21_@types+node@20.19.33/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:65887:5)
+    at onwarn (file:///Users/blittle/dev/pressy/node_modules/.pnpm/vite@5.4.21_@types+node@20.19.33/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:65550:7)
+    at file:///Users/blittle/dev/pressy/node_modules/.pnpm/rollup@4.57.1/node_modules/rollup/dist/es/shared/node-entry.js:20972:13
+    at Object.logger [as onLog] (file:///Users/blittle/dev/pressy/node_modules/.pnpm/rollup@4.57.1/node_modules/rollup/dist/es/shared/node-entry.js:22945:9)
+    at ModuleLoader.handleInvalidResolvedId (file:///Users/blittle/dev/pressy/node_modules/.pnpm/rollup@4.57.1/node_modules/rollup/dist/es/shared/node-entry.js:21689:26)
+    at file:///Users/blittle/dev/pressy/node_modules/.pnpm/rollup@4.57.1/node_modules/rollup/dist/es/shared/node-entry.js:21647:26 {
+  watchFiles: [
+    'package.json',
+    '/Users/blittle/dev/pressy/packages/@pressy/typography/package.json',
+    '/Users/blittle/dev/pressy/packages/pressy/dist/runtime/client.js',
+    '/Users/blittle/dev/pressy/examples/flatland/content/books/flatland/00-preface.mdx',
+    '/Users/blittle/dev/pressy/examples/flatland/content/books/flatland/01-of-the-nature-of-flatland.mdx',
+    '/Users/blittle/dev/pressy/examples/flatland/content/books/flatland/03-concerning-the-inhabitants.mdx',
+    '/Users/blittle/dev/pressy/examples/flatland/content/books/flatland/04-concerning-the-women.mdx',
+    '/Users/blittle/dev/pressy/examples/flatland/content/books/flatland/02-of-the-climate-and-houses.mdx',
+    '/Users/blittle/dev/pressy/examples/flatland/content/books/flatland/05-of-our-methods-of-recognizing.mdx',
+    '/Users/blittle/dev/pressy/examples/flatland/content/books/flatland/06-of-recognition-by-sight.mdx',
+    '/Users/blittle/dev/pressy/examples/flatland/content/books/flatland/07-concerning-a-stranger.mdx',
+    '/Users/blittle/dev/pressy/examples/flatland/content/articles/about-flatland/index.mdx',
+    '/Users/blittle/dev/pressy/packages/pressy/package.json',
+    '/Users/blittle/dev/pressy/packages/@pressy/components/package.json',
+    '/Users/blittle/dev/pressy/examples/flatland/package.json'
+  ]
+}
+
+Node.js v22.20.0
+/Users/blittle/dev/pressy/examples/flatland:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  flatland-example@0.1.0 build: `pressy build`
+Exit status 1
+```
+
+---
+
+Okay, now let's go back and fix the 404 icon loading `/icon-192.png`
+
+---
+
+[Request interrupted by user for tool use]
+
+---
+
+I'll wait to solve it instead
+
+---
+
+It works locally now, but in CI on the github action I get this error when trying to build flatland:
+
+```
+Run pnpm --filter flatland-example build
+  pnpm --filter flatland-example build
+  shell: /usr/bin/bash -e {0}
+  env:
+    PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+  
+> flatland-example@0.1.0 build /home/runner/work/pressy/pressy/examples/flatland
+> pressy build
+node:internal/modules/esm/get_format:189
+  throw new ERR_UNKNOWN_FILE_EXTENSION(ext, filepath);
+        ^
+TypeError [ERR_UNKNOWN_FILE_EXTENSION]: Unknown file extension ".ts" for /home/runner/work/pressy/pressy/examples/flatland/pressy.config.ts
+    at Object.getFileProtocolModuleFormat [as file:] (node:internal/modules/esm/get_format:189:9)
+    at defaultGetFormat (node:internal/modules/esm/get_format:232:36)
+    at defaultLoad (node:internal/modules/esm/load:145:22)
+    at async ModuleLoader.loadAndTranslate (node:internal/modules/esm/loader:543:45)
+    at async ModuleJob._link (node:internal/modules/esm/module_job:148:19) {
+  code: 'ERR_UNKNOWN_FILE_EXTENSION'
+}
+Node.js v20.20.0
+/home/runner/work/pressy/pressy/examples/flatland:
+�ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  flatland-example@0.1.0 build: `pressy build`
+Exit status 1
+Error: Process completed with exit code 1.
+```
+
+---
+
+Now the build breaks locally:
+
+```
+pnpm --filter flatland-example build
+
+> flatland-example@0.1.0 build /Users/blittle/dev/pressy/examples/flatland
+> pressy build
+
+file:REDACTED.mjs:11
+  throw Error('Dynamic require of "' + x + '" is not supported');
+        ^
+
+Error: Dynamic require of "os" is not supported
+    at file:REDACTED.mjs:11:9
+    at ../../node_modules/.pnpm/fast-glob@3.3.3/node_modules/fast-glob/out/utils/path.js (file:REDACTED.mjs:104:14)
+    at __require2 (file:REDACTED.mjs:14:50)
+    at ../../node_modules/.pnpm/fast-glob@3.3.3/node_modules/fast-glob/out/utils/index.js (file:REDACTED.mjs:3417:16)
+    at __require2 (file:REDACTED.mjs:14:50)
+    at ../../node_modules/.pnpm/fast-glob@3.3.3/node_modules/fast-glob/out/managers/tasks.js (file:REDACTED.mjs:3434:17)
+    at __require2 (file:REDACTED.mjs:14:50)
+    at ../../node_modules/.pnpm/fast-glob@3.3.3/node_modules/fast-glob/out/index.js (file:REDACTED.mjs:5448:23)
+    at __require2 (file:REDACTED.mjs:14:50)
+    at file:REDACTED.mjs:16330:32
+
+Node.js v22.20.0
+/Users/blittle/dev/pressy/examples/flatland:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  flatland-example@0.1.0 build: `pressy build`
+Exit status 1
+```
+
+---
+
+Still errors:
+
+```
+pnpm --filter flatland-example build
+
+> flatland-example@0.1.0 build /Users/blittle/dev/pressy/examples/flatland
+> pressy build
+
+node:internal/modules/package_json_reader:266
+  throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
+        ^
+
+Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'pressy' imported from REDACTED.mjs
+    at Object.getPackageJSONURL (node:internal/modules/package_json_reader:266:9)
+    at packageResolve (node:internal/modules/esm/resolve:767:81)
+    at moduleResolve (node:internal/modules/esm/resolve:853:18)
+    at defaultResolve (node:internal/modules/esm/resolve:983:11)
+    at #cachedDefaultResolve (node:internal/modules/esm/loader:731:20)
+    at ModuleLoader.resolve (node:internal/modules/esm/loader:708:38)
+    at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:310:38)
+    at ModuleJob._link (node:internal/modules/esm/module_job:183:49)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5) {
+  code: 'ERR_MODULE_NOT_FOUND'
+}
+
+Node.js v22.20.0
+/Users/blittle/dev/pressy/examples/flatland:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  flatland-example@0.1.0 build: `pressy build`
+Exit status 1
+```
+
+---
+
+Still broken:
+
+```
+pnpm --filter flatland-example build
+
+> flatland-example@0.1.0 build /Users/blittle/dev/pressy/examples/flatland
+> pressy build
+
+file:REDACTED.mjs:11
+  throw Error('Dynamic require of "' + x + '" is not supported');
+        ^
+
+Error: Dynamic require of "os" is not supported
+    at file:REDACTED.mjs:11:9
+    at ../../node_modules/.pnpm/fast-glob@3.3.3/node_modules/fast-glob/out/utils/path.js (file:REDACTED.mjs:104:14)
+    at __require2 (file:REDACTED.mjs:14:50)
+    at ../../node_modules/.pnpm/fast-glob@3.3.3/node_modules/fast-glob/out/utils/index.js (file:REDACTED.mjs:3417:16)
+    at __require2 (file:REDACTED.mjs:14:50)
+    at ../../node_modules/.pnpm/fast-glob@3.3.3/node_modules/fast-glob/out/managers/tasks.js (file:REDACTED.mjs:3434:17)
+    at __require2 (file:REDACTED.mjs:14:50)
+    at ../../node_modules/.pnpm/fast-glob@3.3.3/node_modules/fast-glob/out/index.js (file:REDACTED.mjs:5448:23)
+    at __require2 (file:REDACTED.mjs:14:50)
+    at file:REDACTED.mjs:16330:32
+
+Node.js v22.20.0
+/Users/blittle/dev/pressy/examples/flatland:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  flatland-example@0.1.0 build: `pressy build`
+Exit status 1
+```
+
+Do we need to take a step back and reconsider hwo we are doing this?
+
+---
+
+Okay, it deploys, but all the paths are wrong because the preview deploys to pages look like `https://blittle.github.io/pressy/pr-preview/pr-4/`, but the problem is the asset loading starts with a root slash, so they fail to load `GET https://blittle.github.io/assets/index-gRa5PqJA.js net::ERR_ABORTED 404 (Not Found)`
+
+---
+
+Make sure the links all work too

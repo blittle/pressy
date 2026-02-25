@@ -1,0 +1,522 @@
+Implement the following plan:
+
+# Settings Dialog in Reader Footer
+
+## Context
+
+The reader footer (shown on tap/hover) currently only has a progress bar. The user wants a settings button below the progress bar that opens a dialog for adjusting font size and theme (Light, Dark, System, Sepia).
+
+## Files to Modify
+
+| File | Change |
+|------|--------|
+| `packages/@pressy/components/src/Reader.tsx` | Settings button in footer, settings panel UI, font size + theme state |
+| `packages/pressy/src/runtime/client.tsx` | Update `setTheme()`/`loadTheme()` to support `"system"` value |
+
+## Existing Patterns to Reuse
+
+- **Theme switching**: `data-theme` attr on `<html>` + `localStorage('pressy-theme')` — `client.tsx:120-133`
+- **Theme CSS**: `light.css`, `dark.css`, `sepia.css` in `@pressy/typography/src/themes/`
+- **Font size base**: `--font-size-base` in `fluid.css`, applied via `html { font-size: var(--font-size-base) }`
+
+## Implementation
+
+### Step 1: Pass book title through to Reader (`client.tsx`)
+
+- Add `bookTitle` prop to `ReaderProps` and `PaginatedReaderProps`
+- In `ChapterReaderWithProgress`, pass `bookTitle={book.metadata.title}`
+- Already available: `book.metadata.title` at `client.tsx:417`
+
+### Step 2: "System" theme support (`client.tsx`)
+
+- `setTheme('system')` stores `"system"` in localStorage, then resolves to `"light"` or `"dark"` via `prefers-color-scheme` and applies that to `data-theme`
+- Add a `matchMedia('(prefers-color-scheme: dark)')` change listener so theme updates live when OS preference changes
+
+### Step 3: Settings panel in `Reader.tsx`
+
+**Footer layout** — below the progress bar, a row with the book title on the left and a gear icon on the right:
+
+```
+┌─────────────────────────────┐
+│ ██████████░░░░░░░░ progress │
+│ Flatland              ⚙     │
+└─────────────────────────────┘
+```
+
+The book title is passed as a prop (already available as `bookTitle` from the hydrate data). Tapping the gear opens a panel that slides up from the footer.
+
+**Theme section** — 4 option buttons in a row, each with a small SVG icon + label:
+- Light (sun) · Dark (moon) · System (monitor) · Sepia (book-open)
+- Active option gets highlighted border. Calls existing `setTheme()` pattern.
+
+**Font size section** — `[A-]  100%  [A+]` row:
+- Stored in `localStorage('pressy-font-size')` as a multiplier (e.g. `"1.1"`)
+- Applied via `document.documentElement.style.setProperty('--font-size-base', computed)`
+- Range: 0.8x to 1.5x in 0.1 steps, default 1.0x (no override)
+- After change, call `recalculatePages()` since column layout changes
+
+**Closing**: tapping gear again or tapping outside the panel closes it. The container click handler skips page turns when the settings panel is open (check if click target is inside `.pressy-settings-panel`).
+
+### Step 4: Font size persistence
+
+- On PaginatedReader mount, read `pressy-font-size` from localStorage and apply
+- After changing font size, save to localStorage and recalculate pages (small delay for reflow)
+
+### Step 5: Styles in `PAGINATED_STYLES`
+
+Settings panel:
+- Positioned absolutely above footer, full width
+- `var(--color-bg)` background, border-top, subtle box-shadow
+- Compact padding, works well on mobile
+- Slide-up/down via `transform: translateY` + `opacity` transition (same pattern as footer)
+- Theme buttons: small rounded pills with icon + text, grid/flex row
+- Font size buttons: circular `-`/`+` with percentage label between
+
+## Verification
+
+1. `pnpm --filter @pressy/components build` — no errors
+2. Dev server — tap middle of page, footer with gear icon appears
+3. Tap gear → settings panel slides up
+4. Change theme → immediate switch, persists on reload
+5. Select "System" → follows OS preference, updates live on OS theme change
+6. Adjust font size → text reflows, page count recalculates, persists on reload
+7. Tap outside panel → closes
+8. Page turn taps still work when panel is closed
+
+
+If you need specific details from before exiting plan mode (like exact code snippets, error messages, or content you generated), read the full transcript at: /Users/blittle/.claude/projects/-Users-blittle-dev-pressy/004407cd-4bb6-40a4-9ab1-445b085e4dfe.jsonl
+
+---
+
+Could we actually implement the different themes?
+
+---
+
+Could you reduce the padding at the top of the page a bit from the header/title?
+
+---
+
+Can you add a readme for the project?
+
+---
+
+git s
+
+---
+
+[Request interrupted by user]
+
+---
+
+Could you help me publish this to npm?
+
+---
+
+Okay I logged in. Can you setup a script for publishing everything in the proper order?
+
+---
+
+Publish failed with this error:
+
+└─ Done in 3.2s
+npm notice
+npm notice 📦  @pressy/components@0.1.0
+npm notice Tarball Contents
+npm notice 1.3kB dist/content/index.d.ts
+npm notice 10.1kB dist/content/index.js
+npm notice 14.6kB dist/content/index.js.map
+npm notice 4.2kB dist/index.d.ts
+npm notice 94.4kB dist/index.js
+npm notice 149.1kB dist/index.js.map
+npm notice 899B package.json
+npm notice Tarball Details
+npm notice name: @pressy/components
+npm notice version: 0.1.0
+npm notice filename: pressy-components-0.1.0.tgz
+npm notice package size: 57.4 kB
+npm notice unpacked size: 274.6 kB
+npm notice shasum: 69d92d820cfceac0a99ebb0a31d183d34969a44e
+npm notice integrity: sha512-ngUI555K9xTgy[...]Jr77381yAt++g==
+npm notice total files: 7
+npm notice
+npm notice Publishing to https://registry.npmjs.org/ with tag latest and public access
+npm notice Access token expired or revoked. Please try logging in again.
+npm error code E404
+npm error 404 Not Found - PUT https://registry.npmjs.org/@pressy%2fcomponents - Not found
+npm error 404
+npm error'@pressy/components@0.1.0' is not in this registry.
+npm error 404
+npm error 404 Note that you can also install from a
+npm error 404 tarball, folder, http url, or git url.
+npm error A complete log of this run can be found in: /Users/blittle/.npm/_logs/2026-02-15T21_18_35_338Z-debug-0.log
+ ELIFECYCLE  Command failed with exit code 1.
+
+---
+
+The org isn't available. What should I consider instead?
+
+---
+
+[Request interrupted by user for tool use]
+
+---
+
+I setup the org pressy-pub
+
+---
+
+This seems to have broken the local flatland example build:
+
+x Build failed in 114ms
+node:internal/process/promises:394
+    triggerUncaughtException(err, true /* fromPromise */);
+    ^
+
+[vite]: Rollup failed to resolve import "@pressy-pub/shopify" from "/Users/blittle/dev/pressy/packages/@pressy/components/dist/index.js".
+This is most likely unintended because it can break your application at runtime.
+If you do want to externalize this module explicitly add it to
+`build.rollupOptions.external`
+    at viteWarn (file:///Users/blittle/dev/pressy/node_modules/.pnpm/vite@5.4.21_@types+node@20.19.33/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:65855:17)
+    at onRollupWarning (file:///Users/blittle/dev/pressy/node_modules/.pnpm/vite@5.4.21_@types+node@20.19.33/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:65887:5)
+    at onwarn (file:///Users/blittle/dev/pressy/node_modules/.pnpm/vite@5.4.21_@types+node@20.19.33/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:65550:7)
+    at file:///Users/blittle/dev/pressy/node_modules/.pnpm/rollup@4.57.1/node_modules/rollup/dist/es/shared/node-entry.js:20972:13
+    at Object.logger [as onLog] (file:///Users/blittle/dev/pressy/node_modules/.pnpm/rollup@4.57.1/node_modules/rollup/dist/es/shared/node-entry.js:22945:9)
+    at ModuleLoader.handleInvalidResolvedId (file:///Users/blittle/dev/pressy/node_modules/.pnpm/rollup@4.57.1/node_modules/rollup/dist/es/shared/node-entry.js:21689:26)
+    at ModuleLoader.resolveDynamicImport (file:///Users/blittle/dev/pressy/node_modules/.pnpm/rollup@4.57.1/node_modules/rollup/dist/es/shared/node-entry.js:21747:58)
+    at async file:///Users/blittle/dev/pressy/node_modules/.pnpm/rollup@4.57.1/node_modules/rollup/dist/es/shared/node-entry.js:21631:32 {
+  watchFiles: [
+    'package.json',
+    '/Users/blittle/dev/pressy/packages/@pressy/typography/package.json',
+    '/Users/blittle/dev/pressy/packages/@pressy/typography/src/prose.css',
+    '/Users/blittle/dev/pressy/packages/@pressy/typography/src/fluid.css',
+    '/Users/blittle/dev/pressy/packages/@pressy/typography/src/themes/dark.css',
+    '/Users/blittle/dev/pressy/packages/@pressy/typography/src/themes/sepia.css',
+    '/Users/blittle/dev/pressy/packages/@pressy/typography/src/themes/light.css',
+    '/Users/blittle/dev/pressy/packages/pressy/dist/runtime/client.js',
+    '/Users/blittle/dev/pressy/examples/flatland/content/books/flatland/00-preface.mdx',
+    '/Users/blittle/dev/pressy/examples/flatland/content/books/flatland/01-of-the-nature-of-flatland.mdx',
+    '/Users/blittle/dev/pressy/examples/flatland/content/books/flatland/02-of-the-climate-and-houses.mdx',
+    '/Users/blittle/dev/pressy/examples/flatland/content/books/flatland/04-concerning-the-women.mdx',
+    '/Users/blittle/dev/pressy/examples/flatland/content/books/flatland/03-concerning-the-inhabitants.mdx',
+    '/Users/blittle/dev/pressy/examples/flatland/content/books/flatland/06-of-recognition-by-sight.mdx',
+    '/Users/blittle/dev/pressy/examples/flatland/content/books/flatland/05-of-our-methods-of-recognizing.mdx',
+    '/Users/blittle/dev/pressy/examples/flatland/content/books/flatland/07-concerning-a-stranger.mdx',
+    '/Users/blittle/dev/pressy/examples/flatland/content/articles/about-flatland/index.mdx',
+    '/Users/blittle/dev/pressy/packages/pressy/package.json',
+    '/Users/blittle/dev/pressy/packages/@pressy/components/package.json',
+    '/Users/blittle/dev/pressy/node_modules/.pnpm/@preact+signals@1.3.4_preact@10.28.3/node_modules/@preact/signals/dist/signals.module.js',
+    '/Users/blittle/dev/pressy/node_modules/.pnpm/preact@10.28.3/node_modules/preact/jsx-runtime/dist/jsxRuntime.module.js',
+    '/Users/blittle/dev/pressy/packages/@pressy/components/dist/content/index.js',
+    '/Users/blittle/dev/pressy/node_modules/.pnpm/preact@10.28.3/node_modules/preact/dist/preact.module.js',
+    '/Users/blittle/dev/pressy/packages/@pressy/components/dist/index.js',
+    '/Users/blittle/dev/pressy/node_modules/.pnpm/preact@10.28.3/node_modules/preact/hooks/dist/hooks.module.js'
+  ]
+}
+
+Node.js v22.20.0
+/Users/blittle/dev/pressy/examples/flatland:
+
+---
+
+Running the dev server of the flatland example breaks with:
+
+4:29:44 PM [vite] Internal server error: Failed to resolve import "@pressy-pub/shopify" from "../../packages/@pressy/components/dist/index.js". Does the file exist?
+  Plugin: vite:import-analysis
+  File: /Users/blittle/dev/pressy/packages/@pressy/components/dist/index.js:83:46
+  2003|      isLoading.value = true;
+  2004|      try {
+  2005|        const { createCheckout } = await import("@pressy-pub/shopify");
+     |                                                ^
+  2006|        const checkoutUrl = await createCheckout(shopifyProductId);
+  2007|        window.location.href = checkoutUrl;
+      at TransformPluginContext._formatError (file:///Users/blittle/dev/pressy/node_modules/.pnpm/vite@5.4.21_@types+node@20.19.33/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:49258:41)
+      at TransformPluginContext.error (file:///Users/blittle/dev/pressy/node_modules/.pnpm/vite@5.4.21_@types+node@20.19.33/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:49253:16)
+      at normalizeUrl (file:///Users/blittle/dev/pressy/node_modules/.pnpm/vite@5.4.21_@types+node@20.19.33/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:64307:23)
+      at async file:///Users/blittle/dev/pressy/node_modules/.pnpm/vite@5.4.21_@types+node@20.19.33/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:64439:39
+      at async Promise.all (index 12)
+      at async TransformPluginContext.transform (file:///Users/blittle/dev/pressy/node_modules/.pnpm/vite@5.4.21_@types+node@20.19.33/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:64366:7)
+      at async PluginContainer.transform (file:///Users/blittle/dev/pressy/node_modules/.pnpm/vite@5.4.21_@types+node@20.19.33/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:49099:18)
+      at async loadAndTransform (file:///Users/blittle/dev/pressy/node_modules/.pnpm/vite@5.4.21_@types+node@20.19.33/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:51978:27)
+      at async viteTransformMiddleware (file:///Users/blittle/dev/pressy/node_modules/.pnpm/vite@5.4.21_@types+node@20.19.33/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:62106:24)
+
+---
+
+[Request interrupted by user for tool use]
+
+---
+
+Update the readme with instructions about the new npm package
+
+---
+
+On mobile, maybe we should remove the click to change pages, and purely rely on swiping. It just gets confusing with also the tap to show the bottom bar, and double tap to go full screen.
+
+---
+
+Should tapping the the title of the book at the bottom take you to the table of contents/home page?
+
+---
+
+I'd like the home page to support a large cover image for the book. Can you do some research on what would look good for a cover image layout wise, then give me recommendations on size and aspect ratio?
+
+---
+
+Yes
+
+---
+
+This session is being continued from a previous conversation that ran out of context. The summary below covers the earlier portion of the conversation.
+
+Analysis:
+Let me chronologically analyze the conversation:
+
+1. **Initial request**: User asked to implement a settings dialog in the reader footer with font size and theme controls, following a detailed plan.
+
+2. **Settings Dialog Implementation**:
+   - Read key files: Reader.tsx, client.tsx, light.css, dark.css, sepia.css, fluid.css
+   - Added "system" theme support to client.tsx (resolveSystemTheme, updated setTheme/loadTheme)
+   - Added bookTitle prop threading through ReaderProps → PaginatedReaderProps → PaginatedReader
+   - Passed book.metadata.title from ChapterReaderWithProgress
+   - Added settings panel state (settingsOpen, activeTheme, fontScale, applyFontScale, handleThemeChange, handleFontSizeChange)
+   - Fixed ordering issue: handleFontSizeChange used recalculatePages before it was defined, moved it after
+   - Updated handleContainerClick to handle settings panel (skip page turns when open, close on outside click)
+   - Added footer row with book title + gear icon + settings panel with theme buttons and font size controls
+   - Updated footer auto-hide to not fire when settings open
+   - Added all CSS styles for settings panel in PAGINATED_STYLES
+   - Built and verified both packages
+
+3. **Theme CSS not loading**: User said themes weren't working. Investigated and found that only light.css was imported in the Vite plugin - dark.css and sepia.css were never included. Fixed in both dev HTML template and production virtual entry in plugin.ts.
+
+4. **Reduce top padding**: User asked to reduce padding at top of page. Changed padding-block: 2rem to padding-block-start: 1rem; padding-block-end: 2rem in .pressy-paginated-viewport.
+
+5. **File was reformatted by linter** - noted the linter changed quotes from single to double, semicolons added, etc. throughout Reader.tsx.
+
+6. **README creation**: User asked for a README. Created comprehensive README.md covering features, quick start, project structure, creating a book guide, configuration, MDX components, and themes.
+
+7. **NPM publishing**: User wanted to publish to npm.
+   - Checked npm login status (not logged in initially)
+   - Checked package name availability (all available)
+   - Added publishConfig.access: "public" to all @pressy/* packages
+   - Added publish-packages script to root package.json
+   - User logged in, but @pressy org wasn't available
+   - User chose to create a different org: pressy-pub
+   - Renamed all packages from @pressy/ to @pressy-pub/ across:
+     - All package.json files (typography, components, shopify, pressy, flatland, frankenstein)
+     - Source files: client.tsx, plugin.ts, Paywall.tsx
+     - tsconfig.json paths
+   - Ran pnpm install and rebuilt all packages
+
+8. **Flatland build broken**: @pressy-pub/shopify import in Paywall.tsx caused build failure.
+   - First tried adding to tsup external config - didn't fix it
+   - Then added to rollupOptions.external in Vite plugin - fixed production build
+   - Dev server still broken - added resolveId handler in Vite plugin to mark @pressy-pub/shopify as external for both dev and build
+
+9. **README update**: Updated README to reflect @pressy-pub package names.
+
+10. **Mobile tap behavior**: User wanted to remove click-to-change-pages on mobile, keep only swiping. Added isTouchDevice check using matchMedia("(hover: none)"). On touch devices, tap anywhere just toggles footer. Desktop behavior unchanged.
+
+11. **Book title link**: User asked if tapping book title should go to table of contents. Changed from <span> to <a> with href={bookBasePath || "/"}, added text-decoration: none and hover color change styles.
+
+12. **Cover image research**: User asked for research on cover image layout. Launched research agent that provided comprehensive findings on aspect ratios, dimensions, layout patterns, responsive considerations, and file formats.
+
+13. **Cover image implementation**: User said "Yes" to implementing it. Entered plan mode. Explored codebase to understand:
+    - renderBookPage() and renderHomePage() in client.tsx
+    - Book type with coverPath field in types.ts
+    - Cover discovery in plugin.ts (only jpg/png, not svg)
+    - _book.yaml files reference cover.svg
+    - Cover.svg files exist but aren't served/rendered
+    - Was writing plan file when conversation was interrupted for summary
+
+Now let me trace the current state and pending work:
+
+The plan for book cover implementation was being written but hit an error (file not read before writing). The plan involves:
+1. Fix cover discovery to support SVG
+2. Serve cover files in dev middleware
+3. Emit cover files in build
+4. Render cover image in renderBookPage()
+5. Add cover CSS styles
+
+The user's most recent explicit request was to implement the cover image on the home page. I was in plan mode, had done all the exploration, and was about to write the plan file.
+
+Summary:
+1. Primary Request and Intent:
+   The user is building "Pressy," a web framework for self-publishing books. The conversation covered multiple sequential requests:
+   - Implement a settings dialog in the reader footer with font size adjustment and theme switching (Light, Dark, System, Sepia)
+   - Fix theme CSS not loading (dark.css/sepia.css never imported)
+   - Reduce top padding in paginated reader viewport
+   - Create a project README
+   - Publish packages to npm (eventually under @pressy-pub scope)
+   - Remove tap-to-change-pages on mobile, keep only swipe navigation
+   - Make book title in footer link to table of contents
+   - Research and implement a book cover image on the home/landing page
+
+2. Key Technical Concepts:
+   - Preact (JSX with `preact/hooks`, `@preact/signals`)
+   - CSS multi-column layout for paginated reading
+   - Vite plugin architecture (virtual modules, dev middleware, build asset emission)
+   - pnpm workspace monorepo with topological dependency ordering
+   - Theme switching via `data-theme` attribute + CSS custom properties
+   - Font size scaling via CSS `calc(clamp(...) * multiplier)` on `--font-size-base`
+   - Touch device detection via `matchMedia("(hover: none)")`
+   - npm scoped packages with `publishConfig.access: "public"`
+   - `workspace:*` protocol in pnpm (auto-replaced during publish)
+
+3. Files and Code Sections:
+
+   - **`packages/pressy/src/runtime/client.tsx`**
+     - Core client runtime with theme management, routing, and page rendering
+     - Added `resolveSystemTheme()` helper and updated `setTheme()` to accept `'system'`
+     - Added `matchMedia('(prefers-color-scheme: dark)')` change listener in `loadTheme()`
+     - Passed `bookTitle={book.metadata.title}` in ChapterReaderWithProgress
+     - Renamed all `@pressy/` imports to `@pressy-pub/`
+     - Contains `renderBookPage()` (line ~159) and `HOME_STYLES` (line ~486) — these are the targets for cover image implementation
+     - `renderBookPage()` current structure:
+       ```jsx
+       function renderBookPage(book: Book, articles: Article[] = []) {
+         return (
+           <div class="pressy-home">
+             <header class="pressy-home-header">
+               <h1>{book.metadata.title}</h1>
+               <p class="pressy-home-author">by {book.metadata.author}</p>
+               {book.metadata.description && (
+                 <p class="pressy-home-desc">{book.metadata.description}</p>
+               )}
+             </header>
+             <DownloadBook ... />
+             <section class="pressy-home-section">
+               <h2>Chapters</h2>
+               <BookProgress ... />
+             </section>
+             ...
+           </div>
+         )
+       }
+       ```
+
+   - **`packages/@pressy/components/src/Reader.tsx`**
+     - Main reader component with PaginatedReader
+     - Added `bookTitle` prop to `ReaderProps` and `PaginatedReaderProps`
+     - Added settings panel state: `settingsOpen`, `activeTheme`, `fontScale`
+     - Added `applyFontScale()` — overrides `--font-size-base` with `calc(clamp(1rem, 0.875rem + 0.5vw, 1.25rem) * ${scale})`
+     - Added `handleThemeChange()` — sets localStorage + data-theme attribute
+     - Added `handleFontSizeChange()` — clamps 0.8-1.5, persists, recalculates pages
+     - Modified `handleContainerClick` with `isTouchDevice` check:
+       ```tsx
+       const isTouchDevice = typeof window !== "undefined"
+         && window.matchMedia("(hover: none)").matches;
+       ```
+       On touch: tap anywhere toggles footer only. On desktop: edge clicks turn pages, middle click toggles footer/fullscreen.
+     - Footer now includes book title as a link + gear icon + settings panel
+     - Book title changed from `<span>` to `<a>` linking to `bookBasePath || "/"`
+     - Settings panel has theme buttons (Light/Dark/System/Sepia with SVG icons) and font size controls (A-/A+)
+     - Added extensive CSS in PAGINATED_STYLES for settings panel, theme buttons, font size controls, footer row
+     - Changed `padding-block: 2rem` to `padding-block-start: 1rem; padding-block-end: 2rem`
+     - File was reformatted by linter (single→double quotes, added semicolons)
+
+   - **`packages/pressy/src/vite/plugin.ts`**
+     - Added dark.css and sepia.css imports to both dev HTML template and virtual entry:
+       ```html
+       <link rel="stylesheet" href="/@pressy-pub/typography/themes/light.css">
+       <link rel="stylesheet" href="/@pressy-pub/typography/themes/dark.css">
+       <link rel="stylesheet" href="/@pressy-pub/typography/themes/sepia.css">
+       ```
+     - Added `@pressy-pub/shopify` to `resolveId` as external:
+       ```ts
+       if (id === '@pressy-pub/shopify') {
+         return { id, external: true }
+       }
+       ```
+     - Added `@pressy-pub/shopify` to `build.rollupOptions.external`
+     - Renamed all `@pressy/` references to `@pressy-pub/`
+     - Cover discovery (line ~95) currently only checks jpg/png — needs SVG support:
+       ```ts
+       const coverPath = existsSync(join(bookPath, 'cover.jpg'))
+         ? join(bookPath, 'cover.jpg')
+         : existsSync(join(bookPath, 'cover.png'))
+         ? join(bookPath, 'cover.png')
+         : undefined
+       ```
+
+   - **`packages/pressy/src/types.ts`**
+     - `BookMetadata` has `cover?: string` field (filename from _book.yaml)
+     - `Book` has `coverPath?: string` field (absolute filesystem path)
+     - Cover is discovered but never rendered on the client
+
+   - **Package JSON files** (typography, components, shopify, pressy, flatland, frankenstein)
+     - All renamed from `@pressy/` to `@pressy-pub/`
+     - Added `publishConfig: { "access": "public" }` to scoped packages
+     - Root package.json got `publish-packages` script:
+       ```json
+       "publish-packages": "pnpm -r --filter './packages/**' build && pnpm -r --filter './packages/**' publish --no-git-checks"
+       ```
+
+   - **`packages/@pressy/components/tsup.config.ts`**
+     - Added `'@pressy-pub/shopify'` to external array
+
+   - **`tsconfig.json`** — Updated paths from `@pressy/` to `@pressy-pub/`
+
+   - **`README.md`** — Created with install instructions using `@pressy-pub` scope, features, quick start, project structure, creating a book guide, configuration table, MDX components, themes
+
+   - **`examples/flatland/content/books/flatland/cover.svg`** — Existing 600x900 SVG with geometric Flatland-themed cover art
+   - **`examples/flatland/content/books/flatland/_book.yaml`** — Has `cover: cover.svg`
+
+4. Errors and Fixes:
+   - **handleFontSizeChange referenced recalculatePages before definition**: Moved handleFontSizeChange definition to after recalculatePages useCallback.
+   - **Theme CSS not loading**: Only light.css was imported in Vite plugin. Fixed by adding dark.css and sepia.css imports to both dev HTML and production virtual entry in plugin.ts.
+   - **npm publish 404 for @pressy org**: Org name "pressy" was taken. User created "pressy-pub" org. Renamed all packages from `@pressy/` to `@pressy-pub/` across all files.
+   - **Flatland build failed — @pressy-pub/shopify unresolved**: Paywall.tsx has `import("@pressy-pub/shopify")`. Fixed by: (1) adding to tsup external in components, (2) adding to rollupOptions.external in Vite plugin, (3) adding resolveId handler returning `{ id, external: true }` for both dev and build.
+   - **Flatland dev server also failed for same shopify import**: The rollupOptions.external only applies to production builds. Added resolveId handler in the Vite plugin to mark @pressy-pub/shopify as external for dev too.
+
+5. Problem Solving:
+   - Solved theme CSS not applying by tracing the import chain through the Vite plugin
+   - Solved mobile UX confusion by separating touch/desktop click behaviors using matchMedia
+   - Solved npm publishing scope issue by renaming to @pressy-pub and updating all cross-references
+   - Solved optional dependency resolution by marking @pressy-pub/shopify as external at multiple levels (tsup, Vite resolveId, rollupOptions)
+
+6. All User Messages:
+   - "Implement the following plan: [detailed settings dialog plan]"
+   - "Could we actually implement the different themes?" → clarified as "Theme CSS not loading"
+   - "Could you reduce the padding at the top of the page a bit from the header/title?"
+   - "Can you add a readme for the project?"
+   - "Could you help me publish this to npm?"
+   - "Okay I logged in. Can you setup a script for publishing everything in the proper order?"
+   - "Publish failed with this error: [E404 for @pressy/components]"
+   - "The org isn't available. What should I consider instead?" → chose "Pick a different org"
+   - "I setup the org pressy-pub"
+   - "This seems to have broken the local flatland example build: [Rollup failed to resolve @pressy-pub/shopify]"
+   - "Running the dev server of the flatland example breaks with: [Failed to resolve import @pressy-pub/shopify]"
+   - "Update the readme with instructions about the new npm package"
+   - "On mobile, maybe we should remove the click to change pages, and purely rely on swiping. It just gets confusing with also the tap to show the bottom bar, and double tap to go full screen."
+   - "Should tapping the title of the book at the bottom take you to the table of contents/home page?"
+   - "I'd like the home page to support a large cover image for the book. Can you do some research on what would look good for a cover image layout wise, then give me recommendations on size and aspect ratio?"
+   - "Yes" (to implementing cover image)
+
+7. Pending Tasks:
+   - Implement book cover image on the home/landing page (in plan mode, plan not yet written)
+   - There is also an unused `chapterPageInfo` variable warning in Reader.tsx (TS diagnostic)
+
+8. Current Work:
+   I was in **plan mode** working on implementing the book cover image on the home page. I had completed all exploration:
+   - Understood `renderBookPage()` in client.tsx (no cover rendering currently)
+   - Found that cover discovery in plugin.ts only supports jpg/png, not svg (both examples use svg)
+   - Found that `coverPath` is an absolute filesystem path that can't be used client-side as a URL
+   - Found that `metadata.cover` from `_book.yaml` stores the filename (e.g., "cover.svg")
+   - Found that covers need to be served in dev (middleware) and emitted in build (generateBundle)
+   - Had drafted a complete plan with 5 steps but failed to write it to the plan file (got "File has not been read yet" error)
+   
+   The plan covers:
+   1. Fix cover discovery to support SVG and honor metadata.cover
+   2. Serve cover files in dev middleware
+   3. Emit cover files in build's generateBundle
+   4. Render cover image in renderBookPage() with centered hero layout
+   5. Add cover CSS (max-width 360px desktop / 240px mobile, aspect-ratio 5/8, box-shadow for depth)
+
+9. Optional Next Step:
+   Read the plan file at `/Users/blittle/.claude/plans/hashed-snuggling-coral.md`, write the cover image implementation plan to it, and call ExitPlanMode. The user's most recent request was: "I'd like the home page to support a large cover image for the book" and confirmed "Yes" to implementing it. I was in plan mode with exploration complete, ready to write and present the plan.
+
+If you need specific details from before compaction (like exact code snippets, error messages, or content you generated), read the full transcript at: /Users/blittle/.REDACTED.jsonl
+Please continue the conversation from where we left off without asking the user any further questions. Continue with the last task that you were asked to work on.
+
+---
+
+[Request interrupted by user for tool use]

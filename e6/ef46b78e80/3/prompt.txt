@@ -1,0 +1,97 @@
+Implement the following plan:
+
+# Home Page Redesign: Hero Layout, CTA, Stats, Animations
+
+## Context
+
+The home page (`renderBookPage()` in `client.tsx`) currently stacks elements vertically — cover, title, author, description, chapters — which reads like a plain list. The goal is to make it feel like a polished book landing page by adding a hero layout, a clear call-to-action, book stats, and subtle entrance animations.
+
+## File to Modify
+
+`packages/pressy/src/runtime/client.tsx` — all changes are in `renderBookPage()` and `HOME_STYLES`
+
+## Implementation
+
+### 1. Hero layout (cover + text side-by-side)
+
+Wrap the cover image and header in a `.pressy-hero` flex container:
+
+```
+Desktop (>700px):              Mobile:
+┌──────────────────────┐       ┌──────────────┐
+│ ┌──────┐  Title      │       │  ┌────────┐  │
+│ │      │  by Author  │       │  │ COVER  │  │
+│ │COVER │  Desc...    │       │  └────────┘  │
+│ │      │  [stats]    │       │  Title       │
+│ │      │  [CTA btn]  │       │  by Author   │
+│ └──────┘             │       │  Desc...     │
+└──────────────────────┘       │  [stats]     │
+                               │  [CTA btn]   │
+                               └──────────────┘
+```
+
+- CSS flexbox: `row` on desktop, `column` (centered) on mobile via `@media (max-width: 700px)`
+- Cover gets `flex-shrink: 0`, max-width ~280px
+- Text side gets `flex: 1` with left-aligned text on desktop, centered on mobile
+
+### 2. "Start Reading" CTA button
+
+Create a small `StartReadingCTA` component that:
+- Uses `useState`/`useEffect` to call `getAllReadingProgress()` on mount
+- Finds the furthest in-progress (not completed) chapter, or defaults to chapter 1
+- Renders **"Continue Reading"** (linking to the in-progress chapter) if progress exists, otherwise **"Start Reading"** (linking to chapter 1)
+- Styled as a prominent button: solid background using `var(--color-link)`, white text, padding, border-radius
+
+### 3. Book stats row
+
+Calculate and render a row of metadata below the description:
+
+```
+8 chapters · 12,400 words · ~62 min · First published 1884
+```
+
+- Total word count: sum `chapter.wordCount` across all chapters
+- Reading time: `Math.ceil(totalWords / 200)` minutes
+- Chapter count: `book.chapters.length`
+- Publish date: from `book.metadata.publishDate` (format year only, show "First published YYYY")
+- Styled as a single line with `·` separators, muted text color, small font size
+
+### 4. Entrance animations
+
+CSS-only `@keyframes pressy-fade-in` (opacity 0→1, translateY 20px→0):
+- `.pressy-hero` cover: `animation-delay: 0s`
+- `.pressy-hero` text content: `animation-delay: 0.15s`
+- Stats row: inherits from text
+- CTA: inherits from text
+- Sections below (chapters, articles): `animation-delay: 0.3s`
+- Duration: `0.6s`, easing: `ease-out`, `fill-mode: both`
+- Respects `prefers-reduced-motion` — disable animations when set
+
+## Verification
+
+1. `pnpm --filter pressy build` — no errors
+2. `pnpm dev:flatland` — hero layout shows cover beside text on desktop, stacked on mobile
+3. "Start Reading" button links to first chapter; if you read a chapter and return, it says "Continue Reading" and links to your last position
+4. Stats row shows accurate chapter count, word count, reading time, and publish year
+5. Elements fade in smoothly on page load
+6. Books without a cover image still render correctly (hero layout adjusts gracefully)
+7. Works across light/dark/sepia themes
+
+
+If you need specific details from before exiting plan mode (like exact code snippets, error messages, or content you generated), read the full transcript at: /Users/blittle/.REDACTED.jsonl
+
+---
+
+I like where this is going, but I think it still needs more. I feel like the table of contents can be something that could just be toggled to display, instead of always showing it. Same with the offline status indicator. That probably could move into the bottom footer on every page that gets displayed on tap.
+
+---
+
+[Request interrupted by user for tool use]
+
+---
+
+Maybe we also could put it into the footer on the reading pages. Maybe we could add an icon that could represent table of contents right to the left of the book name, and when the name/icon is tapped, a dialog/drawer could open of the table of contents. Then the home page could purely be more marketing and promotional.
+
+---
+
+[Request interrupted by user for tool use]

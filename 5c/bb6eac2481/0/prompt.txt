@@ -1,0 +1,1 @@
+Look at the last commit, we made a change that fixed the touch to change pages when on Samsung galaxy phones. It works, touching doesn't move the page, but it does display an icon on each side of the screen when tapped

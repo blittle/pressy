@@ -1,0 +1,466 @@
+Implement the following plan:
+
+# Declutter Home Page: Move TOC & Offline to Reader Footer
+
+## Context
+
+The home page now has a nice hero layout, but it still shows the full table of contents (BookProgress) and offline download (DownloadBook) sections inline, which clutters the marketing feel. The user wants:
+
+1. **Home page** — purely promotional. Remove the chapters list and offline download section.
+2. **Reader footer** — add a TOC icon next to the book title; tapping it opens a chapter drawer. Also integrate offline download status into the footer.
+3. Both features become accessible from where you actually need them (while reading), not the landing page.
+
+## Files to Modify
+
+| File | Changes |
+|------|---------|
+| `packages/pressy/src/runtime/client.tsx` | Remove `<BookProgress>` and `<DownloadBook>` from `renderBookPage()`. Pass offline props through to Reader. |
+| `packages/@pressy/components/src/Reader.tsx` | Add TOC drawer + offline indicator to PaginatedReader footer. Add a minimal footer to ScrollReader. New `ReaderProps` for offline + chapter data. |
+| `packages/@pressy/components/src/DownloadBook.tsx` | No changes (reused as-is inside Reader footer) |
+| `packages/@pressy/components/src/BookProgress.tsx` | No changes (stays exported but no longer used on home page) |
+
+## Implementation
+
+### 1. Clean up home page (`client.tsx` → `renderBookPage`)
+
+- Remove the `<DownloadBook>` block entirely
+- Remove the "Chapters" `<section>` containing `<BookProgress>`
+- Keep the articles section (if present)
+- Remove `DownloadBook` and `BookProgress` imports if they become unused
+- The home page becomes: hero (cover + title + description + stats + CTA) + optional articles
+
+### 2. Add offline props to ReaderProps (`Reader.tsx`)
+
+Add optional props to `ReaderProps`:
+```ts
+offlineProps?: {
+  bookSlug: string
+  chapterUrls: string[]
+  cachedBooks: { value: Set<string> }
+  cacheProgress: { value: { bookSlug: string; current: number; total: number } | null }
+  onDownload: (bookSlug: string, chapterUrls: string[]) => void
+  onRemove: (bookSlug: string) => void
+}
+```
+
+Thread through `Reader` → `PaginatedReader` and `ScrollReader`.
+
+In `client.tsx`, pass these props from `ChapterReaderWithProgress` where the offline signals are already available.
+
+### 3. Add TOC drawer to PaginatedReader footer (`Reader.tsx`)
+
+**State:** Add `tocOpen` boolean state alongside existing `settingsOpen`.
+
+**Footer row layout change** (line ~1271):
+```
+┌─────────────────────────────────────┐
+│ [TOC icon] Book Title   [⚙ gear]   │
+└─────────────────────────────────────┘
+```
+
+- Add a TOC icon button (list/hamburger icon SVG) to the **left** of the book title
+- Tapping the icon OR the book title opens the TOC drawer (instead of navigating home)
+- Close TOC when settings is opened, and vice versa
+
+**TOC Drawer** — a bottom-sheet overlay rendered as a sibling to the footer:
+```
+┌──────────────────────────────────┐
+│ ░░░░░░░░░ Backdrop ░░░░░░░░░░░░ │
+│ ┌──────────────────────────────┐ │
+│ │ Contents                  ✕  │ │
+│ │──────────────────────────────│ │
+│ │  1. The Two-Dimensional...   │ │
+│ │  2. Of Sight Recognition ●   │ │  ← current chapter highlighted
+│ │  3. Concerning a Stranger    │ │
+│ │  ...                         │ │
+│ └──────────────────────────────┘ │
+└──────────────────────────────────┘
+```
+
+- Semi-transparent backdrop, click to dismiss
+- Panel slides up from bottom, max-height ~70vh, scrollable
+- Reuse `allChapters` + `bookBasePath` + `currentChapterSlug` (already available as props)
+- Each chapter is an `<a>` link — clicking navigates to that chapter and closes the drawer
+- Current chapter gets a highlighted/active style
+- Close button (✕) in the header
+- CSS animation: slide up + fade in, respects `prefers-reduced-motion`
+
+**Footer visibility interaction updates:**
+- When TOC is open, keep footer visible (like settings)
+- Update the visibility class: `footerVisible || settingsOpen || tocOpen`
+- Close TOC on outside clicks (same pattern as settings)
+
+### 4. Add compact offline indicator to footer (`Reader.tsx`)
+
+Add a small offline status icon in the footer row, to the right of the book title (between title and gear icon):
+
+```
+[TOC] Book Title  [cloud-icon] [⚙]
+```
+
+- **Not cached:** Small cloud-download icon. Tapping starts download.
+- **Downloading:** Icon swaps to a tiny spinner/progress.
+- **Cached:** Cloud-check icon (green). Tapping shows "Remove" option.
+- Uses the `offlineProps` passed through ReaderProps
+- Compact — just an icon button, no text labels in the footer row (tooltip on hover for desktop)
+
+Import `DownloadBook` inside Reader.tsx OR create a smaller `OfflineFooterIcon` inline component that uses the same signals pattern.
+
+### 5. Add footer to ScrollReader (`Reader.tsx`)
+
+ScrollReader currently has no footer. Add a minimal fixed footer bar matching PaginatedReader's pattern:
+
+- Same tap-to-show behavior (show on tap, hide after 3s)
+- Same footer row: TOC icon, book title, offline icon, settings gear
+- Same TOC drawer
+- Same settings panel (theme + font size)
+- Position: `fixed` at bottom of viewport
+- Reuse the same CSS classes (`.pressy-page-footer`, etc.)
+
+This requires threading additional props to `ScrollReader`: `bookTitle`, `allChapters`, `bookBasePath`, `currentChapterSlug`, `offlineProps`.
+
+### 6. Update client.tsx to pass offline props
+
+In `ChapterReaderWithProgress`, construct and pass `offlineProps`:
+
+```tsx
+<Reader
+  // ...existing props...
+  offlineProps={{
+    bookSlug: book.slug,
+    chapterUrls: book.chapters.map(ch => `/books/${book.slug}/${ch.slug}`),
+    cachedBooks,
+    cacheProgress,
+    onDownload: downloadBookForOffline,
+    onRemove: clearBookCache,
+  }}
+/>
+```
+
+## Verification
+
+1. `pnpm --filter @pressy-pub/components build` — no errors
+2. `pnpm --filter pressy build` — no errors
+3. Home page: only shows hero (cover, title, author, description, stats, CTA) + optional articles. No chapters list, no download button.
+4. Reader footer (paginated): tap to show footer → see TOC icon, book title, offline icon, gear
+5. Tap TOC icon → drawer slides up with chapter list, current chapter highlighted
+6. Tap a chapter in drawer → navigates to it
+7. Offline icon: tap to download, shows progress, shows green check when cached
+8. ScrollReader: same footer behavior as paginated
+9. `prefers-reduced-motion` disables drawer animations
+10. Works across light/dark/sepia themes
+
+
+If you need specific details from before exiting plan mode (like exact code snippets, error messages, or content you generated), read the full transcript at: /Users/blittle/.claude/projects/-Users-blittle-dev-pressy/8e818e0d-1467-4e5d-a820-70da741e0b84.jsonl
+
+---
+
+Clicking the download book button, it just hangs indefinitely at "Downloading... 0%". If I refresh the page, then it says it's downloaded. Seems like it's not reactively updating correctly.
+
+---
+
+Still appears to hang and never load. Must still be a signal/preact issue. Because refreshing it is downloaded
+
+---
+
+Still appears to hang and never load. Must still be a signal/preact issue. Because refreshing it is downloaded
+
+---
+
+Ugh, still doesn't work.
+
+---
+
+Could we add the ability for people to provide an icon for the installed PWA?
+
+---
+
+Can you take the attached image, move it into the proper location? It should be 512x512 already, but needs to be also resized for 192
+
+---
+
+[Image: source: /Users/blittle/Downloads/flatland.png]
+
+---
+
+Should we also allow the favicon to be configured?
+
+---
+
+Let's replace the `cover.svg` with ~/Downloads/flatland.jpg
+
+---
+
+I see this warning in the browser console: `<meta name="apple-mobile-web-app-capable" content="yes"> is deprecated. Please include <meta name="mobile-web-app-capable" content="yes">`
+
+---
+
+The images, both PWA, favicons, and home page image, don't work when deployed to github pages because the github pages URL is https://blittle.github.io/pressy/ and these images are loading with a forward slash. Make sure that it can handle these relative paths
+
+---
+
+This session is being continued from a previous conversation that ran out of context. The summary below covers the earlier portion of the conversation.
+
+Analysis:
+Let me chronologically analyze the conversation:
+
+1. **Initial Request**: User asked to implement a detailed plan to declutter the home page by moving TOC and offline download to the reader footer. The plan was very specific with 6 implementation steps.
+
+2. **Step 1 - Clean up home page (client.tsx)**: 
+   - Removed `DownloadBook` and `BookProgress` imports
+   - Removed the `<DownloadBook>` component and "Chapters" section from `renderBookPage()`
+   - Removed unused `chapterUrls` variable
+
+3. **Step 2 - Add offlineProps to ReaderProps**:
+   - Created `OfflineProps` interface in Reader.tsx
+   - Added `offlineProps?` to `ReaderProps`
+   - Threaded through to `PaginatedReader` and `ScrollReader`
+   - Passed from `ChapterReaderWithProgress` in client.tsx
+   - Also exported `OfflineProps` type from index.ts
+
+4. **Step 3 - TOC drawer + offline icon in PaginatedReader**:
+   - Added `tocOpen` state
+   - Added TOC backdrop/drawer with chapter list
+   - Added TOC icon button and modified book title to be a button that opens TOC
+   - Added `OfflineFooterIcon` component (initially with `useState` + `setInterval` polling)
+   - Updated footer visibility to include `tocOpen`
+   - Updated click handlers, mouse handlers to respect `tocOpen`
+   - Added extensive CSS for TOC drawer, offline icon
+
+5. **Step 4 - Footer for ScrollReader**:
+   - Completely rewrote ScrollReader to include footer with TOC, settings, offline icon
+   - Added all the same functionality as PaginatedReader footer
+   - Added extensive scroll-specific CSS
+
+6. **Step 5 - Build verification**: Both packages built successfully.
+
+7. **Bug Fix Round 1 - Offline reactivity**: User reported download button hangs at "Downloading... 0%". 
+   - First attempt: Changed from `useState` to `useSignal` from `@preact/signals` - still broken
+   - Second attempt: Changed to direct signal `.value` reads in render - still broken
+   - **Root cause found**: The `downloadBookForOffline()` function optimistically marks the book as cached immediately. The original `DownloadBook` component checks `isCached` FIRST, then `isDownloading`. My code had them reversed, so `isDownloading` (which never clears because SW messages don't reach the client) took priority over `isCached` (which is true immediately from optimistic update).
+   - Fix: Swapped the check order to match `DownloadBook` - check `isCached` first.
+
+8. **PWA Icon Feature**: User asked to add ability to provide custom PWA icons.
+   - Config already had `icon192` and `icon512` fields but they weren't wired up
+   - Added `icon` shorthand field to PWAConfig
+   - Updated build to read custom icon files and emit them
+   - Updated dev server to serve custom icons
+   - Added `favicon` config field
+   - Added favicon support in dev and build modes
+   - Added `<link rel="icon">` tag to HTML head in both modes
+
+9. **Flatland icon setup**: User provided a flatland.png image from Downloads.
+   - Copied to content directory as icon-512.png (resized from 512x513 to 512x512)
+   - Created 192x192 version
+   - Updated pressy.config.ts
+
+10. **Cover image replacement**: User asked to replace cover.svg with ~/Downloads/flatland.jpg
+    - Copied jpg, removed svg, updated _book.yaml
+
+11. **Deprecation warning fix**: User reported browser console warning about `apple-mobile-web-app-capable`
+    - Replaced with `mobile-web-app-capable` in both dev and build HTML
+
+12. **Current issue - Subpath deployment**: User reported images don't work on GitHub Pages at `https://blittle.github.io/pressy/` because paths use absolute `/` instead of relative paths. This affects:
+    - Dev mode HTML paths for favicon and apple-touch-icon (use `/favicon.png`, `/icon-192.png`)
+    - The `coverUrl` which is generated as `/books/${bookSlug}/${filename}` - absolute path
+
+I was in the middle of investigating this when the summary was requested. I had found:
+- Build mode HTML already uses `${assetPrefix}` - should work
+- Manifest uses `./` relative paths - should work
+- Dev mode HTML uses absolute `/` paths - issue for dev but probably not the deploy issue
+- **`coverUrl`** is set as `/books/${bookSlug}/${coverPath.split('/').pop()}` - absolute path with no base path prefix. This is the likely culprit for the home page image issue on GitHub Pages.
+
+Summary:
+1. Primary Request and Intent:
+   - **Main task**: Implement a plan to declutter the home page by removing TOC (BookProgress) and offline download (DownloadBook) sections, moving them into the reader footer as a TOC drawer and compact offline icon.
+   - **Bug fix**: Fix offline download button hanging at "Downloading... 0%" - went through three iterations before finding the root cause.
+   - **PWA icons**: Add ability for users to provide custom PWA icons via config, wire up the existing but non-functional `icon192`/`icon512` config fields, add a convenience `icon` shorthand, and add favicon support.
+   - **Flatland example updates**: Set up custom PWA icons from a provided image, replace the SVG book cover with a JPG.
+   - **Deprecation fix**: Replace deprecated `apple-mobile-web-app-capable` meta tag with `mobile-web-app-capable`.
+   - **Current request**: Fix images (PWA icons, favicons, home page cover) not loading on GitHub Pages subpath deployment (`https://blittle.github.io/pressy/`) due to absolute paths.
+
+2. Key Technical Concepts:
+   - Preact with `@preact/signals` for reactive state management
+   - PWA manifest generation, service worker registration, and offline caching
+   - Vite plugin architecture for build-time asset emission and dev server middleware
+   - CSS multi-column pagination for ebook reader
+   - Signal auto-subscription in Preact (reading `.value` in render auto-subscribes)
+   - Optimistic updates pattern (marking cached before SW confirms)
+   - Subpath deployment handling with relative asset prefixes
+   - `sips` macOS tool for image resizing
+
+3. Files and Code Sections:
+
+   - **`packages/pressy/src/runtime/client.tsx`**
+     - Central client-side hydration and rendering
+     - Removed `DownloadBook` and `BookProgress` imports and usage from `renderBookPage()`
+     - Added `offlineProps` to `<Reader>` in `ChapterReaderWithProgress`:
+     ```tsx
+     offlineProps={{
+       bookSlug: book.slug,
+       chapterUrls: book.chapters.map(ch => `/books/${book.slug}/${ch.slug}`),
+       cachedBooks,
+       cacheProgress,
+       onDownload: downloadBookForOffline,
+       onRemove: clearBookCache,
+     }}
+     ```
+     - `coverUrl` is referenced at line ~218: `src={book.coverUrl}`
+
+   - **`packages/@pressy/components/src/Reader.tsx`**
+     - Main reader component with PaginatedReader and ScrollReader
+     - Added `OfflineProps` interface:
+     ```ts
+     export interface OfflineProps {
+       bookSlug: string;
+       chapterUrls: string[];
+       cachedBooks: { value: Set<string> };
+       cacheProgress: { value: { bookSlug: string; current: number; total: number } | null };
+       onDownload: (bookSlug: string, chapterUrls: string[]) => void;
+       onRemove: (bookSlug: string) => void;
+     }
+     ```
+     - Added `offlineProps?` to `ReaderProps`, `PaginatedReaderProps`, `ScrollReaderProps`
+     - Added `OfflineFooterIcon` component (final version reads signals directly):
+     ```tsx
+     function OfflineFooterIcon({ offlineProps }: { offlineProps?: OfflineProps }) {
+       if (!offlineProps) return null;
+       const { bookSlug, chapterUrls, cachedBooks, onDownload, onRemove } = offlineProps;
+       const isCached = cachedBooks.value.has(bookSlug);
+       if (isCached) { /* cached icon */ }
+       return /* download button */;
+     }
+     ```
+     - Added TOC drawer to PaginatedReader with `tocOpen` state, backdrop, chapter list
+     - Added complete footer to ScrollReader (previously had none) with TOC, settings, offline icon
+     - Footer row layout: `[TOC icon] Book Title [offline icon] [gear icon]`
+     - Book title changed from `<a>` to `<button>` that opens TOC
+     - Extensive CSS added for TOC drawer, offline icon, scroll reader footer
+
+   - **`packages/@pressy/components/src/index.ts`**
+     - Added `OfflineProps` to type exports
+
+   - **`packages/pressy/src/config.ts`**
+     - Added `icon`, `favicon` fields to `PWAConfig`:
+     ```ts
+     /** Path to a custom icon (used for both 192x192 and 512x512). Overridden by icon192/icon512 if set. */
+     icon?: string
+     /** Path to a custom 192x192 icon. */
+     icon192?: string
+     /** Path to a custom 512x512 icon. */
+     icon512?: string
+     /** Path to a custom favicon. Falls back to icon192 or icon if not set. */
+     favicon?: string
+     ```
+
+   - **`packages/pressy/src/vite/plugin.ts`**
+     - Added favicon resolution after pwaConfig:
+     ```ts
+     const faviconPath = config.pwa?.favicon || config.pwa?.icon192 || config.pwa?.icon
+     const hasCustomFavicon = !!faviconPath
+     ```
+     - Build: resolves `icon192`/`icon512` with `icon` fallback, reads files with `readFileSync`, emits as assets
+     - Build: emits `favicon.png` (custom or placeholder)
+     - Dev server: serves custom icons with MIME type detection, serves favicon
+     - HTML head: added `<link rel="icon" href="favicon.png">` in both dev and build
+     - Replaced `apple-mobile-web-app-capable` with `mobile-web-app-capable`
+     - **coverUrl generation** (line ~112-114) uses absolute path - likely broken on subpath:
+     ```ts
+     const coverUrl = coverPath
+       ? `/books/${bookSlug}/${coverPath.split('/').pop()}`
+       : undefined
+     ```
+     - Dev HTML uses absolute paths: `/favicon.png`, `/icon-192.png`, `/manifest.webmanifest`
+     - Build HTML already uses `${assetPrefix}` for relative paths
+
+   - **`packages/pressy/src/runtime/offline.ts`**
+     - Contains the signal definitions and `downloadBookForOffline` which optimistically updates `cachedBooks`
+     - Key insight: line 140-146 sets both `cacheProgress` AND `cachedBooks` before SW message
+
+   - **`examples/flatland/pressy.config.ts`**
+     - Added PWA icon config:
+     ```ts
+     pwa: {
+       enabled: true,
+       shortName: 'Flatland',
+       themeColor: '#1a1a1a',
+       backgroundColor: '#ffffff',
+       icon192: './content/icon-192.png',
+       icon512: './content/icon-512.png',
+     }
+     ```
+
+   - **`examples/flatland/content/books/flatland/_book.yaml`**
+     - Changed `cover: cover.svg` to `cover: cover.jpg`
+
+   - **`examples/flatland/content/icon-192.png`** and **`icon-512.png`** - Created from user's image
+   - **`examples/flatland/content/books/flatland/cover.jpg`** - Replaced cover.svg
+
+4. Errors and fixes:
+   - **Offline download hangs at "Downloading... 0%"**:
+     - Attempt 1: Changed `useState` to `useSignal` - user reported still broken
+     - Attempt 2: Changed to direct signal `.value` reads in render - user reported still broken
+     - Root cause: `downloadBookForOffline()` optimistically sets `cachedBooks` immediately, so both `isCached` and `isDownloading` become true simultaneously. Original `DownloadBook` checks `isCached` FIRST. My code checked `isDownloading` first, which never clears because SW completion messages don't reliably reach the client.
+     - Fix: Swapped check order to `if (isCached) { ... }` before any downloading check, matching original `DownloadBook` pattern. Removed all downloading UI/state since the optimistic update means `isCached` is always true before `isDownloading` matters.
+   - **Deprecation warning**: `apple-mobile-web-app-capable` → `mobile-web-app-capable` (replaced in both dev and build HTML)
+   - **Image 512x513**: Original flatland.png was 512x513, resized to exactly 512x512 with `sips`
+
+5. Problem Solving:
+   - The offline reactivity debugging was the most involved problem, requiring understanding of:
+     - How `@preact/signals` auto-subscription works
+     - The optimistic update pattern in `downloadBookForOffline()`
+     - Why SW messages might not reach the client reliably
+     - The check-order pattern in the original `DownloadBook` component
+   - **Current unsolved problem**: Images broken on GitHub Pages subpath deployment. The `coverUrl` is generated as an absolute path `/books/${bookSlug}/cover.jpg` without the base path prefix. Dev HTML meta tags also use absolute `/` paths.
+
+6. All user messages:
+   - "Implement the following plan: [detailed plan for decluttering home page, moving TOC & offline to reader footer]"
+   - "Still appears to hang and never load. Must still be a signal/preact issue. Because refreshing it is downloaded" (after first useSignal fix attempt)
+   - "Ugh, still doesn't work." (after direct signal reads fix attempt)
+   - "Could we add the ability for people to provide an icon for the installed PWA?"
+   - "Should we also allow the favicon to be configured?"
+   - "Can you take the attached image, move it into the proper location? It should be 512x512 already, but needs to be also resized for 192" [with flatland.png image attached]
+   - "Let's replace the `cover.svg` with ~/Downloads/flatland.jpg"
+   - "I see this warning in the browser console: `<meta name="apple-mobile-web-app-capable" content="yes"> is deprecated. Please include <meta name="mobile-web-app-capable" content="yes">`"
+   - "The images, both PWA, favicons, and home page image, don't work when deployed to github pages because the github pages URL is https://blittle.github.io/pressy/ and these images are loading with a forward slash. Make sure that it can handle these relative paths"
+
+7. Pending Tasks:
+   - Fix image paths for GitHub Pages subpath deployment. Specifically:
+     - `coverUrl` in plugin.ts line ~112 uses absolute `/books/...` path without base path
+     - Dev mode HTML uses absolute `/favicon.png`, `/icon-192.png`, `/manifest.webmanifest` paths
+     - Need to ensure all image references work with subpath deployments like `/pressy/`
+
+8. Current Work:
+   The user reported: "The images, both PWA, favicons, and home page image, don't work when deployed to github pages because the github pages URL is https://blittle.github.io/pressy/ and these images are loading with a forward slash. Make sure that it can handle these relative paths"
+
+   I had begun investigating by searching for all image path references in the codebase and identified the key issues:
+   
+   - **Build HTML**: Already uses `${assetPrefix}` relative paths - should be fine
+   - **Manifest**: Uses `./` relative paths - should be fine  
+   - **`coverUrl`** (plugin.ts line 112-114): Generated as absolute `/books/${bookSlug}/${filename}` with no base path prefix - this is broken on subpath deployments
+   - **Dev mode HTML**: Uses absolute paths like `/favicon.png`, `/icon-192.png` - these would break on subpath dev too, but the main concern is the production build
+
+   I had just read the coverUrl generation code and was about to start implementing fixes when the summary was requested.
+
+9. Optional Next Step:
+   Fix the subpath deployment issue. The user's exact request: "The images, both PWA, favicons, and home page image, don't work when deployed to github pages because the github pages URL is https://blittle.github.io/pressy/ and these images are loading with a forward slash. Make sure that it can handle these relative paths"
+
+   Key areas to fix:
+   1. `coverUrl` in `plugin.ts` line ~112: change from absolute `/books/${bookSlug}/${filename}` to a path that accounts for base path (the build already computes `assetPrefix` for relative paths, and `client.tsx` has a `basePath` variable computed from `getBasePath()`)
+   2. Verify the build HTML paths work (they use `${assetPrefix}` already)
+   3. Check if any other absolute paths exist that would break on subpath deployment
+
+If you need specific details from before compaction (like exact code snippets, error messages, or content you generated), read the full transcript at: /Users/blittle/.REDACTED.jsonl
+Please continue the conversation from where we left off without asking the user any further questions. Continue with the last task that you were asked to work on.
+
+---
+
+Why would I get this warning in the browser? `Error while trying to use the following icon from the Manifest: https://blittle.github.io/pressy/icon-192.png (Download error or resource isn't a valid image)`, even though the image _is_ there?
+
+---
+
+[Request interrupted by user]
+
+---
+
+But the URL loads
