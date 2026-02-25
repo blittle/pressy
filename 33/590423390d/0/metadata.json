@@ -1,0 +1,32 @@
+{
+  "cli_version": "0.4.2",
+  "checkpoint_id": "33590423390d",
+  "session_id": "111efa34-e36d-4245-9992-9f0e603eac20",
+  "strategy": "manual-commit",
+  "created_at": "2026-02-25T16:01:26.108506Z",
+  "branch": "main",
+  "checkpoints_count": 3,
+  "files_touched": [
+    "packages/@pressy/components/src/Reader.tsx"
+  ],
+  "agent": "Claude Code",
+  "transcript_identifier_at_start": "831adb55-32cb-4a00-b2ec-369b9fdb007f",
+  "checkpoint_transcript_start": 466,
+  "transcript_lines_at_start": 466,
+  "token_usage": {
+    "input_tokens": 34,
+    "cache_creation_tokens": 21301,
+    "cache_read_tokens": 3760195,
+    "output_tokens": 285,
+    "api_call_count": 26
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-02-25T16:01:25.791269Z",
+    "agent_lines": 43,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 43,
+    "agent_percentage": 100
+  }
+}
