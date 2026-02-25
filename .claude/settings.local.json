@@ -25,7 +25,9 @@
       "WebFetch(domain:www.amazon.com)",
       "WebFetch(domain:bookshop.org)",
       "WebFetch(domain:www.goodreads.com)",
-      "WebFetch(domain:angelahaddon.com)"
+      "WebFetch(domain:angelahaddon.com)",
+      "Bash(head:*)",
+      "Bash(npx tsc:*)"
     ]
   }
 }

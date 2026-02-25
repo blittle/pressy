@@ -761,8 +761,21 @@ function PaginatedReader({
   const articleRef = useRef<HTMLElement>(null);
   const [currentPage, setCurrentPage] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
+  const totalPagesRef = useRef(1);
+  totalPagesRef.current = totalPages;
   const hasRestoredRef = useRef(false);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const skipTransitionRef = useRef(false);
+
+  // Detect ?page=last on initial render (backward chapter navigation)
+  const wantsLastPageRef = useRef(
+    typeof window !== "undefined" &&
+      new URLSearchParams(window.location.search).get("page") === "last"
+  );
+  // Track whether we're waiting for ?page=last to resolve (hide content until then)
+  const [awaitingLastPage, setAwaitingLastPage] = useState(
+    wantsLastPageRef.current
+  );
 
   // Multi-chapter state
   const [loadedChapters, setLoadedChapters] = useState<LoadedChapter[]>([]);
@@ -796,6 +809,15 @@ function PaginatedReader({
       setActiveChapterSlug(currentChapterSlug);
     }
   }, []); // Only on mount
+
+  // Clean up ?page=last from the URL on mount
+  useEffect(() => {
+    if (wantsLastPageRef.current) {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("page");
+      history.replaceState(null, "", url.pathname);
+    }
+  }, []);
 
   // Settings & TOC panel state
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -999,43 +1021,56 @@ function PaginatedReader({
     };
   }, [recalculatePages, loadedChapters.length]);
 
-  // Check ?page=last query param for backward navigation
+  // Apply ?page=last once totalPages is known (backward chapter navigation).
+  // Only applied once — cleared immediately to prevent re-triggering when
+  // chapter preloading increases totalPages (which would send the user to
+  // the end of ALL loaded chapters, not just the current one).
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get("page") === "last" && totalPages > 1) {
-      setCurrentPage(totalPages - 1);
-      hasRestoredRef.current = true;
-      // Clean up the URL
-      const url = new URL(window.location.href);
-      url.searchParams.delete("page");
-      history.replaceState(null, "", url.pathname);
-    }
+    if (!wantsLastPageRef.current || totalPages <= 1) return;
+    skipTransitionRef.current = true;
+    setCurrentPage(totalPages - 1);
+    hasRestoredRef.current = true;
+    wantsLastPageRef.current = false;
+    setAwaitingLastPage(false);
   }, [totalPages]);
 
-  // Restore saved page position after pagination is computed
+  // Restore saved page position after pagination is computed.
+  // Uses totalPagesRef inside the .then() to avoid stale-closure issues
+  // when totalPages changes between the effect firing and the promise resolving.
   useEffect(() => {
     if (hasRestoredRef.current || totalPages <= 1 || !onRestoreProgress) return;
 
     onRestoreProgress().then((data) => {
+      // Guard: another restore path (e.g. ?page=last) may have already run
+      if (hasRestoredRef.current) return;
       if (!data || data.page <= 0) {
         hasRestoredRef.current = true;
         return;
       }
 
+      const currentTotalPages = totalPagesRef.current;
       let targetPage: number;
-      if (data.totalPages === totalPages) {
-        // Same pagination layout — restore exact page
+      if (
+        data.totalPages > 0 &&
+        Math.abs(data.totalPages - currentTotalPages) <= 2
+      ) {
+        // Same or very similar layout (minor rounding from images/fonts) —
+        // use exact page to avoid proportional-scaling rounding errors.
         targetPage = data.page;
       } else if (data.totalPages > 0) {
-        // Viewport changed — scale proportionally
+        // Significantly different layout (viewport change) — scale proportionally
         const fraction = data.page / (data.totalPages - 1);
-        targetPage = Math.round(fraction * (totalPages - 1));
+        targetPage = Math.round(fraction * (currentTotalPages - 1));
       } else {
         hasRestoredRef.current = true;
         return;
       }
 
-      const clamped = Math.max(0, Math.min(targetPage, totalPages - 1));
+      const clamped = Math.max(
+        0,
+        Math.min(targetPage, currentTotalPages - 1)
+      );
+      skipTransitionRef.current = true;
       setCurrentPage(clamped);
       hasRestoredRef.current = true;
     });
@@ -1050,9 +1085,10 @@ function PaginatedReader({
     const baseOffset = currentPage * viewport.clientWidth;
     const totalOffset = baseOffset - dragOffset;
 
-    if (isDragging) {
-      // During drag: no transition, immediate response
+    if (isDragging || skipTransitionRef.current) {
+      // During drag or programmatic restore: no transition, immediate response
       article.style.transition = "none";
+      skipTransitionRef.current = false;
     } else {
       // Snap animation: smooth ease-out
       article.style.transition =
@@ -1329,6 +1365,7 @@ function PaginatedReader({
 
   const goToPage = useCallback(
     (page: number) => {
+      wantsLastPageRef.current = false;
       const clamped = Math.max(0, Math.min(page, totalPages - 1));
       setCurrentPage(clamped);
     },
@@ -1339,6 +1376,7 @@ function PaginatedReader({
     if (currentPage >= totalPages - 1) {
       // At the last page — navigate to next chapter if available
       if (effectiveNextChapter) {
+        sessionStorage.setItem("pressy-internal-nav", "1");
         window.location.href = effectiveNextChapter.slug;
       }
       return;
@@ -1350,6 +1388,7 @@ function PaginatedReader({
     if (currentPage <= 0) {
       // At the first page — navigate to prev chapter if available
       if (effectivePrevChapter) {
+        sessionStorage.setItem("pressy-internal-nav", "1");
         window.location.href = effectivePrevChapter.slug;
       }
       return;
@@ -1640,6 +1679,7 @@ function PaginatedReader({
         setIsDragging(false);
         setDragOffset(0);
         setChapterHint(null);
+        sessionStorage.setItem("pressy-internal-nav", "1");
         window.location.href = effectiveNextChapter.slug;
         return;
       }
@@ -1647,6 +1687,7 @@ function PaginatedReader({
         setIsDragging(false);
         setDragOffset(0);
         setChapterHint(null);
+        sessionStorage.setItem("pressy-internal-nav", "1");
         window.location.href = effectivePrevChapter.slug;
         return;
       }
@@ -1770,7 +1811,15 @@ function PaginatedReader({
       onMouseLeave={handleMouseLeave}
     >
       {/* Paginated content viewport */}
-      <div class="pressy-paginated-viewport" ref={viewportRef}>
+      <div
+        class="pressy-paginated-viewport"
+        ref={viewportRef}
+        style={
+          awaitingLastPage
+            ? { opacity: 0 }
+            : { opacity: 1, transition: "opacity 0.15s ease" }
+        }
+      >
         <article
           ref={articleRef}
           class={`pressy-prose pressy-prose--paginated ${
