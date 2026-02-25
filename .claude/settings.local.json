@@ -27,7 +27,8 @@
       "WebFetch(domain:www.goodreads.com)",
       "WebFetch(domain:angelahaddon.com)",
       "Bash(head:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(wc:*)"
     ]
   }
 }
