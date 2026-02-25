@@ -39,9 +39,17 @@ jobs:
       - name: Re-install to link workspace bins
         run: pnpm install --frozen-lockfile
 
-      - name: Build all examples
+      - name: Run integration tests
+        run: pnpm test
+
+      - name: Install Playwright browsers
+        run: pnpm exec playwright install chromium --with-deps
+
+      - name: Run E2E tests
+        run: pnpm test:e2e
+
+      - name: Build remaining examples
         run: |
-          pnpm --filter flatland-example build
           pnpm --filter frankenstein build
           pnpm --filter moby-dick-example build
 
