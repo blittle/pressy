@@ -763,6 +763,7 @@ function PaginatedReader({
   const [totalPages, setTotalPages] = useState(1);
   const totalPagesRef = useRef(1);
   totalPagesRef.current = totalPages;
+  const [pagesReady, setPagesReady] = useState(false);
   const hasRestoredRef = useRef(false);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const skipTransitionRef = useRef(false);
@@ -772,9 +773,10 @@ function PaginatedReader({
     typeof window !== "undefined" &&
       new URLSearchParams(window.location.search).get("page") === "last"
   );
-  // Track whether we're waiting for ?page=last to resolve (hide content until then)
-  const [awaitingLastPage, setAwaitingLastPage] = useState(
-    wantsLastPageRef.current
+  // Hide content until page position is resolved (prevents flash at page 0
+  // before jumping to the saved page). Covers both ?page=last and normal restore.
+  const [awaitingRestore, setAwaitingRestore] = useState(
+    wantsLastPageRef.current || !!onRestoreProgress
   );
 
   // Multi-chapter state
@@ -946,6 +948,7 @@ function PaginatedReader({
 
     const total = Math.max(1, Math.round(article.scrollWidth / viewportWidth));
     setTotalPages(total);
+    setPagesReady(true);
 
     // Clamp current page if now out of bounds (e.g. after resize)
     setCurrentPage((prev) => Math.min(prev, total - 1));
@@ -1021,49 +1024,56 @@ function PaginatedReader({
     };
   }, [recalculatePages, loadedChapters.length]);
 
-  // Apply ?page=last once totalPages is known (backward chapter navigation).
-  // Only applied once — cleared immediately to prevent re-triggering when
-  // chapter preloading increases totalPages (which would send the user to
-  // the end of ALL loaded chapters, not just the current one).
+  // Restore page position once pages are first computed.
+  // Handles both ?page=last (backward chapter nav) and normal restore from
+  // localStorage in a single effect — no racing between separate effects.
+  // Uses pagesReady (not totalPages > 1) so single-page chapters work too.
   useEffect(() => {
-    if (!wantsLastPageRef.current || totalPages <= 1) return;
-    skipTransitionRef.current = true;
-    setCurrentPage(totalPages - 1);
-    hasRestoredRef.current = true;
-    wantsLastPageRef.current = false;
-    setAwaitingLastPage(false);
-  }, [totalPages]);
+    if (hasRestoredRef.current || !pagesReady) return;
 
-  // Restore saved page position after pagination is computed.
-  // Uses totalPagesRef inside the .then() to avoid stale-closure issues
-  // when totalPages changes between the effect firing and the promise resolving.
-  useEffect(() => {
-    if (hasRestoredRef.current || totalPages <= 1 || !onRestoreProgress) return;
+    // 1. ?page=last takes priority (backward chapter navigation)
+    if (wantsLastPageRef.current) {
+      wantsLastPageRef.current = false;
+      skipTransitionRef.current = true;
+      setCurrentPage(totalPages - 1);
+      hasRestoredRef.current = true;
+      setAwaitingRestore(false);
+      return;
+    }
+
+    // 2. Try to restore from saved progress
+    if (!onRestoreProgress) {
+      hasRestoredRef.current = true;
+      setAwaitingRestore(false);
+      return;
+    }
 
     onRestoreProgress().then((data) => {
-      // Guard: another restore path (e.g. ?page=last) may have already run
-      if (hasRestoredRef.current) return;
-      if (!data || data.page <= 0) {
-        hasRestoredRef.current = true;
+      if (hasRestoredRef.current) {
+        setAwaitingRestore(false);
         return;
       }
 
       const currentTotalPages = totalPagesRef.current;
+
+      if (!data || data.page <= 0) {
+        hasRestoredRef.current = true;
+        setAwaitingRestore(false);
+        return;
+      }
+
       let targetPage: number;
       if (
-        data.totalPages > 0 &&
+        data.totalPages <= 1 ||
         Math.abs(data.totalPages - currentTotalPages) <= 2
       ) {
-        // Same or very similar layout (minor rounding from images/fonts) —
-        // use exact page to avoid proportional-scaling rounding errors.
+        // Saved totalPages is degenerate (<=1) or very close to current —
+        // use saved page directly. Clamping below handles out-of-bounds.
         targetPage = data.page;
-      } else if (data.totalPages > 0) {
-        // Significantly different layout (viewport change) — scale proportionally
+      } else {
+        // Significantly different layout — scale proportionally
         const fraction = data.page / (data.totalPages - 1);
         targetPage = Math.round(fraction * (currentTotalPages - 1));
-      } else {
-        hasRestoredRef.current = true;
-        return;
       }
 
       const clamped = Math.max(
@@ -1073,8 +1083,9 @@ function PaginatedReader({
       skipTransitionRef.current = true;
       setCurrentPage(clamped);
       hasRestoredRef.current = true;
+      setAwaitingRestore(false);
     });
-  }, [totalPages, onRestoreProgress]);
+  }, [pagesReady, totalPages, onRestoreProgress]);
 
   // Apply translateX — combines page position + drag offset
   useEffect(() => {
@@ -1815,7 +1826,7 @@ function PaginatedReader({
         class="pressy-paginated-viewport"
         ref={viewportRef}
         style={
-          awaitingLastPage
+          awaitingRestore
             ? { opacity: 0 }
             : { opacity: 1, transition: "opacity 0.15s ease" }
         }
