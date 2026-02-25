@@ -1,0 +1,41 @@
+{
+  "cli_version": "0.4.2",
+  "checkpoint_id": "eae19ee720b0",
+  "strategy": "manual-commit",
+  "branch": "deploy-all-examples",
+  "checkpoints_count": 1,
+  "files_touched": [
+    ".github/workflows/deploy-pages.yml",
+    "examples/moby-dick/content/books/moby-dick/_book.yaml",
+    "examples/moby-dick/content/books/moby-dick/cover.webp",
+    "examples/moby-dick/content/favicon.png",
+    "examples/moby-dick/package.json",
+    "examples/moby-dick/pressy.config.ts",
+    "examples/moby-dick/theme/custom.css",
+    "package.json",
+    "packages/@pressy/components/src/Reader.tsx",
+    "packages/@pressy/components/src/reader/PaginatedReader.tsx",
+    "packages/@pressy/components/src/reader/ScrollReader.tsx",
+    "packages/@pressy/components/src/reader/paginated-reader-styles.ts",
+    "packages/@pressy/components/src/reader/scroll-reader-styles.ts",
+    "packages/@pressy/components/src/reader/types.ts",
+    "packages/pressy/src/runtime/client.tsx",
+    "scripts/process-moby-dick.mjs"
+  ],
+  "sessions": [
+    {
+      "metadata": "/ea/e19ee720b0/0/metadata.json",
+      "transcript": "/ea/e19ee720b0/0/full.jsonl",
+      "context": "/ea/e19ee720b0/0/context.md",
+      "content_hash": "/ea/e19ee720b0/0/content_hash.txt",
+      "prompt": "/ea/e19ee720b0/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 11,
+    "cache_creation_tokens": 6229,
+    "cache_read_tokens": 424793,
+    "output_tokens": 328,
+    "api_call_count": 7
+  }
+}

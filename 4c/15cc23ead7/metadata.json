@@ -1,0 +1,53 @@
+{
+  "cli_version": "0.4.2",
+  "checkpoint_id": "4c15cc23ead7",
+  "strategy": "manual-commit",
+  "branch": "bl-fix-pages",
+  "checkpoints_count": 3,
+  "files_touched": [
+    "examples/flatland/dist/assets/articles-ChpwJyJ_.js",
+    "examples/flatland/dist/assets/articles-about-flatland-Bc-QUe19.js",
+    "examples/flatland/dist/assets/books-BX7Vg0rY.js",
+    "examples/flatland/dist/assets/books-flatland-BGK-7xPT.js",
+    "examples/flatland/dist/assets/books-flatland-concerning-a-stranger-BmmeNpCM.js",
+    "examples/flatland/dist/assets/books-flatland-concerning-the-inhabitants--Kg4yFmh.js",
+    "examples/flatland/dist/assets/books-flatland-concerning-the-women-1xbjuWRM.js",
+    "examples/flatland/dist/assets/books-flatland-of-our-methods-of-recognizing-kyXWnJq1.js",
+    "examples/flatland/dist/assets/books-flatland-of-recognition-by-sight-Bxiqreiq.js",
+    "examples/flatland/dist/assets/books-flatland-of-the-climate-and-houses-DFXuayJi.js",
+    "examples/flatland/dist/assets/books-flatland-of-the-nature-of-flatland-Bq6QQGmp.js",
+    "examples/flatland/dist/assets/books-flatland-preface-C86vGTBq.js",
+    "examples/flatland/dist/assets/client-DkP7ofub.js",
+    "examples/flatland/dist/assets/index-Den-fWCv.js",
+    "examples/flatland/dist/assets/pressy-entry-MLWaqUIs.js",
+    "examples/flatland/dist/assets/pressy-entry-xg2G9h26.css",
+    "packages/@pressy/components/src/Navigation.tsx",
+    "packages/@pressy/components/src/Reader.tsx",
+    "packages/pressy/src/cli/index.ts",
+    "packages/pressy/src/runtime/client.ts",
+    "packages/pressy/src/vite/plugin.ts"
+  ],
+  "sessions": [
+    {
+      "metadata": "/4c/15cc23ead7/0/metadata.json",
+      "transcript": "/4c/15cc23ead7/0/full.jsonl",
+      "context": "/4c/15cc23ead7/0/context.md",
+      "content_hash": "/4c/15cc23ead7/0/content_hash.txt",
+      "prompt": "/4c/15cc23ead7/0/prompt.txt"
+    },
+    {
+      "metadata": "/4c/15cc23ead7/1/metadata.json",
+      "transcript": "/4c/15cc23ead7/1/full.jsonl",
+      "context": "/4c/15cc23ead7/1/context.md",
+      "content_hash": "/4c/15cc23ead7/1/content_hash.txt",
+      "prompt": "/4c/15cc23ead7/1/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 33,
+    "cache_creation_tokens": 26945,
+    "cache_read_tokens": 2615364,
+    "output_tokens": 549,
+    "api_call_count": 27
+  }
+}

@@ -1,0 +1,17 @@
+There are two big problems that remain:
+
+1. The page restoration. Even though we store chapter and page inside local storage, sometimes the _wrong_ page is restored, like always going one page further, or one page back. I think this has to do with the snap to page and or the animation timing. Maybe something else though.
+
+2. When going backwards, to previous pages, when I hit a previous chapter the transition sucks because the new chapter gets loaded then the animation to the last page of the chapter. It might be better when going backwards to somehow disable that scroll animation. I don't know if a fade in would be better, or just have it immediately show.
+
+---
+
+Sometimes going backwards, when loading a previous chapter, instead for some reason a chapter loads that is towards the end of the book
+
+---
+
+Why would it jump to the end of the book sometimes when going backwards?
+
+---
+
+Something isn't wired up right, I can easily reproduce going backwards from one chapter to the previous. The scroll position ends up at the _end of the book_. But at the same time the table of contents popup says that we did go to the previous chapter. So some state isn't right where the scroll is getting screwed up. Would it be when going to the previous chapter, after that chapter loads, something is sending the scroll to the end of the chapter, but that's really sending the user to the end of the book?

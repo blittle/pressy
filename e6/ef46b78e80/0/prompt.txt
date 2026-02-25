@@ -1,0 +1,104 @@
+Implement the following plan:
+
+# Book Cover Image on Home Page
+
+## Context
+
+The home/landing page (`renderBookPage()` in `client.tsx`) currently shows only the book title, author, description, and chapter list. The user wants a prominent cover image displayed on this page. Cover images already exist in the content (e.g., `examples/flatland/content/books/flatland/cover.svg`) and `_book.yaml` references them (`cover: cover.svg`), but the cover discovery in `plugin.ts` only checks for `.jpg`/`.png` (not `.svg`), covers aren't served in dev or emitted in builds, and `renderBookPage()` doesn't render them.
+
+## Files to Modify
+
+| File | Change |
+|------|--------|
+| `packages/pressy/src/vite/plugin.ts` | Fix cover discovery to support SVG; serve covers in dev; emit covers in build |
+| `packages/pressy/src/runtime/client.tsx` | Render cover image in `renderBookPage()`; add cover CSS to `HOME_STYLES` |
+
+## Implementation
+
+### Step 1: Fix cover discovery in `plugin.ts`
+
+Currently (~line 95) only checks `cover.jpg` and `cover.png`. Update to:
+1. First check `metadata.cover` from `_book.yaml` (e.g., `cover: cover.svg`) — if set and file exists, use it
+2. Fall back to checking `cover.jpg`, `cover.png`, `cover.svg` in order
+3. Store the resolved cover filename (e.g., `"cover.svg"`) in the book data sent to the client as `coverUrl` (a URL path like `/books/flatland/cover.svg`)
+
+### Step 2: Serve cover files in dev middleware
+
+In the `configureServer` hook, add a handler that intercepts requests matching `/books/<slug>/cover.*` and serves the file from the content directory using `send()`.
+
+### Step 3: Emit cover files in build
+
+In the `generateBundle` hook, for each book with a `coverPath`, read the file and emit it as an asset using `this.emitFile({ type: 'asset', fileName, source })` so it ends up in the build output.
+
+### Step 4: Render cover image in `renderBookPage()` (client.tsx)
+
+Add cover image above the header in `renderBookPage()`:
+
+```
+┌─────────────────────────┐
+│                         │
+│      ┌───────────┐      │
+│      │           │      │
+│      │   COVER   │      │
+│      │   IMAGE   │      │
+│      │           │      │
+│      └───────────┘      │
+│                         │
+│     Book Title          │
+│     by Author           │
+│     Description...      │
+│                         │
+│     Chapters            │
+│     ...                 │
+└─────────────────────────┘
+```
+
+- Only render the `<img>` if `book.coverUrl` exists
+- Use `<img src={book.coverUrl} alt={`${book.metadata.title} cover`} class="pressy-home-cover" />`
+
+### Step 5: Cover CSS in `HOME_STYLES`
+
+```css
+.pressy-home-cover {
+  display: block;
+  max-width: 360px;
+  width: 100%;
+  height: auto;
+  margin: 0 auto 2rem;
+  border-radius: 4px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.15);
+}
+
+@media (max-width: 600px) {
+  .pressy-home-cover {
+    max-width: 240px;
+  }
+}
+```
+
+- Centered with `margin: auto`, max-width constrains on large screens
+- `box-shadow` adds depth / "floating book" effect
+- Responsive: smaller on mobile
+
+## Verification
+
+1. `pnpm --filter pressy build` — no errors
+2. `pnpm dev:flatland` — home page shows Flatland cover image centered above the title
+3. Cover image is properly sized and responsive (shrinks on narrow viewports)
+4. Production build (`pnpm build:flatland`) — cover file is emitted in output, image loads correctly
+5. A book without a cover image still renders correctly (no broken image)
+
+
+If you need specific details from before exiting plan mode (like exact code snippets, error messages, or content you generated), read the full transcript at: /Users/blittle/.REDACTED.jsonl
+
+---
+
+The layout of the home page is fine, but it just feels a bit boring. How could we make it more exciting or engaging given the content on it?
+
+---
+
+Let's start with 1-4
+
+---
+
+[Request interrupted by user for tool use]

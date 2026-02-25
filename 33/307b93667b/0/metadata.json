@@ -1,0 +1,45 @@
+{
+  "cli_version": "0.4.2",
+  "checkpoint_id": "33307b93667b",
+  "session_id": "111efa34-e36d-4245-9992-9f0e603eac20",
+  "strategy": "manual-commit",
+  "created_at": "2026-02-25T17:47:35.163437Z",
+  "branch": "deploy-all-examples",
+  "checkpoints_count": 1,
+  "files_touched": [
+    ".github/workflows/deploy-pages.yml",
+    "examples/moby-dick/content/books/moby-dick/_book.yaml",
+    "examples/moby-dick/package.json",
+    "examples/moby-dick/pressy.config.ts",
+    "examples/moby-dick/theme/custom.css",
+    "package.json",
+    "packages/@pressy/components/src/Reader.tsx",
+    "packages/@pressy/components/src/reader/PaginatedReader.tsx",
+    "packages/@pressy/components/src/reader/ScrollReader.tsx",
+    "packages/@pressy/components/src/reader/paginated-reader-styles.ts",
+    "packages/@pressy/components/src/reader/scroll-reader-styles.ts",
+    "packages/@pressy/components/src/reader/types.ts",
+    "packages/pressy/src/runtime/client.tsx",
+    "scripts/process-moby-dick.mjs"
+  ],
+  "agent": "Claude Code",
+  "transcript_identifier_at_start": "354cbbcf-91db-4d04-995a-ee5ec5d526a7",
+  "checkpoint_transcript_start": 1285,
+  "transcript_lines_at_start": 1285,
+  "token_usage": {
+    "input_tokens": 14,
+    "cache_creation_tokens": 13229,
+    "cache_read_tokens": 544168,
+    "output_tokens": 1866,
+    "api_call_count": 10
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-02-25T17:47:34.715442Z",
+    "agent_lines": 59,
+    "human_added": 3,
+    "human_modified": 1,
+    "human_removed": 0,
+    "total_committed": 63,
+    "agent_percentage": 93.65079365079364
+  }
+}

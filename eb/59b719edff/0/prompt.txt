@@ -1,0 +1,255 @@
+Implement the following plan:
+
+# Phase 4: Seamless Chapter Transitions
+
+## Context
+
+Currently Pressy is an MPA — each chapter is a separate HTML page with its own JS bundle that statically imports one MDX chapter. Clicking "next chapter" triggers a full page reload (`window.location.href`). This breaks the reading flow. Phase 4 makes chapter boundaries invisible by dynamically loading and appending next-chapter content to the CSS column container, so the reader just keeps turning pages.
+
+Each chapter's HTML page still works standalone (SEO, direct links, offline). Only the in-reader experience changes.
+
+## Files to Modify
+
+| File | Change |
+|------|--------|
+| `packages/pressy/src/vite/plugin.ts` | New virtual module for code-split chapter imports; inject into chapter route modules |
+| `packages/pressy/src/runtime/client.tsx` | Updated `hydrate()` signature; pass chapter map to Reader; chapter-aware progress |
+| `packages/@pressy/components/src/Reader.tsx` | Major refactor of PaginatedReader for multi-chapter rendering, preloading, boundary detection, URL updates |
+| `packages/pressy/src/types.ts` | New `ChapterMapData` type |
+
+## Implementation Steps
+
+### Step 1: Virtual Chapter Map Module (Vite Plugin)
+
+Add `virtual:pressy-chapter-map:{bookSlug}` virtual module that generates dynamic import functions for each chapter:
+
+```js
+// Generated for virtual:pressy-chapter-map:flatland
+export const chapterMap = {
+  "preface": () => import('/path/to/00-preface.mdx'),
+  "of-the-nature-of-flatland": () => import('/path/to/01-of-the-nature-of-flatland.mdx'),
+};
+export const chapterOrder = ["preface", "of-the-nature-of-flatland"];
+```
+
+Rollup automatically code-splits each dynamic import into its own chunk. Vite dev server handles these natively.
+
+Add `resolveId` and `load` handlers in the `pressy:content` plugin for the new prefix.
+
+### Step 2: Inject Chapter Map into Route Modules
+
+For chapter-type routes, the generated virtual route module imports the chapter map:
+
+```js
+import { hydrate } from '/@pressy/client';
+import Content from '/path/to/00-preface.mdx';
+import { chapterMap, chapterOrder } from 'virtual:pressy-chapter-map:flatland';
+const data = { ... };
+hydrate(data, Content, { chapterMap, chapterOrder });
+```
+
+Update both the `load` handler (build) and `generateHTML` (dev server) to include this import.
+
+### Step 3: Update Runtime Client
+
+- Add `ChapterMapData` type to `types.ts`
+- Update `hydrate(data, Content?, chapterMapData?)` to accept and forward the map
+- Pass `chapterMapData`, `allChapters`, and `basePath` through `renderChapterPage()` → `ChapterReaderWithProgress` → `Reader` → `PaginatedReader`
+- Add `onChapterChange` callback for saving progress when chapters are crossed
+- Add prefetch `<link rel="prefetch">` for previous chapter's HTML on mount
+
+### Step 4: Refactor PaginatedReader for Multi-Chapter
+
+This is the core change. New props:
+
+```ts
+initialContent?: ComponentType  // Raw Content component (not pre-rendered children)
+chapterMapData?: ChapterMapData
+currentChapterSlug?: string
+allChapters?: Array<{ slug: string; title: string; wordCount?: number }>
+basePath?: string
+onChapterChange?: (slug: string, page: number, totalPages: number) => void
+```
+
+**New state — loaded chapters array:**
+```ts
+interface LoadedChapter {
+  slug: string
+  title: string
+  Content: ComponentType<{ components?: Record<string, unknown> }>
+}
+```
+
+Initialize with just the current chapter's Content. When `chapterMapData` is absent, fall back to `children` (backward compat).
+
+**Rendering — multiple chapters in column container:**
+```tsx
+<article class="pressy-prose pressy-prose--paginated">
+  {loadedChapters.map((ch, idx) => (
+    <section key={ch.slug} data-chapter-slug={ch.slug}>
+      {idx > 0 && <ChapterDivider title={ch.title} />}
+      <ch.Content components={mdxComponents} />
+    </section>
+  ))}
+</article>
+```
+
+Use CSS `break-before: column` on chapter sections after the first to force new chapters onto fresh pages.
+
+**Page-to-chapter mapping:**
+After `recalculatePages`, query each `.pressy-chapter-section` element's `offsetLeft` to build a map of `{ slug, startPage, endPage }`. Used for:
+- Determining which chapter the current page belongs to
+- Showing per-chapter page numbers in the footer
+- Triggering URL updates on boundary crossings
+
+**Preloading — 2 pages from chapter end:**
+When `currentPage` is within 2 pages of the current chapter's `endPage`:
+1. Find the next slug in `chapterOrder`
+2. Call `chapterMap[nextSlug]()` (dynamic import)
+3. Append the resolved Content component to `loadedChapters`
+4. After render, call `recalculatePages` to update column layout
+5. Guard against duplicate loads with a `preloadingRef` Set
+
+**URL updates on boundary crossing:**
+When `currentPage` enters a different chapter's page range:
+- `history.replaceState(null, '', newChapterPath)`
+- Update `document.title`
+- Save progress for the chapter being left (mark as complete)
+- Update `activeChapterSlug` state
+- Recalculate global book progress %
+
+**Page indicator — per-chapter pages:**
+Show `Page {chapterPage + 1} of {chapterTotalPages}` relative to the active chapter, not the entire loaded content.
+
+### Step 5: Backward Navigation
+
+Backward transitions use prefetch + fast cached navigation (per research doc — this is acceptable):
+
+1. On chapter load, prefetch previous chapter HTML via `<link rel="prefetch">`
+2. When user swipes/taps past page 0: `window.location.href = prevChapter.slug + '?page=last'`
+3. On arrival, PaginatedReader checks `?page=last` query param before restoring saved progress
+4. If found, jump to `totalPages - 1` and clean up the URL with `replaceState`
+
+### Step 6: Edge Cases
+
+- **No chapter map** (scroll mode, articles, non-chapter routes): Fall back to current `children`-based single-chapter behavior
+- **Dynamic import failure**: Catch and fall back to `window.location.href` navigation
+- **Resize with multiple chapters**: `recalculatePages` rebuilds the full page-to-chapter map
+- **Book end**: Last page of last chapter — keep existing rubber-band, no chapter hint
+- **Single-chapter books**: Works identically to current behavior
+
+### Step 7: CSS Additions
+
+```css
+.pressy-chapter-section + .pressy-chapter-section {
+  break-before: column;
+}
+.pressy-chapter-divider {
+  text-align: center;
+  padding: 3rem 1.5rem;
+  max-width: min(65ch, calc(100% - 3rem));
+  margin: 0 auto;
+}
+.pressy-chapter-divider-title {
+  font-size: 1.5rem;
+  font-family: var(--font-heading, system-ui, -apple-system, sans-serif);
+  margin: 0;
+}
+```
+
+## No Service Worker Changes Needed
+
+Dynamic chapter chunks are JS modules → already cached by the existing `StaleWhileRevalidate` strategy for scripts. Chapter chunks are also included in the precache manifest automatically (the build loop adds all `.js` files).
+
+## Verification
+
+1. `pnpm --filter pressy build` — verify chapter map virtual module generates correct code
+2. Run dev server with Flatland example — verify chapters load and paginate
+3. Navigate forward past last page of chapter 1 → should seamlessly flow into chapter 2
+4. Check URL updates via `replaceState` as chapters are crossed
+5. Check IndexedDB for saved progress on completed chapters
+6. Navigate backward from chapter 2 page 1 → should arrive at chapter 1 last page via `?page=last`
+7. Resize browser with multiple chapters loaded → pages recalculate correctly
+8. Production build → verify code-split chunks exist for each chapter MDX file
+
+
+If you need specific details from before exiting plan mode (like exact code snippets, error messages, or content you generated), read the full transcript at: /Users/blittle/.REDACTED.jsonl
+
+---
+
+Get rid of the scroll implementation to change pages, it's too sensitive
+
+---
+
+There's some inconcsistency in the heading rendering on the top of each chapter page. If I go directly to the chapter from the table of contents, no title is rendered. When instead I go through the pages of one chapter to the next, the next chapter I get to _does_ render the title of the chapter. So something different with the full page load vs the hydrated rendering.
+
+---
+
+build and test it
+
+---
+
+[Request interrupted by user]
+
+---
+
+When I reach the last page of the book, and go to the next page, it should navigate me to the home table of contents
+
+---
+
+Does that need to be a full page load, because I don't know if we built out the table of contents to hydrate
+
+---
+
+Hmm, it sends me to this URL: http://localhost:3000/books/flatland
+
+And that errors with the following (crashing vite):
+
+```
+file:///Users/blittle/dev/pressy/node_modules/.pnpm/vite@5.4.21_@types+node@20.19.33/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:35172
+  throw new Error(
+        ^
+
+Error: Unable to parse HTML; parse5 error code missing-whitespace-between-attributes
+ at /Users/blittle/dev/pressy/examples/flatland/books/flatland:8:28
+6  |    <title>Flatland: A Romance of Many Dimensions | Flatland: A Romance of Many Dimensions</title>
+7  |    <meta name="description" content="Flatland is an 1884 satirical novella by the English schoolmaster Edwin Abbott Abbott.
+8  |  Writing pseudonymously as "A Square", Abbott uses the fictional two-dimensional world
+   |                             ^
+9  |  of Flatland to offer pointed observations on the social hierarchy of Victorian culture.
+10 |  ">
+    at handleParseError (file:///Users/blittle/dev/pressy/node_modules/.pnpm/vite@5.4.21_@types+node@20.19.33/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:35172:9)
+    at Parser.onParseError (file:///Users/blittle/dev/pressy/node_modules/.pnpm/vite@5.4.21_@types+node@20.19.33/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:35097:7)
+    at Tokenizer._err (file:///Users/blittle/dev/pressy/node_modules/.pnpm/vite@5.4.21_@types+node@20.19.33/node_modules/vite/dist/node/chunks/dep-D-7KCb9p.js:1155:89)
+    at Tokenizer._stateAfterAttributeValueQuoted (file:///Users/blittle/dev/pressy/node_modules/.pnpm/vite@5.4.21_@types+node@20.19.33/node_modules/vite/dist/node/chunks/dep-D-7KCb9p.js:2760:22)
+    at Tokenizer._callState (file:///Users/blittle/dev/pressy/node_modules/.pnpm/vite@5.4.21_@types+node@20.19.33/node_modules/vite/dist/node/chunks/dep-D-7KCb9p.js:1666:22)
+    at Tokenizer._runParsingLoop (file:///Users/blittle/dev/pressy/node_modules/.pnpm/vite@5.4.21_@types+node@20.19.33/node_modules/vite/dist/node/chunks/dep-D-7KCb9p.js:1179:22)
+    at Tokenizer.write (file:///Users/blittle/dev/pressy/node_modules/.pnpm/vite@5.4.21_@types+node@20.19.33/node_modules/vite/dist/node/chunks/dep-D-7KCb9p.js:1204:14)
+    at Parser.parse (file:///Users/blittle/dev/pressy/node_modules/.pnpm/vite@5.4.21_@types+node@20.19.33/node_modules/vite/dist/node/chunks/dep-D-7KCb9p.js:4886:26)
+    at parse (file:///Users/blittle/dev/pressy/node_modules/.pnpm/vite@5.4.21_@types+node@20.19.33/node_modules/vite/dist/node/chunks/dep-D-7KCb9p.js:7957:19)
+    at traverseHtml (file:///Users/blittle/dev/pressy/node_modules/.pnpm/vite@5.4.21_@types+node@20.19.33/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:35092:15)
+
+Node.js v22.20.0
+/Users/blittle/dev/pressy/examples/flatland:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  flatland-example@0.1.0 dev: `pressy dev`
+Exit status 1
+ ELIFECYCLE  Command failed with exit code 1.
+```
+
+---
+
+When going through the pags from one chapter to another, _NEVER_ try to automatically go to where the user last was in the chapter. Instead, it should be like a book. Flipping from the last page of chapter two should bring you to the first page of chapter 3. And the same going backwards. Going backwards from the first page of chapter 3 should take you to the last page of chapter 2.
+
+---
+
+If I hard refresh the page at `http://localhost:3000/books/flatland/concerning-a-stranger` (which is the last chapter)
+
+Then if I click the previous page button, I get an error loading `http://localhost:3000/books/flatland/of-recognition-by-sight?page=last`, but if I remove the `page=last` query parameter, it works. Even hard refreshing on `http://localhost:3000/books/flatland/of-recognition-by-sight?page=last` leads to an error "Cannot GET /books/flatland/of-recognition-by-sight"
+
+---
+
+If I load the second to last chapter, and go through the pages and until I get to the last chapter, then keep going through the pages to the end of the book, it should send me to the table of contents home page. But instead, in this scenario it sends me back to the first page of the last chapter. Oddly if I hard refresh on the last chapter, and go through the pages, at the end I do get redirected back to the table of contents. Something with the hydrated page doesn't work right.
+
+---
+
+Create a branch, commit where we are at and push to github

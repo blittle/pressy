@@ -1,0 +1,194 @@
+Implement the following plan:
+
+# Declutter Home Page: Move TOC & Offline to Reader Footer
+
+## Context
+
+The home page now has a nice hero layout, but it still shows the full table of contents (BookProgress) and offline download (DownloadBook) sections inline, which clutters the marketing feel. The user wants:
+
+1. **Home page** — purely promotional. Remove the chapters list and offline download section.
+2. **Reader footer** — add a TOC icon next to the book title; tapping it opens a chapter drawer. Also integrate offline download status into the footer.
+3. Both features become accessible from where you actually need them (while reading), not the landing page.
+
+## Files to Modify
+
+| File | Changes |
+|------|---------|
+| `packages/pressy/src/runtime/client.tsx` | Remove `<BookProgress>` and `<DownloadBook>` from `renderBookPage()`. Pass offline props through to Reader. |
+| `packages/@pressy/components/src/Reader.tsx` | Add TOC drawer + offline indicator to PaginatedReader footer. Add a minimal footer to ScrollReader. New `ReaderProps` for offline + chapter data. |
+| `packages/@pressy/components/src/DownloadBook.tsx` | No changes (reused as-is inside Reader footer) |
+| `packages/@pressy/components/src/BookProgress.tsx` | No changes (stays exported but no longer used on home page) |
+
+## Implementation
+
+### 1. Clean up home page (`client.tsx` → `renderBookPage`)
+
+- Remove the `<DownloadBook>` block entirely
+- Remove the "Chapters" `<section>` containing `<BookProgress>`
+- Keep the articles section (if present)
+- Remove `DownloadBook` and `BookProgress` imports if they become unused
+- The home page becomes: hero (cover + title + description + stats + CTA) + optional articles
+
+### 2. Add offline props to ReaderProps (`Reader.tsx`)
+
+Add optional props to `ReaderProps`:
+```ts
+offlineProps?: {
+  bookSlug: string
+  chapterUrls: string[]
+  cachedBooks: { value: Set<string> }
+  cacheProgress: { value: { bookSlug: string; current: number; total: number } | null }
+  onDownload: (bookSlug: string, chapterUrls: string[]) => void
+  onRemove: (bookSlug: string) => void
+}
+```
+
+Thread through `Reader` → `PaginatedReader` and `ScrollReader`.
+
+In `client.tsx`, pass these props from `ChapterReaderWithProgress` where the offline signals are already available.
+
+### 3. Add TOC drawer to PaginatedReader footer (`Reader.tsx`)
+
+**State:** Add `tocOpen` boolean state alongside existing `settingsOpen`.
+
+**Footer row layout change** (line ~1271):
+```
+┌─────────────────────────────────────┐
+│ [TOC icon] Book Title   [⚙ gear]   │
+└─────────────────────────────────────┘
+```
+
+- Add a TOC icon button (list/hamburger icon SVG) to the **left** of the book title
+- Tapping the icon OR the book title opens the TOC drawer (instead of navigating home)
+- Close TOC when settings is opened, and vice versa
+
+**TOC Drawer** — a bottom-sheet overlay rendered as a sibling to the footer:
+```
+┌──────────────────────────────────┐
+│ ░░░░░░░░░ Backdrop ░░░░░░░░░░░░ │
+│ ┌──────────────────────────────┐ │
+│ │ Contents                  ✕  │ │
+│ │──────────────────────────────│ │
+│ │  1. The Two-Dimensional...   │ │
+│ │  2. Of Sight Recognition ●   │ │  ← current chapter highlighted
+│ │  3. Concerning a Stranger    │ │
+│ │  ...                         │ │
+│ └──────────────────────────────┘ │
+└──────────────────────────────────┘
+```
+
+- Semi-transparent backdrop, click to dismiss
+- Panel slides up from bottom, max-height ~70vh, scrollable
+- Reuse `allChapters` + `bookBasePath` + `currentChapterSlug` (already available as props)
+- Each chapter is an `<a>` link — clicking navigates to that chapter and closes the drawer
+- Current chapter gets a highlighted/active style
+- Close button (✕) in the header
+- CSS animation: slide up + fade in, respects `prefers-reduced-motion`
+
+**Footer visibility interaction updates:**
+- When TOC is open, keep footer visible (like settings)
+- Update the visibility class: `footerVisible || settingsOpen || tocOpen`
+- Close TOC on outside clicks (same pattern as settings)
+
+### 4. Add compact offline indicator to footer (`Reader.tsx`)
+
+Add a small offline status icon in the footer row, to the right of the book title (between title and gear icon):
+
+```
+[TOC] Book Title  [cloud-icon] [⚙]
+```
+
+- **Not cached:** Small cloud-download icon. Tapping starts download.
+- **Downloading:** Icon swaps to a tiny spinner/progress.
+- **Cached:** Cloud-check icon (green). Tapping shows "Remove" option.
+- Uses the `offlineProps` passed through ReaderProps
+- Compact — just an icon button, no text labels in the footer row (tooltip on hover for desktop)
+
+Import `DownloadBook` inside Reader.tsx OR create a smaller `OfflineFooterIcon` inline component that uses the same signals pattern.
+
+### 5. Add footer to ScrollReader (`Reader.tsx`)
+
+ScrollReader currently has no footer. Add a minimal fixed footer bar matching PaginatedReader's pattern:
+
+- Same tap-to-show behavior (show on tap, hide after 3s)
+- Same footer row: TOC icon, book title, offline icon, settings gear
+- Same TOC drawer
+- Same settings panel (theme + font size)
+- Position: `fixed` at bottom of viewport
+- Reuse the same CSS classes (`.pressy-page-footer`, etc.)
+
+This requires threading additional props to `ScrollReader`: `bookTitle`, `allChapters`, `bookBasePath`, `currentChapterSlug`, `offlineProps`.
+
+### 6. Update client.tsx to pass offline props
+
+In `ChapterReaderWithProgress`, construct and pass `offlineProps`:
+
+```tsx
+<Reader
+  // ...existing props...
+  offlineProps={{
+    bookSlug: book.slug,
+    chapterUrls: book.chapters.map(ch => `/books/${book.slug}/${ch.slug}`),
+    cachedBooks,
+    cacheProgress,
+    onDownload: downloadBookForOffline,
+    onRemove: clearBookCache,
+  }}
+/>
+```
+
+## Verification
+
+1. `pnpm --filter @pressy-pub/components build` — no errors
+2. `pnpm --filter pressy build` — no errors
+3. Home page: only shows hero (cover, title, author, description, stats, CTA) + optional articles. No chapters list, no download button.
+4. Reader footer (paginated): tap to show footer → see TOC icon, book title, offline icon, gear
+5. Tap TOC icon → drawer slides up with chapter list, current chapter highlighted
+6. Tap a chapter in drawer → navigates to it
+7. Offline icon: tap to download, shows progress, shows green check when cached
+8. ScrollReader: same footer behavior as paginated
+9. `prefers-reduced-motion` disables drawer animations
+10. Works across light/dark/sepia themes
+
+
+If you need specific details from before exiting plan mode (like exact code snippets, error messages, or content you generated), read the full transcript at: /Users/blittle/.claude/projects/-Users-blittle-dev-pressy/8e818e0d-1467-4e5d-a820-70da741e0b84.jsonl
+
+---
+
+Clicking the download book button, it just hangs indefinitely at "Downloading... 0%". If I refresh the page, then it says it's downloaded. Seems like it's not reactively updating correctly.
+
+---
+
+Still appears to hang and never load. Must still be a signal/preact issue. Because refreshing it is downloaded
+
+---
+
+Still appears to hang and never load. Must still be a signal/preact issue. Because refreshing it is downloaded
+
+---
+
+Ugh, still doesn't work.
+
+---
+
+Could we add the ability for people to provide an icon for the installed PWA?
+
+---
+
+Can you take the attached image, move it into the proper location? It should be 512x512 already, but needs to be also resized for 192
+
+---
+
+[Image: source: /Users/blittle/Downloads/flatland.png]
+
+---
+
+Should we also allow the favicon to be configured?
+
+---
+
+Let's replace the `cover.svg` with ~/Downloads/flatland.jpg
+
+---
+
+I see this warning in the browser console: `<meta name="apple-mobile-web-app-capable" content="yes"> is deprecated. Please include <meta name="mobile-web-app-capable" content="yes">`
