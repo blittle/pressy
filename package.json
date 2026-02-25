@@ -11,19 +11,21 @@
     "dev:all": "pnpm -r --filter './packages/**' build && pnpm -r --parallel --stream --filter './packages/**' --filter 'flatland-example' dev",
     "dev:moby": "pnpm --filter 'moby-dick-example' dev",
     "build:moby": "pnpm --filter 'moby-dick-example' build",
-    "test": "vitest",
+    "test": "vitest run",
+    "test:e2e": "pnpm exec playwright test",
     "lint": "eslint packages --ext .ts,.tsx",
     "typecheck": "tsc --noEmit",
     "publish-packages": "pnpm -r --filter './packages/**' build && pnpm -r --filter './packages/**' publish --no-git-checks",
     "version": "pnpm -r --filter './packages/**' exec pnpm version patch"
   },
   "devDependencies": {
+    "@playwright/test": "^1.58.2",
     "@types/node": "^20.10.0",
-    "typescript": "^5.3.0",
-    "vitest": "^1.0.0",
-    "eslint": "^8.55.0",
     "@typescript-eslint/eslint-plugin": "^6.13.0",
-    "@typescript-eslint/parser": "^6.13.0"
+    "@typescript-eslint/parser": "^6.13.0",
+    "eslint": "^8.55.0",
+    "typescript": "^5.3.0",
+    "vitest": "^1.0.0"
   },
   "engines": {
     "node": ">=18.0.0",
