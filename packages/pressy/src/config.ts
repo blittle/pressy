@@ -36,10 +36,21 @@ export interface PWAConfig {
   favicon?: string
 }
 
+export interface StripeConfig {
+  publishableKey: string
+}
+
+export interface PayPalConfig {
+  clientId: string
+  currency?: string
+}
+
 export interface PressyConfig {
   site: SiteConfig
   pagination?: PaginationConfig
   shopify?: ShopifyConfig
+  stripe?: StripeConfig
+  paypal?: PayPalConfig
   pwa?: PWAConfig
   outDir?: string
   contentDir?: string

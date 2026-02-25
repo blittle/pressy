@@ -237,6 +237,7 @@ export function pressyPlugin(config: PressyConfig): Plugin[] {
       routeType: route.type,
       manifest,
       pagination: config.pagination,
+      providers: getProviders(),
     })
 
     const faviconTag = `\n  <link rel="icon" href="/favicon.png" type="image/png">`
@@ -305,6 +306,14 @@ export function pressyPlugin(config: PressyConfig): Plugin[] {
     }
   }
 
+  function getProviders() {
+    const providers: Record<string, unknown> = {}
+    if (config.shopify) providers.shopify = config.shopify
+    if (config.stripe) providers.stripe = config.stripe
+    if (config.paypal) providers.paypal = config.paypal
+    return Object.keys(providers).length > 0 ? providers : undefined
+  }
+
   /** Generate a simple SVG icon as a placeholder when no custom icon is provided. */
   function generatePlaceholderIcon(size: number): string {
     const initial = config.site.title.charAt(0).toUpperCase()
@@ -347,7 +356,7 @@ export function pressyPlugin(config: PressyConfig): Plugin[] {
               rollupOptions: {
                 input,
                 preserveEntrySignatures: 'exports-only',
-                external: ['@pressy-pub/shopify'],
+                external: ['@pressy-pub/shopify', '@pressy-pub/stripe', '@pressy-pub/paypal'],
               },
             },
           }
@@ -384,9 +393,9 @@ export function pressyPlugin(config: PressyConfig): Plugin[] {
         if (id.startsWith(VIRTUAL_CHAPTER_MAP_PREFIX)) {
           return '\0' + id
         }
-        // @pressy-pub/shopify is optional — mark as external so Vite doesn't
-        // error on the dynamic import in Paywall.tsx when shopify isn't installed
-        if (id === '@pressy-pub/shopify') {
+        // Payment provider packages are optional — mark as external so Vite doesn't
+        // error on the dynamic import in Paywall.tsx when they aren't installed
+        if (id === '@pressy-pub/shopify' || id === '@pressy-pub/stripe' || id === '@pressy-pub/paypal') {
           return { id, external: true }
         }
         if (id === '/@pressy-pub/client') {
