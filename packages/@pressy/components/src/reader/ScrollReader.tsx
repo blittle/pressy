@@ -5,7 +5,8 @@ import { Navigation } from "../Navigation.js";
 import { TextShare } from "../TextShare.js";
 import { OfflineIndicator } from "../OfflineIndicator.js";
 import { SCROLL_STYLES } from "./scroll-reader-styles.js";
-import type { ProgressData, OfflineProps } from "./types.js";
+import { TTSFooterIcon } from "./TTSFooterIcon.js";
+import type { ProgressData, OfflineProps, TTSProps } from "./types.js";
 
 // ── Offline Footer Icon ───────────────────────────────────────
 
@@ -108,6 +109,7 @@ export interface ScrollReaderProps {
   bookBasePath?: string;
   currentChapterSlug?: string;
   offlineProps?: OfflineProps;
+  ttsProps?: TTSProps;
 }
 
 export function ScrollReader({
@@ -122,6 +124,7 @@ export function ScrollReader({
   bookBasePath,
   currentChapterSlug,
   offlineProps,
+  ttsProps,
 }: ScrollReaderProps) {
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -413,6 +416,7 @@ export function ScrollReader({
             </button>
           )}
           <OfflineFooterIcon offlineProps={offlineProps} />
+          <TTSFooterIcon ttsProps={ttsProps} />
           <button
             class="pressy-settings-toggle"
             onClick={(e: MouseEvent) => {
@@ -579,6 +583,38 @@ export function ScrollReader({
               </button>
             </div>
           </div>
+          {ttsProps && ttsProps.supported && (
+            <div class="pressy-settings-section">
+              <div class="pressy-settings-label">Narration Speed</div>
+              <div class="pressy-font-size-controls">
+                <button
+                  class="pressy-font-size-btn"
+                  onClick={(e: MouseEvent) => {
+                    e.stopPropagation();
+                    ttsProps.onSetRate(ttsProps.rate - 0.25);
+                  }}
+                  disabled={ttsProps.rate <= 0.5}
+                  aria-label="Slower narration"
+                >
+                  Slower
+                </button>
+                <span class="pressy-font-size-value">
+                  {ttsProps.rate}x
+                </span>
+                <button
+                  class="pressy-font-size-btn"
+                  onClick={(e: MouseEvent) => {
+                    e.stopPropagation();
+                    ttsProps.onSetRate(ttsProps.rate + 0.25);
+                  }}
+                  disabled={ttsProps.rate >= 2.0}
+                  aria-label="Faster narration"
+                >
+                  Faster
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

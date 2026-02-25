@@ -15,6 +15,17 @@ import {
   setupInstallPrompt,
   triggerInstall,
 } from './offline.js'
+import {
+  initTTS,
+  ttsSupported,
+  ttsPlaying,
+  ttsChapterSlug,
+  ttsRate,
+  startListening,
+  stopListening,
+  setTTSRate,
+  getListeningPosition,
+} from './tts.js'
 import type { ContentManifest, Route, Book, Chapter, Article, ReadingProgress, ChapterMapData } from '../types.js'
 import type { PaginationConfig } from '../config.js'
 
@@ -216,6 +227,51 @@ function InstallButton() {
   )
 }
 
+// Module-level storage for chapterMapData so TTS can load chapters from home screen
+let storedChapterMapData: ChapterMapData | undefined
+
+function ListenButton({ book }: { book: Book }) {
+  if (!ttsSupported.value) return null
+
+  const isPlaying = ttsPlaying.value
+
+  const handleClick = () => {
+    if (isPlaying) {
+      stopListening()
+      return
+    }
+
+    if (!storedChapterMapData) return
+
+    // Determine starting position
+    const savedPos = getListeningPosition()
+    let startChapter = book.chapters[0]?.slug
+    let startParagraph = 0
+
+    if (savedPos && savedPos.bookSlug === book.slug) {
+      startChapter = savedPos.chapterSlug
+      startParagraph = savedPos.paragraphIndex
+    }
+
+    if (!startChapter) return
+
+    startListening({
+      bookSlug: book.slug,
+      chapterSlug: startChapter,
+      paragraphIndex: startParagraph,
+      allChapters: book.chapters.map(ch => ({ slug: ch.slug, title: ch.title })),
+      chapterMap: storedChapterMapData!.chapterMap,
+      mdxComponents: useMDXComponents(),
+    })
+  }
+
+  return (
+    <button class="pressy-cta pressy-cta-secondary" onClick={handleClick}>
+      {isPlaying ? 'Stop Listening' : 'Listen'}
+    </button>
+  )
+}
+
 function renderBookPage(book: Book, articles: Article[] = []) {
   // Stats calculations
   const totalWords = book.chapters.reduce((sum, ch) => sum + (ch.wordCount || 0), 0)
@@ -263,6 +319,7 @@ function renderBookPage(book: Book, articles: Article[] = []) {
           {chapterCount > 0 && (
             <div class="pressy-cta-group">
               <StartReadingCTA book={book} />
+              <ListenButton book={book} />
               <InstallButton />
             </div>
           )}
@@ -509,6 +566,26 @@ function ChapterReaderWithProgress({
         cacheProgress,
         onDownload: downloadBookForOffline,
         onRemove: clearBookCache,
+      }}
+      ttsProps={{
+        supported: ttsSupported.value,
+        isPlaying: ttsPlaying.value,
+        rate: ttsRate.value,
+        onToggle: () => {
+          if (ttsPlaying.value) {
+            stopListening()
+          } else if (chapterMapData) {
+            startListening({
+              bookSlug: book.slug,
+              chapterSlug,
+              paragraphIndex: 0,
+              allChapters: book.chapters.map(ch => ({ slug: ch.slug, title: ch.title })),
+              chapterMap: chapterMapData.chapterMap,
+              mdxComponents: useMDXComponents(),
+            })
+          }
+        },
+        onSetRate: setTTSRate,
       }}
     >
       <Content components={useMDXComponents()} />
@@ -821,11 +898,17 @@ export function hydrate(data: HydrateData, Content?: ComponentType, chapterMapDa
     }
   }
 
+  // Store chapterMapData at module level for home-screen TTS
+  if (chapterMapData) {
+    storedChapterMapData = chapterMapData
+  }
+
   // Initialize
   loadTheme()
   setupOfflineDetection()
   setupInstallPrompt()
   initDB()
+  initTTS()
 
   // Register service worker for PWA offline support
   registerServiceWorker(basePath)

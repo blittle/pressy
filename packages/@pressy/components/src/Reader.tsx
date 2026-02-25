@@ -3,7 +3,7 @@ import { ComponentChildren, ComponentType } from "preact";
 import { ScrollReader } from "./reader/ScrollReader.js";
 import { PaginatedReader } from "./reader/PaginatedReader.js";
 
-export type { ProgressData, ChapterMapData, OfflineProps } from "./reader/types.js";
+export type { ProgressData, ChapterMapData, OfflineProps, TTSProps } from "./reader/types.js";
 
 export interface ReaderProps {
   children: ComponentChildren;
@@ -25,6 +25,7 @@ export interface ReaderProps {
   onChapterChange?: (slug: string, page: number, totalPages: number) => void;
   mdxComponents?: Record<string, unknown>;
   offlineProps?: import("./reader/types.js").OfflineProps;
+  ttsProps?: import("./reader/types.js").TTSProps;
 }
 
 export function Reader({
@@ -45,6 +46,7 @@ export function Reader({
   onChapterChange,
   mdxComponents,
   offlineProps,
+  ttsProps,
 }: ReaderProps) {
   if (paginationMode === "paginated") {
     return (
@@ -64,6 +66,7 @@ export function Reader({
         onChapterChange={onChapterChange}
         mdxComponents={mdxComponents}
         offlineProps={offlineProps}
+        ttsProps={ttsProps}
       >
         {children}
       </PaginatedReader>
@@ -82,6 +85,7 @@ export function Reader({
       bookBasePath={bookBasePath}
       currentChapterSlug={currentChapterSlug}
       offlineProps={offlineProps}
+      ttsProps={ttsProps}
     >
       {children}
     </ScrollReader>

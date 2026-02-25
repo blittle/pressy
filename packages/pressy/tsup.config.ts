@@ -7,6 +7,7 @@ export default defineConfig({
     'vite/plugin': 'src/vite/plugin.ts',
     'runtime/client': 'src/runtime/client.tsx',
     'runtime/offline': 'src/runtime/offline.ts',
+    'runtime/tts': 'src/runtime/tts.ts',
     'runtime/sw': 'src/runtime/sw.ts',
   },
   format: ['esm'],
