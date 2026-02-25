@@ -18,5 +18,6 @@ export default defineConfig({
     backgroundColor: '#f0f4f8',
     icon192: './content/icon-192.png',
     icon512: './content/icon-512.png',
+    favicon: './content/favicon.png',
   },
 })

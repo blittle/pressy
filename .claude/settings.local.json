@@ -28,7 +28,10 @@
       "WebFetch(domain:angelahaddon.com)",
       "Bash(head:*)",
       "Bash(npx tsc:*)",
-      "Bash(wc:*)"
+      "Bash(wc:*)",
+      "Bash(git commit:*)",
+      "Bash(curl:*)",
+      "Bash(sed:*)"
     ]
   }
 }
