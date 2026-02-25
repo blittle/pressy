@@ -8,6 +8,7 @@
     "build": "pnpm -r --filter './packages/**' build",
     "build:flatland": "pnpm --filter 'flatland-example' build",
     "dev:flatland": "pnpm --filter 'flatland-example' dev",
+    "dev:all": "pnpm -r --filter './packages/**' build && pnpm -r --parallel --stream --filter './packages/**' --filter 'flatland-example' dev",
     "test": "vitest",
     "lint": "eslint packages --ext .ts,.tsx",
     "typecheck": "tsc --noEmit",
