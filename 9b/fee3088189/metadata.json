@@ -1,0 +1,38 @@
+{
+  "cli_version": "0.4.2",
+  "checkpoint_id": "9bfee3088189",
+  "strategy": "manual-commit",
+  "branch": "bl-test",
+  "checkpoints_count": 4,
+  "files_touched": [
+    ".github/workflows/ci.yml",
+    ".github/workflows/deploy-pages.yml",
+    "package.json",
+    "playwright.config.ts",
+    "test-results/.last-run.json",
+    "testing-plan.md",
+    "tests/build.test.ts",
+    "tests/e2e/navigation.spec.ts",
+    "tests/e2e/progress.spec.ts",
+    "tests/e2e/serve.js",
+    "tests/e2e/theme.spec.ts",
+    "tests/mdx-processing.test.ts",
+    "vitest.config.ts"
+  ],
+  "sessions": [
+    {
+      "metadata": "/9b/fee3088189/0/metadata.json",
+      "transcript": "/9b/fee3088189/0/full.jsonl",
+      "context": "/9b/fee3088189/0/context.md",
+      "content_hash": "/9b/fee3088189/0/content_hash.txt",
+      "prompt": "/9b/fee3088189/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 97,
+    "cache_creation_tokens": 286264,
+    "cache_read_tokens": 7823357,
+    "output_tokens": 15755,
+    "api_call_count": 81
+  }
+}
