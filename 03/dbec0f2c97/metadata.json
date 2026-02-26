@@ -2,41 +2,22 @@
   "cli_version": "0.4.2",
   "checkpoint_id": "03dbec0f2c97",
   "strategy": "manual-commit",
-  "branch": "main",
-  "checkpoints_count": 9,
+  "branch": "paywall-system",
+  "checkpoints_count": 0,
   "files_touched": [
     ".github/workflows/deploy-pages.yml",
-    "examples/flatland/content/books/flatland/_book.yaml",
     "examples/moby-dick/content/books/moby-dick/_book.yaml",
     "examples/moby-dick/package.json",
     "examples/moby-dick/pressy.config.ts",
     "examples/moby-dick/theme/custom.css",
     "package.json",
-    "packages/@pressy/components/src/Paywall.tsx",
     "packages/@pressy/components/src/Reader.tsx",
-    "packages/@pressy/components/src/index.ts",
     "packages/@pressy/components/src/reader/PaginatedReader.tsx",
     "packages/@pressy/components/src/reader/ScrollReader.tsx",
     "packages/@pressy/components/src/reader/paginated-reader-styles.ts",
     "packages/@pressy/components/src/reader/scroll-reader-styles.ts",
     "packages/@pressy/components/src/reader/types.ts",
-    "packages/@pressy/paypal/package.json",
-    "packages/@pressy/paypal/src/checkout.ts",
-    "packages/@pressy/paypal/src/index.ts",
-    "packages/@pressy/paypal/src/types.ts",
-    "packages/@pressy/paypal/tsconfig.json",
-    "packages/@pressy/paypal/tsup.config.ts",
-    "packages/@pressy/stripe/package.json",
-    "packages/@pressy/stripe/src/checkout.ts",
-    "packages/@pressy/stripe/src/index.ts",
-    "packages/@pressy/stripe/src/types.ts",
-    "packages/@pressy/stripe/tsconfig.json",
-    "packages/@pressy/stripe/tsup.config.ts",
-    "packages/pressy/src/config.ts",
     "packages/pressy/src/runtime/client.tsx",
-    "packages/pressy/src/types.ts",
-    "packages/pressy/src/vite/plugin.ts",
-    "paywall-plan.md",
     "scripts/process-moby-dick.mjs"
   ],
   "sessions": [
@@ -46,27 +27,13 @@
       "context": "/03/dbec0f2c97/0/context.md",
       "content_hash": "/03/dbec0f2c97/0/content_hash.txt",
       "prompt": "/03/dbec0f2c97/0/prompt.txt"
-    },
-    {
-      "metadata": "/03/dbec0f2c97/1/metadata.json",
-      "transcript": "/03/dbec0f2c97/1/full.jsonl",
-      "context": "/03/dbec0f2c97/1/context.md",
-      "content_hash": "/03/dbec0f2c97/1/content_hash.txt",
-      "prompt": "/03/dbec0f2c97/1/prompt.txt"
-    },
-    {
-      "metadata": "/03/dbec0f2c97/2/metadata.json",
-      "transcript": "/03/dbec0f2c97/2/full.jsonl",
-      "context": "/03/dbec0f2c97/2/context.md",
-      "content_hash": "/03/dbec0f2c97/2/content_hash.txt",
-      "prompt": "/03/dbec0f2c97/2/prompt.txt"
     }
   ],
   "token_usage": {
-    "input_tokens": 18469,
-    "cache_creation_tokens": 432843,
-    "cache_read_tokens": 13132542,
-    "output_tokens": 17583,
-    "api_call_count": 131
+    "input_tokens": 3476,
+    "cache_creation_tokens": 24156,
+    "cache_read_tokens": 588512,
+    "output_tokens": 2095,
+    "api_call_count": 8
   }
 }
