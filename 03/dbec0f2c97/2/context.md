@@ -1,0 +1,30 @@
+# Session Context
+
+## User Prompts
+
+### Prompt 1
+
+At the moment we store in local storage the last chapter and page location. I'd like to make this better in a few ways:
+
+1. I cannot navigate manually to the home page in the table of contents popup, because doing so immediately sends me back to the last location I was reading. I want to keep the auto redirect when the app first loads, but provide a way to override it when someone manually navs to it
+
+
+Actually let's start with just that fix
+
+### Prompt 2
+
+but is it best to use a session storage? or maybe a query parameter when navigating? Unsure, you tell me
+
+### Prompt 3
+
+[Request interrupted by user for tool use]
+
+### Prompt 4
+
+is it best to use a session storage? or maybe a query parameter when        
+  navigating? Unsure, you tell me
+
+### Prompt 5
+
+If going to the home page this way, should the main call to action button change from "Start Reading" to "Continue Reading", and then that would take you back to last spot you were reading?
+

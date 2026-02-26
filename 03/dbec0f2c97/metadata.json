@@ -3,7 +3,7 @@
   "checkpoint_id": "03dbec0f2c97",
   "strategy": "manual-commit",
   "branch": "main",
-  "checkpoints_count": 7,
+  "checkpoints_count": 9,
   "files_touched": [
     ".github/workflows/deploy-pages.yml",
     "examples/flatland/content/books/flatland/_book.yaml",
@@ -53,13 +53,20 @@
       "context": "/03/dbec0f2c97/1/context.md",
       "content_hash": "/03/dbec0f2c97/1/content_hash.txt",
       "prompt": "/03/dbec0f2c97/1/prompt.txt"
+    },
+    {
+      "metadata": "/03/dbec0f2c97/2/metadata.json",
+      "transcript": "/03/dbec0f2c97/2/full.jsonl",
+      "context": "/03/dbec0f2c97/2/context.md",
+      "content_hash": "/03/dbec0f2c97/2/content_hash.txt",
+      "prompt": "/03/dbec0f2c97/2/prompt.txt"
     }
   ],
   "token_usage": {
-    "input_tokens": 18452,
-    "cache_creation_tokens": 411324,
-    "cache_read_tokens": 12798538,
-    "output_tokens": 12061,
-    "api_call_count": 120
+    "input_tokens": 18469,
+    "cache_creation_tokens": 432843,
+    "cache_read_tokens": 13132542,
+    "output_tokens": 17583,
+    "api_call_count": 131
   }
 }
