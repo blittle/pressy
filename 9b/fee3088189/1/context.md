@@ -1,0 +1,13 @@
+# Session Context
+
+## User Prompts
+
+### Prompt 1
+
+The github action deploy to pages works two ways:
+
+1. On a PR, it deploys to pages with `rossjrw/pr-preview-action` on a pull request
+2. On a push/merge of a pull request, it does a normal deploy.
+
+The first case appears to deploy all examples, whereas the second one only deploys flatland. Can you help me fix that?
+
