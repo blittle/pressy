@@ -167,6 +167,24 @@ function StartReadingCTA({ book }: { book: Book }) {
     if (book.chapters.length === 0) return
     const firstHref = `${basePath}/books/${book.slug}/${book.chapters[0].slug}`
 
+    // Check localStorage for exact last-read position first
+    try {
+      const lastRead = localStorage.getItem('pressy-last-read')
+      if (lastRead) {
+        const { bookSlug, chapterSlug } = JSON.parse(lastRead)
+        if (bookSlug === book.slug && book.chapters.some(ch => ch.slug === chapterSlug)) {
+          setTarget({
+            label: 'Continue Reading',
+            href: `${basePath}/books/${book.slug}/${chapterSlug}`,
+          })
+          return
+        }
+      }
+    } catch {
+      // ignore
+    }
+
+    // Fall back to IndexedDB per-chapter progress
     getAllReadingProgress().then((allProgress) => {
       const progressMap = new Map(allProgress.map((p) => [p.chapterSlug, p]))
 

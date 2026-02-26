@@ -334,7 +334,7 @@ export function ScrollReader({
               <a
                 href={bookBasePath ? bookBasePath.replace(/\/books\/[^/]+$/, '') || '/' : '/'}
                 class="pressy-toc-item pressy-toc-item--home"
-                onClick={() => setTocOpen(false)}
+                onClick={() => { sessionStorage.setItem('pressy-internal-nav', '1'); setTocOpen(false) }}
               >
                 <span class="pressy-toc-item-num">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
