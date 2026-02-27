@@ -8,10 +8,37 @@ export const COOKIE_MAX_AGE = 365 * 24 * 60 * 60
 /** Magic link token lifetime: 15 minutes in seconds. */
 export const MAGIC_LINK_TTL = 15 * 60
 
-async function getSigningKey(secret: string): Promise<CryptoKey> {
-  return crypto.subtle.importKey(
+/** HKDF contexts for key separation. */
+const COOKIE_KEY_CONTEXT = 'pressy-cookie-v1'
+const MAGIC_KEY_CONTEXT = 'pressy-magic-v1'
+
+/**
+ * Derive a purpose-specific HMAC signing key from the master secret using HKDF.
+ * This ensures cookie keys and magic-link keys are cryptographically separated.
+ */
+async function deriveKey(secret: string, context: string): Promise<CryptoKey> {
+  const masterKey = await crypto.subtle.importKey(
     'raw',
     ENCODER.encode(secret),
+    'HKDF',
+    false,
+    ['deriveBits'],
+  )
+
+  const derivedBits = await crypto.subtle.deriveBits(
+    {
+      name: 'HKDF',
+      hash: 'SHA-256',
+      salt: new Uint8Array(32), // fixed zero salt — context label provides separation
+      info: ENCODER.encode(context),
+    },
+    masterKey,
+    256,
+  )
+
+  return crypto.subtle.importKey(
+    'raw',
+    derivedBits,
     { name: 'HMAC', hash: 'SHA-256' },
     false,
     ['sign', 'verify'],
@@ -37,8 +64,7 @@ function base64urlDecode(str: string): Uint8Array {
  * Sign an arbitrary JSON payload with HMAC-SHA256.
  * Returns `base64url(payload).base64url(hmac)`.
  */
-async function sign<T>(payload: T, secret: string): Promise<string> {
-  const key = await getSigningKey(secret)
+async function sign<T>(payload: T, key: CryptoKey): Promise<string> {
   const payloadJson = JSON.stringify(payload)
   const payloadB64 = base64url(ENCODER.encode(payloadJson).buffer as ArrayBuffer)
   const signature = await crypto.subtle.sign('HMAC', key, ENCODER.encode(payloadB64))
@@ -50,7 +76,7 @@ async function sign<T>(payload: T, secret: string): Promise<string> {
  * Returns null if the signature is invalid, the token is malformed,
  * or the payload has an `exp` field that is in the past.
  */
-async function verify<T extends { exp?: number }>(token: string, secret: string): Promise<T | null> {
+async function verify<T extends { exp?: number }>(token: string, key: CryptoKey): Promise<T | null> {
   const dotIdx = token.indexOf('.')
   if (dotIdx === -1) return null
 
@@ -58,7 +84,6 @@ async function verify<T extends { exp?: number }>(token: string, secret: string)
   const sigB64 = token.slice(dotIdx + 1)
 
   try {
-    const key = await getSigningKey(secret)
     const sigBytes = base64urlDecode(sigB64)
     const valid = await crypto.subtle.verify(
       'HMAC', key, sigBytes.buffer as ArrayBuffer, ENCODER.encode(payloadB64),
@@ -87,11 +112,13 @@ export function cookieName(bookSlug: string): string {
 }
 
 export async function signCookie(payload: CookiePayload, secret: string): Promise<string> {
-  return sign(payload, secret)
+  const key = await deriveKey(secret, COOKIE_KEY_CONTEXT)
+  return sign(payload, key)
 }
 
 export async function verifyCookie(cookieValue: string, secret: string): Promise<CookiePayload | null> {
-  return verify<CookiePayload>(cookieValue, secret)
+  const key = await deriveKey(secret, COOKIE_KEY_CONTEXT)
+  return verify<CookiePayload>(cookieValue, key)
 }
 
 export function setCookieHeader(name: string, value: string): string {
@@ -110,9 +137,11 @@ export function parseCookies(header: string): Record<string, string> {
 // ── Magic link token helpers ─────────────────────────────────
 
 export async function signMagicToken(payload: MagicLinkPayload, secret: string): Promise<string> {
-  return sign(payload, secret)
+  const key = await deriveKey(secret, MAGIC_KEY_CONTEXT)
+  return sign(payload, key)
 }
 
 export async function verifyMagicToken(token: string, secret: string): Promise<MagicLinkPayload | null> {
-  return verify<MagicLinkPayload>(token, secret)
+  const key = await deriveKey(secret, MAGIC_KEY_CONTEXT)
+  return verify<MagicLinkPayload>(token, key)
 }

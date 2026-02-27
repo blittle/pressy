@@ -10,6 +10,10 @@ import {
 } from './stripe.js'
 
 const NO_CACHE = { 'Cache-Control': 'no-store' }
+const SECURITY_HEADERS = {
+  'X-Content-Type-Options': 'nosniff',
+  'X-Frame-Options': 'DENY',
+}
 
 let cachedManifest: PressyManifest | null = null
 
@@ -59,6 +63,47 @@ async function isAuthorized(
   return payload !== null && payload.book === bookSlug
 }
 
+/**
+ * KV-based rate limiter. Returns true if the request should be blocked.
+ */
+async function rateLimit(
+  kv: KVNamespace,
+  key: string,
+  limit: number,
+  windowSec: number,
+): Promise<boolean> {
+  const rlKey = `ratelimit:${key}`
+  const existing = await kv.get(rlKey)
+  const count = existing ? parseInt(existing, 10) : 0
+
+  if (count >= limit) return true
+
+  await kv.put(rlKey, String(count + 1), { expirationTtl: windowSec })
+  return false
+}
+
+function getClientIp(request: Request): string {
+  return request.headers.get('cf-connecting-ip')
+    || request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+    || 'unknown'
+}
+
+function addSecurityHeaders(response: Response): Response {
+  const newHeaders = new Headers(response.headers)
+  for (const [k, v] of Object.entries(SECURITY_HEADERS)) {
+    newHeaders.set(k, v)
+  }
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers: newHeaders,
+  })
+}
+
+function methodNotAllowed(): Response {
+  return new Response('Method not allowed', { status: 405, headers: { ...NO_CACHE, ...SECURITY_HEADERS } })
+}
+
 /** Minimal subset of Cloudflare Pages EventContext that the middleware uses. */
 export interface PressyContext {
   request: Request
@@ -80,7 +125,8 @@ export function createPressyMiddleware(
 
     // Route API requests
     if (pathname.startsWith('/api/')) {
-      return handleApiRoute(request, env, pathname, url, options)
+      const response = await handleApiRoute(request, env, pathname, url, options)
+      return addSecurityHeaders(response)
     }
 
     // Check if this is a chapter URL that needs paywall enforcement
@@ -128,6 +174,16 @@ function missingEnvError(...names: string[]): Response {
   )
 }
 
+// Route → allowed method(s) mapping
+const ROUTE_METHODS: Record<string, string> = {
+  '/api/checkout': 'GET',
+  '/api/stripe-webhook': 'POST',
+  '/api/auth/callback': 'GET',
+  '/api/auth/status': 'GET',
+  '/api/auth/recover': 'POST',
+  '/api/auth/verify': 'GET',
+}
+
 async function handleApiRoute(
   request: Request,
   env: Env,
@@ -135,6 +191,21 @@ async function handleApiRoute(
   url: URL,
   options: PressyMiddlewareOptions,
 ): Promise<Response> {
+  // Method enforcement
+  const allowedMethod = ROUTE_METHODS[pathname]
+  if (allowedMethod && request.method !== allowedMethod) {
+    return methodNotAllowed()
+  }
+
+  // Rate limiting for auth endpoints
+  if (pathname.startsWith('/api/auth/')) {
+    const ip = getClientIp(request)
+    const blocked = await rateLimit(env.PRESSY_KV, `auth:${ip}`, 60, 60)
+    if (blocked) {
+      return new Response('Too many requests', { status: 429, headers: NO_CACHE })
+    }
+  }
+
   let manifest: PressyManifest
   try {
     manifest = await loadManifest(env)
@@ -143,7 +214,7 @@ async function handleApiRoute(
   }
 
   // GET /api/checkout?book=SLUG
-  if (pathname === '/api/checkout' && request.method === 'GET') {
+  if (pathname === '/api/checkout') {
     if (!env.STRIPE_SECRET_KEY) return missingEnvError('STRIPE_SECRET_KEY')
     const bookSlug = url.searchParams.get('book')
     if (!bookSlug) {
@@ -157,21 +228,21 @@ async function handleApiRoute(
   }
 
   // POST /api/stripe-webhook
-  if (pathname === '/api/stripe-webhook' && request.method === 'POST') {
+  if (pathname === '/api/stripe-webhook') {
     if (!env.STRIPE_SECRET_KEY) return missingEnvError('STRIPE_SECRET_KEY')
     if (!env.STRIPE_WEBHOOK_SECRET) return missingEnvError('STRIPE_WEBHOOK_SECRET')
     return handleWebhook(request, env)
   }
 
   // GET /api/auth/callback?session_id=xxx (single-use post-checkout redirect)
-  if (pathname === '/api/auth/callback' && request.method === 'GET') {
+  if (pathname === '/api/auth/callback') {
     if (!env.STRIPE_SECRET_KEY) return missingEnvError('STRIPE_SECRET_KEY')
     if (!env.COOKIE_SECRET) return missingEnvError('COOKIE_SECRET')
     return handleAuthCallback(request, env, manifest)
   }
 
   // GET /api/auth/status?book=SLUG
-  if (pathname === '/api/auth/status' && request.method === 'GET') {
+  if (pathname === '/api/auth/status') {
     if (!env.COOKIE_SECRET) return missingEnvError('COOKIE_SECRET')
     const bookSlug = url.searchParams.get('book')
     if (!bookSlug) {
@@ -186,11 +257,26 @@ async function handleApiRoute(
   // POST /api/auth/recover — sends magic link email
   if (pathname === '/api/auth/recover') {
     if (!env.COOKIE_SECRET) return missingEnvError('COOKIE_SECRET')
+
+    // Stricter rate limit for recover: 3 per 15 minutes per email
+    try {
+      const body = await request.clone().json() as { email?: string }
+      const email = body.email?.trim().toLowerCase()
+      if (email) {
+        const emailBlocked = await rateLimit(env.PRESSY_KV, `recover:${email}`, 3, 15 * 60)
+        if (emailBlocked) {
+          return new Response('Too many requests', { status: 429, headers: NO_CACHE })
+        }
+      }
+    } catch {
+      // Body parse error will be handled by handleRecoverPurchase
+    }
+
     return handleRecoverPurchase(request, env, manifest, options.sendEmail)
   }
 
   // GET /api/auth/verify?token=xxx — validates magic link, issues cookie
-  if (pathname === '/api/auth/verify' && request.method === 'GET') {
+  if (pathname === '/api/auth/verify') {
     if (!env.COOKIE_SECRET) return missingEnvError('COOKIE_SECRET')
     return handleVerifyToken(request, env, manifest)
   }

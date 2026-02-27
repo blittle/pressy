@@ -4,6 +4,14 @@ import { signCookie, setCookieHeader, cookieName, COOKIE_MAX_AGE, signMagicToken
 import { buildMagicLinkEmail } from './email.js'
 
 const NO_CACHE = { 'Cache-Control': 'no-store' }
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const BOOK_SLUG_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
+
+async function sha256hex(input: string): Promise<string> {
+  const data = new TextEncoder().encode(input)
+  const hash = await crypto.subtle.digest('SHA-256', data)
+  return Array.from(new Uint8Array(hash)).map((b) => b.toString(16).padStart(2, '0')).join('')
+}
 
 function getStripe(secretKey: string): Stripe {
   return new Stripe(secretKey, { apiVersion: '2025-02-24.acacia' })
@@ -220,6 +228,28 @@ export async function handleRecoverPurchase(
     })
   }
 
+  if (!EMAIL_RE.test(email)) {
+    return new Response(JSON.stringify({ error: 'Invalid email format' }), {
+      status: 400,
+      headers: { 'Content-Type': 'application/json', ...NO_CACHE },
+    })
+  }
+
+  if (!BOOK_SLUG_RE.test(bookSlug)) {
+    return new Response(JSON.stringify({ error: 'Invalid book slug' }), {
+      status: 400,
+      headers: { 'Content-Type': 'application/json', ...NO_CACHE },
+    })
+  }
+
+  const book = manifest.books.find((b) => b.slug === bookSlug)
+  if (!book) {
+    return new Response(JSON.stringify({ error: 'Book not found' }), {
+      status: 400,
+      headers: { 'Content-Type': 'application/json', ...NO_CACHE },
+    })
+  }
+
   // Look up purchase — but DON'T reveal whether the email exists.
   // Always return the same success message to prevent email enumeration.
   const record = await env.PRESSY_KV.get(`purchase:${email}:${bookSlug}`)
@@ -291,8 +321,18 @@ export async function handleVerifyToken(
     })
   }
 
-  // Single-use: prevent replay
-  const consumedKey = `magic-consumed:${token.slice(0, 32)}`
+  // Validate payload fields
+  if (!EMAIL_RE.test(payload.email) || !BOOK_SLUG_RE.test(payload.bookSlug)) {
+    return new Response('Invalid token payload', { status: 400, headers: NO_CACHE })
+  }
+
+  if (!manifest.books.find((b) => b.slug === payload.bookSlug)) {
+    return new Response('Book not found', { status: 400, headers: NO_CACHE })
+  }
+
+  // Single-use: prevent replay (hash full token to avoid prefix collisions)
+  const tokenHash = await sha256hex(token)
+  const consumedKey = `magic-consumed:${tokenHash}`
   const alreadyConsumed = await env.PRESSY_KV.get(consumedKey)
   if (alreadyConsumed) {
     return new Response('This link has already been used.', { status: 410, headers: NO_CACHE })
