@@ -5,7 +5,7 @@ import { TextShare } from "../TextShare.js";
 import { OfflineIndicator } from "../OfflineIndicator.js";
 import { OfflineFooterIcon } from "./ScrollReader.js";
 import { PAGINATED_STYLES } from "./paginated-reader-styles.js";
-import type { ProgressData, ChapterMapData, OfflineProps } from "./types.js";
+import type { ProgressData, ChapterMapData, OfflineProps, ReaderPaywallConfig } from "./types.js";
 
 // ── Paginated Reader ──────────────────────────────────────────
 
@@ -37,6 +37,7 @@ export interface PaginatedReaderProps {
   bookBasePath?: string;
   onChapterChange?: (slug: string, page: number, totalPages: number) => void;
   mdxComponents?: Record<string, unknown>;
+  paywall?: ReaderPaywallConfig;
   offlineProps?: OfflineProps;
 }
 
@@ -64,6 +65,7 @@ export function PaginatedReader({
   bookBasePath,
   onChapterChange,
   mdxComponents,
+  paywall,
   offlineProps,
 }: PaginatedReaderProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -483,6 +485,12 @@ export function PaginatedReader({
     if (preloadingRef.current.has(nextSlug)) return;
     if (loadedChapters.some((ch) => ch.slug === nextSlug)) return;
 
+    // Paywall gate: block preloading chapters beyond preview limit for unauthorized users
+    if (paywall && !paywall.authorized) {
+      const nextChapterIdx = chapterOrder.indexOf(nextSlug);
+      if (nextChapterIdx >= paywall.previewChapters) return;
+    }
+
     preloadingRef.current.add(nextSlug);
 
     const loader = chapterMap[nextSlug];
@@ -516,6 +524,7 @@ export function PaginatedReader({
     chapterMapData,
     loadedChapters,
     allChapters,
+    paywall,
   ]);
 
   // Detect chapter boundary crossings and update URL / active chapter

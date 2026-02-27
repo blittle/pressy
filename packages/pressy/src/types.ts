@@ -10,7 +10,9 @@ export interface BookMetadata {
     enabled: boolean
     previewChapters: number
     shopifyProductId?: string
-    mode?: 'shopify' | 'email'
+    price?: string
+    stripePriceId?: string
+    mode?: 'shopify' | 'email' | 'stripe'
   }
 }
 

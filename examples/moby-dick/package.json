@@ -6,11 +6,16 @@
   "scripts": {
     "dev": "pressy dev",
     "build": "pressy build",
-    "preview": "pressy preview"
+    "preview": "pressy preview",
+    "deploy": "pressy build && wrangler pages deploy dist"
   },
   "dependencies": {
     "pressy": "workspace:*",
     "@pressy-pub/components": "workspace:*",
-    "@pressy-pub/typography": "workspace:*"
+    "@pressy-pub/typography": "workspace:*",
+    "@pressy-pub/cloudflare": "workspace:*"
+  },
+  "devDependencies": {
+    "wrangler": "^3.0.0"
   }
 }

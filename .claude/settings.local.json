@@ -31,7 +31,11 @@
       "Bash(wc:*)",
       "Bash(git commit:*)",
       "Bash(curl:*)",
-      "Bash(sed:*)"
+      "Bash(sed:*)",
+      "Bash(git:*)",
+      "Bash(gh run:*)",
+      "Bash(gh pr:*)",
+      "Bash(gh api:*)"
     ]
   }
 }
