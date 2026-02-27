@@ -299,8 +299,44 @@ function RecoverLink({ book }: { book: Book }) {
   )
 }
 
-function renderBookPage(book: Book, articles: Article[] = []) {
+function usePaywallAuthorized(book: Book): boolean | undefined {
+  const [authorized, setAuthorized] = useState<boolean | undefined>(
+    book.metadata.paywall?.enabled ? undefined : true,
+  )
+
+  useEffect(() => {
+    if (!book.metadata.paywall?.enabled) {
+      setAuthorized(true)
+      return
+    }
+    fetch(`/api/auth/status?book=${book.slug}`)
+      .then((res) => res.json())
+      .then((data: { authorized: boolean }) => setAuthorized(data.authorized))
+      .catch(() => setAuthorized(false))
+  }, [book.slug, book.metadata.paywall?.enabled])
+
+  return authorized
+}
+
+function PaywallActions({ book, showPurchasePrompt, authorized }: { book: Book; showPurchasePrompt: boolean; authorized: boolean | undefined }) {
+  if (!book.metadata.paywall?.enabled || authorized) return null
+
+  if (showPurchasePrompt) {
+    return (
+      <div class="pressy-purchase-prompt">
+        <p>This chapter requires purchase to read.</p>
+        <PurchaseCTA book={book} prominent />
+        <RecoverLink book={book} />
+      </div>
+    )
+  }
+
+  return <RecoverLink book={book} />
+}
+
+function BookPage({ book, articles }: { book: Book; articles?: Article[] }) {
   const showPurchasePrompt = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('purchase') === 'true'
+  const authorized = usePaywallAuthorized(book)
 
   // Stats calculations
   const totalWords = book.chapters.reduce((sum, ch) => sum + (ch.wordCount || 0), 0)
@@ -345,26 +381,17 @@ function renderBookPage(book: Book, articles: Article[] = []) {
               )}
             </div>
           )}
-          {showPurchasePrompt && book.metadata.paywall?.enabled && (
-            <div class="pressy-purchase-prompt">
-              <p>This chapter requires purchase to read.</p>
-              <PurchaseCTA book={book} prominent />
-              <RecoverLink book={book} />
-            </div>
-          )}
+          <PaywallActions book={book} showPurchasePrompt={showPurchasePrompt} authorized={authorized} />
           {chapterCount > 0 && (
             <div class="pressy-cta-group">
               <StartReadingCTA book={book} />
-              {!showPurchasePrompt && <PurchaseCTA book={book} />}
+              {!authorized && !showPurchasePrompt && <PurchaseCTA book={book} />}
               <InstallButton />
             </div>
           )}
-          {!showPurchasePrompt && book.metadata.paywall?.enabled && (
-            <RecoverLink book={book} />
-          )}
         </div>
       </div>
-      {articles.length > 0 && (
+      {articles && articles.length > 0 && (
         <section class="pressy-home-section pressy-fade-sections">
           <h2>Articles</h2>
           <nav class="pressy-chapter-list">
@@ -387,7 +414,7 @@ function renderBookPage(book: Book, articles: Article[] = []) {
 function renderHomePage(manifest: ContentManifest) {
   // Single-book site: render as the book page
   if (manifest.books.length === 1) {
-    return renderBookPage(manifest.books[0], manifest.articles)
+    return <BookPage book={manifest.books[0]} articles={manifest.articles} />
   }
 
   const siteTitle = manifest.books[0]?.metadata.title || 'Library'
@@ -1077,7 +1104,7 @@ export function hydrate(data: HydrateData, Content?: ComponentType, chapterMapDa
     case 'book': {
       const bookSlug = data.route.split('/')[2]
       const book = data.manifest.books.find((b: Book) => b.slug === bookSlug)
-      page = book ? renderBookPage(book) : <div>Book not found</div>
+      page = book ? <BookPage book={book} /> : <div>Book not found</div>
       break
     }
     case 'chapter':
