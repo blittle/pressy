@@ -1,0 +1,35 @@
+# Session Context
+
+## User Prompts
+
+### Prompt 1
+
+The github action deploy to pages works two ways:
+
+1. On a PR, it deploys to pages with `rossjrw/pr-preview-action` on a pull request
+2. On a push/merge of a pull request, it does a normal deploy.
+
+The first case appears to deploy all examples, whereas the second one only deploys flatland. Can you help me fix that?
+
+### Prompt 2
+
+I have a paywall draft PR here: https://github.com/blittle/pressy/pull/21
+
+But I'd like to setup a new PR that instead implements the paywall server side. I recognize that this won't work well for deploying to github pages, because that is static. I'd instead like to explore options for maybe putting a simple cloudflare or vercel worker in front of the site, that can handle the paywall logic. What do you think? Could you help me setup a design plan?
+
+### Prompt 3
+
+[Request interrupted by user for tool use]
+
+### Prompt 4
+
+Write the plan to a file so we can track progress in case interrupted
+
+### Prompt 5
+
+Looking at the plan, do we need to also have some special logic for the service worker offline mode? Specifically, if someone installs the PWA, all the chapters and hydration files for each chapter might be different based on whether or not someone has paid. And after they pay, those files in memory need to get re-updated.
+
+### Prompt 6
+
+[Request interrupted by user for tool use]
+

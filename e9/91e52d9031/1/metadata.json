@@ -1,0 +1,33 @@
+{
+  "cli_version": "0.4.2",
+  "checkpoint_id": "e991e52d9031",
+  "session_id": "e900a499-8a84-433a-92ea-c714aa228d75",
+  "strategy": "manual-commit",
+  "created_at": "2026-02-27T02:20:47.196682Z",
+  "branch": "server-side-paywall",
+  "checkpoints_count": 1,
+  "files_touched": [
+    ".github/workflows/deploy-pages.yml",
+    "server-side-paywall-plan.md"
+  ],
+  "agent": "Claude Code",
+  "transcript_identifier_at_start": "2d77f6f2-bc45-4738-a630-59b2ae8eb443",
+  "checkpoint_transcript_start": 89,
+  "transcript_lines_at_start": 89,
+  "token_usage": {
+    "input_tokens": 29,
+    "cache_creation_tokens": 220841,
+    "cache_read_tokens": 1519153,
+    "output_tokens": 5978,
+    "api_call_count": 21
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-02-27T02:20:47.076715Z",
+    "agent_lines": 262,
+    "human_added": 1995,
+    "human_modified": 1,
+    "human_removed": 0,
+    "total_committed": 2258,
+    "agent_percentage": 11.603188662533215
+  }
+}
