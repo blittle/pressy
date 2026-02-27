@@ -1,0 +1,50 @@
+{
+  "cli_version": "0.4.2",
+  "checkpoint_id": "03dbec0f2c97",
+  "session_id": "3f6b9afc-0ce8-4e0b-bbb6-2cbcf377a830",
+  "strategy": "manual-commit",
+  "created_at": "2026-02-26T23:39:33.259338Z",
+  "branch": "main",
+  "checkpoints_count": 7,
+  "files_touched": [
+    "examples/flatland/content/books/flatland/_book.yaml",
+    "examples/moby-dick/content/books/moby-dick/_book.yaml",
+    "examples/moby-dick/pressy.config.ts",
+    "packages/@pressy/components/src/Paywall.tsx",
+    "packages/@pressy/components/src/index.ts",
+    "packages/@pressy/paypal/package.json",
+    "packages/@pressy/paypal/src/checkout.ts",
+    "packages/@pressy/paypal/src/index.ts",
+    "packages/@pressy/paypal/src/types.ts",
+    "packages/@pressy/paypal/tsconfig.json",
+    "packages/@pressy/paypal/tsup.config.ts",
+    "packages/@pressy/stripe/package.json",
+    "packages/@pressy/stripe/src/checkout.ts",
+    "packages/@pressy/stripe/src/index.ts",
+    "packages/@pressy/stripe/src/types.ts",
+    "packages/@pressy/stripe/tsconfig.json",
+    "packages/@pressy/stripe/tsup.config.ts",
+    "packages/pressy/src/config.ts",
+    "packages/pressy/src/runtime/client.tsx",
+    "packages/pressy/src/types.ts",
+    "packages/pressy/src/vite/plugin.ts",
+    "paywall-plan.md"
+  ],
+  "agent": "Claude Code",
+  "token_usage": {
+    "input_tokens": 14976,
+    "cache_creation_tokens": 387168,
+    "cache_read_tokens": 12210026,
+    "output_tokens": 9966,
+    "api_call_count": 112
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-02-26T23:39:32.950862Z",
+    "agent_lines": 0,
+    "human_added": 276,
+    "human_modified": 1023,
+    "human_removed": 0,
+    "total_committed": 1167,
+    "agent_percentage": 0
+  }
+}

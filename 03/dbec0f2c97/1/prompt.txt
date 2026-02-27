@@ -1,0 +1,226 @@
+Implement the following plan:
+
+# Multi-Provider Paywall System
+
+## Context
+
+Pressy is a static site framework for self-publishing. It already has partial paywall infrastructure: a `Paywall.tsx` component with email and Shopify modes, a `@pressy-pub/shopify` package, unlock storage in localStorage/IndexedDB, and a `paywall` field in `BookMetadata`. However, no examples use it, and there's no support for Stripe or PayPal.
+
+The goal is to build a provider-agnostic paywall where authors can choose between Stripe, PayPal, Shopify, or a free email-gate. Payment verification is client-side (no server needed). Authors configure the number of free preview chapters per book.
+
+## Architecture Decisions
+
+- **Providers**: Stripe and PayPal as payment providers (Google Pay/Apple Pay come free via Stripe Checkout)
+- **Verification**: Client-side trust — after returning from payment redirect, unlock content locally. Server-side verification can be added later.
+- **Content protection**: Paywall is an overlay. Content is still in the DOM (acceptable for client-side trust).
+- **Unlock storage**: Centralized in runtime `client.tsx` (`isBookUnlocked`/`unlockBook` via IndexedDB + localStorage). Provider packages only handle checkout flows.
+
+## Implementation
+
+### Phase 1: Types and Config
+
+**`packages/pressy/src/types.ts`** — Expand paywall types:
+```typescript
+export type PaywallMode = 'email' | 'shopify' | 'stripe' | 'paypal'
+
+// In BookMetadata.paywall:
+paywall?: {
+  enabled: boolean
+  previewChapters: number
+  mode?: PaywallMode
+  shopifyProductId?: string    // existing
+  stripePaymentLink?: string   // Stripe Payment Link URL (no server needed)
+  paypalPlanId?: string        // PayPal product/plan ID
+}
+```
+
+**`packages/pressy/src/config.ts`** — Add provider credentials:
+```typescript
+export interface StripeConfig { publishableKey: string }
+export interface PayPalConfig { clientId: string; currency?: string }
+
+// In PressyConfig:
+stripe?: StripeConfig
+paypal?: PayPalConfig
+```
+
+**`packages/pressy/src/vite/plugin.ts`** — Pass provider credentials to the client:
+- Add `providers` field to `HydrateData` containing shopify/stripe/paypal config from `pressy.config.ts`
+- Serialize into the inline JSON in `generateHTML()` and the virtual module `load()` function
+
+**`packages/pressy/src/runtime/client.tsx`** — Add sync unlock check:
+- Add `isUnlockedSync(bookSlug)` — simple `localStorage.getItem` check for use in render path
+- Update `HydrateData` interface to include `providers?`
+
+### Phase 2: Stripe Package
+
+**New package: `packages/@pressy/stripe/`** (published as `@pressy-pub/stripe`)
+
+Uses **Stripe Payment Links** — author creates a Payment Link in the Stripe dashboard and pastes the URL into `_book.yaml`. No server needed.
+
+```
+packages/@pressy/stripe/
+├── package.json, tsup.config.ts, tsconfig.json
+└── src/
+    ├── index.ts       — re-exports
+    ├── checkout.ts    — startStripeCheckout(), handleStripeReturn()
+    └── types.ts
+```
+
+Flow: click "Purchase" → redirect to `buy.stripe.com/...?client_reference_id={bookSlug}` → Stripe redirects back with `?stripe_success=true` → `handleStripeReturn()` detects params → unlock book.
+
+### Phase 3: PayPal Package
+
+**New package: `packages/@pressy/paypal/`** (published as `@pressy-pub/paypal`)
+
+Uses **PayPal JS SDK Smart Payment Buttons** — renders inline payment buttons, no redirect needed.
+
+```
+packages/@pressy/paypal/
+├── package.json, tsup.config.ts, tsconfig.json
+└── src/
+    ├── index.ts       — re-exports
+    ├── checkout.ts    — loadPayPalSDK(), renderPayPalButtons()
+    └── types.ts
+```
+
+Flow: load PayPal SDK script → render Smart Payment Buttons into paywall container → user pays in popup → `onApprove` callback → unlock book.
+
+### Phase 4: Paywall Component + Runtime Wiring
+
+**`packages/@pressy/components/src/Paywall.tsx`** — Refactor to support all modes:
+- Update `PaywallProps` to accept `stripePaymentLink`, `paypalPlanId`, and `providers` (global credentials)
+- On mount, check for redirect returns (Stripe `?stripe_success=true`, Shopify `?checkout_success=true`)
+- Render mode-specific UI: email form, Shopify button, Stripe button, or PayPal inline buttons
+- All modes call centralized `unlockBook()` on success
+
+**`packages/pressy/src/runtime/client.tsx`** — Wire paywall into reader:
+- In `ChapterReaderWithProgress`, check `book.metadata.paywall` config
+- If paywall enabled and `currentChapter > previewChapters` and not unlocked → render `<Paywall>` overlay
+- Pass paywall config + provider credentials as props
+
+### Phase 5: Vite Plugin Updates
+
+**`packages/pressy/src/vite/plugin.ts`**:
+- Add `@pressy-pub/stripe` and `@pressy-pub/paypal` to external modules (same pattern as existing `@pressy-pub/shopify`)
+- Serialize `providers` config from `pressy.config.ts` into page data
+
+## Key Files to Modify
+
+| File | Change |
+|------|--------|
+| `packages/pressy/src/types.ts` | Add `PaywallMode` type, expand paywall fields |
+| `packages/pressy/src/config.ts` | Add `StripeConfig`, `PayPalConfig` to `PressyConfig` |
+| `packages/pressy/src/vite/plugin.ts` | Serialize providers into HydrateData, add external modules |
+| `packages/pressy/src/runtime/client.tsx` | Add `isUnlockedSync`, `providers` to HydrateData, wire paywall into reader |
+| `packages/@pressy/components/src/Paywall.tsx` | Refactor for multi-provider support |
+
+## New Files to Create
+
+| File | Purpose |
+|------|---------|
+| `packages/@pressy/stripe/package.json` | Package config (follows `@pressy/shopify` pattern) |
+| `packages/@pressy/stripe/tsup.config.ts` | Build config |
+| `packages/@pressy/stripe/tsconfig.json` | TypeScript config |
+| `packages/@pressy/stripe/src/index.ts` | Re-exports |
+| `packages/@pressy/stripe/src/checkout.ts` | Stripe Payment Link checkout + return handling |
+| `packages/@pressy/stripe/src/types.ts` | Stripe-specific types |
+| `packages/@pressy/paypal/package.json` | Package config |
+| `packages/@pressy/paypal/tsup.config.ts` | Build config |
+| `packages/@pressy/paypal/tsconfig.json` | TypeScript config |
+| `packages/@pressy/paypal/src/index.ts` | Re-exports |
+| `packages/@pressy/paypal/src/checkout.ts` | PayPal SDK loading + Smart Buttons |
+| `packages/@pressy/paypal/src/types.ts` | PayPal-specific types |
+
+## Author Configuration Example
+
+**`_book.yaml`** (Stripe):
+```yaml
+paywall:
+  enabled: true
+  previewChapters: 3
+  mode: stripe
+  stripePaymentLink: "https://buy.stripe.com/abc123"
+```
+
+**`pressy.config.ts`** (global keys):
+```typescript
+export default defineConfig({
+  site: { ... },
+  stripe: { publishableKey: 'pk_live_...' },
+})
+```
+
+## Verification
+
+- Enable paywall on Flatland example with `mode: email` and `previewChapters: 3`
+- Verify chapters 1-3 render without paywall, chapter 4+ shows paywall overlay
+- Verify email submission unlocks all chapters
+- Verify unlock persists across page refreshes (localStorage + IndexedDB)
+- `pnpm build` succeeds for all examples
+- TypeScript type-check passes
+- Manual testing with Stripe test-mode Payment Link
+- Manual testing with PayPal sandbox
+
+
+If you need specific details from before exiting plan mode (like exact code snippets, error messages, or content you generated), read the full transcript at: /Users/blittle/.claude/projects/-Users-blittle-dev-pressy/111efa34-e36d-4245-9992-9f0e603eac20.jsonl
+
+---
+
+Can we write this to a plan document before starting?
+
+---
+
+[Request interrupted by user for tool use]
+
+---
+
+Could we try enabling stripe on the moby dick example?
+
+---
+
+Let's not worry about the plan anymore. Remove it. Let's instead just try adding stripe directly to the moby dick example.
+
+---
+
+[Request interrupted by user]
+
+---
+
+no ugh, you got rid of the stripe and paypal packages where you implemented everything
+
+---
+
+Two problems:
+
+1. On succeeding with the purchase, I need the user to end up back on the site. Could we use the `success_url` query parameter on the `stripePaymentLink` to send them back? If they do come back, how do we know that they actually bought it to give them access to the book?
+
+2. Directly navigating to a chapter that is paywalled properly displays it. But going from one pay to anothe does not display the paywall banner.
+
+---
+
+Fix 2 seems to work. But Fix 1 does not. I don't get redirected back. Is there something I need to configure in stripe?
+
+---
+
+[Request interrupted by user]
+
+---
+
+Fix 2 seems to work. But Fix 1 does not. I don't get redirected back. Is there something I need to configure in stripe?
+
+---
+
+Can we add a field to the config for the cost of the book, and then put the price on the home page and also a link to purchase it?
+
+---
+
+The homepage layout kinda sucks. Look at the screen shot of the file named `Screenshot 2026-02-25 at 4.01.08 PM.png` on my desktop ~/Desktop, to see what I mean. Can we think of a better way to lay out all this information that is more attractive?
+
+---
+
+Create a pull request with these changes
+
+---
+
+[Request interrupted by user for tool use]
