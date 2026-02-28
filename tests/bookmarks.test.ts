@@ -1,7 +1,36 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { readFileSync } from 'fs'
+import { join } from 'path'
 import { formatRelativeTime } from '../packages/@pressy/components/src/reader/utils'
 import type { Bookmark } from '../packages/pressy/src/types'
 import type { BookmarkData, BookmarkProps } from '../packages/@pressy/components/src/reader/types'
+
+// ── initDB onblocked handler ────────────────────────────────
+
+describe('initDB blocked upgrade handling', () => {
+  const clientSource = readFileSync(
+    join(import.meta.dirname, '..', 'packages/pressy/src/runtime/client.tsx'),
+    'utf-8',
+  )
+
+  it('has an onblocked handler so DB version upgrades do not hang', () => {
+    // When IndexedDB.open() triggers a version upgrade but an older connection
+    // is still open, the browser fires `onblocked`. Without a handler, the
+    // promise returned by initDB() hangs forever, which silently breaks
+    // features that depend on IndexedDB (e.g. the "Start Reading" CTA).
+    expect(clientSource).toContain('request.onblocked')
+  })
+
+  it('rejects (rather than resolving) when blocked', () => {
+    // The handler must call reject so callers see an error and can fall back
+    // gracefully. A resolve() would hand back an unusable DB handle.
+    const onblockedLine = clientSource
+      .split('\n')
+      .find(line => line.includes('request.onblocked'))
+    expect(onblockedLine).toBeDefined()
+    expect(onblockedLine).toContain('reject')
+  })
+})
 
 // ── formatRelativeTime ──────────────────────────────────────
 

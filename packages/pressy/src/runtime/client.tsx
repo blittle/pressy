@@ -40,6 +40,7 @@ async function initDB(): Promise<IDBDatabase> {
     const request = indexedDB.open(DB_NAME, DB_VERSION)
 
     request.onerror = () => reject(request.error)
+    request.onblocked = () => reject(new Error('Database upgrade blocked by open connection'))
     request.onsuccess = () => {
       db = request.result
       resolve(db)
