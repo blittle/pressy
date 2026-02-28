@@ -5,14 +5,14 @@ import { formatRelativeTime } from '../packages/@pressy/components/src/reader/ut
 import type { Bookmark } from '../packages/pressy/src/types'
 import type { BookmarkData, BookmarkProps } from '../packages/@pressy/components/src/reader/types'
 
+const clientSource = readFileSync(
+  join(import.meta.dirname, '..', 'packages/pressy/src/runtime/client.tsx'),
+  'utf-8',
+)
+
 // ── initDB onblocked handler ────────────────────────────────
 
 describe('initDB blocked upgrade handling', () => {
-  const clientSource = readFileSync(
-    join(import.meta.dirname, '..', 'packages/pressy/src/runtime/client.tsx'),
-    'utf-8',
-  )
-
   it('has an onblocked handler so DB version upgrades do not hang', () => {
     // When IndexedDB.open() triggers a version upgrade but an older connection
     // is still open, the browser fires `onblocked`. Without a handler, the
@@ -345,5 +345,37 @@ describe('bookmark sorting (newest first)', () => {
 
     expect(forBookA).toHaveLength(1)
     expect(forBookA[0].bookSlug).toBe('book-a')
+  })
+})
+
+// ── StartReadingCTA must never be invisible ─────────────────
+
+describe('StartReadingCTA always renders a visible button', () => {
+  // Extract the function body for StartReadingCTA
+  const fnStart = clientSource.indexOf('function StartReadingCTA(')
+  const fnBody = clientSource.slice(fnStart, clientSource.indexOf('\n}\n', fnStart) + 3)
+
+  it('does not initialize target state as null', () => {
+    // If useState is initialized with null, the CTA is invisible until
+    // the async IDB check completes. Any failure in that chain leaves
+    // the button permanently missing. The state must be initialized with
+    // a real target object so the button is always visible on first paint.
+    expect(fnBody).not.toMatch(/useState\s*<[^>]*\|\s*null\s*>\s*\(\s*null\s*\)/)
+  })
+
+  it('does not conditionally return null based on target', () => {
+    // A guard like `if (!target) return null` makes the component invisible
+    // before the async check resolves. The component must always render an
+    // <a> tag when the book has chapters.
+    expect(fnBody).not.toMatch(/if\s*\(\s*!target\s*\)\s*return\s+null/)
+  })
+
+  it('computes initialTarget synchronously from localStorage', () => {
+    // The initial target must be computed synchronously (not in a useEffect)
+    // so the button is visible on the very first render frame.
+    expect(fnBody).toContain('const initialTarget')
+    expect(fnBody).toContain("localStorage.getItem('pressy-last-read')")
+    // initialTarget must be used as the useState initializer
+    expect(fnBody).toContain('useState(initialTarget)')
   })
 })
