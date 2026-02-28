@@ -3223,9 +3223,17 @@ This is generally NOT safe. Learn more at https://bit.ly/wb-precache`;
   self.addEventListener("activate", (event) => {
     event.waitUntil(self.clients.claim());
   });
+  var respectNoStore = {
+    cacheWillUpdate: async ({ response }) => {
+      const cc = response.headers.get("Cache-Control");
+      if (cc && cc.includes("no-store")) return null;
+      return response;
+    }
+  };
   var navigationHandler = new NetworkFirst({
     cacheName: "pressy-pages",
-    networkTimeoutSeconds: 3
+    networkTimeoutSeconds: 3,
+    plugins: [respectNoStore]
   });
   registerRoute(
     new NavigationRoute(async (params) => {
@@ -3285,7 +3293,8 @@ This is generally NOT safe. Learn more at https://bit.ly/wb-precache`;
     ({ request }) => request.destination === "style" || request.destination === "script",
     new NetworkFirst({
       cacheName: "pressy-static",
-      networkTimeoutSeconds: 3
+      networkTimeoutSeconds: 3,
+      plugins: [respectNoStore]
     })
   );
   self.addEventListener("message", async (event) => {
