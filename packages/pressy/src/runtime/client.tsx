@@ -206,34 +206,43 @@ function setupOfflineDetection(): void {
 // ── Page renderers ──────────────────────────────────────────
 
 function StartReadingCTA({ book }: { book: Book }) {
-  const [target, setTarget] = useState<{ label: string; href: string } | null>(null)
+  if (book.chapters.length === 0) return null
 
-  useEffect(() => {
-    if (book.chapters.length === 0) return
-    const firstHref = `${basePath}/books/${book.slug}/${book.chapters[0].slug}`
+  const firstHref = `${basePath}/books/${book.slug}/${book.chapters[0].slug}`
 
-    // Check localStorage for exact last-read position first
+  // Synchronously check localStorage so the first render can already show
+  // "Continue Reading" without waiting for IndexedDB.
+  const initialTarget = (() => {
     try {
       const lastRead = localStorage.getItem('pressy-last-read')
       if (lastRead) {
         const { bookSlug, chapterSlug } = JSON.parse(lastRead)
         if (bookSlug === book.slug && book.chapters.some(ch => ch.slug === chapterSlug)) {
-          setTarget({
+          return {
             label: 'Continue Reading',
             href: `${basePath}/books/${book.slug}/${chapterSlug}`,
-          })
-          return
+          }
         }
       }
     } catch {
       // ignore
     }
+    return { label: 'Start Reading', href: firstHref }
+  })()
 
-    // Fall back to IndexedDB per-chapter progress
+  // Always render a visible button immediately. The async IndexedDB check
+  // below may upgrade "Start Reading" → "Continue Reading", but the button
+  // is never invisible — previously it started as null which meant any
+  // failure in the async chain (blocked IDB upgrade, race condition, etc.)
+  // left the CTA permanently missing.
+  const [target, setTarget] = useState(initialTarget)
+
+  useEffect(() => {
+    // IndexedDB has per-chapter progress that may be more accurate than
+    // the single localStorage entry. Try to find an in-progress chapter.
     getAllReadingProgress().then((allProgress) => {
       const progressMap = new Map(allProgress.map((p) => [p.chapterSlug, p]))
 
-      // Walk chapters in order and find the furthest one that's in-progress (not completed)
       let furthestInProgress: Chapter | null = null
       for (const ch of book.chapters) {
         const p = progressMap.get(ch.slug)
@@ -249,15 +258,11 @@ function StartReadingCTA({ book }: { book: Book }) {
           label: 'Continue Reading',
           href: `${basePath}/books/${book.slug}/${furthestInProgress.slug}`,
         })
-      } else {
-        setTarget({ label: 'Start Reading', href: firstHref })
       }
     }).catch(() => {
-      setTarget({ label: 'Start Reading', href: firstHref })
+      // IndexedDB unavailable — keep the synchronously-determined target
     })
   }, [book])
-
-  if (!target) return null
 
   return (
     <a href={target.href} class="pressy-cta">
