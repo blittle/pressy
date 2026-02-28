@@ -1,0 +1,75 @@
+Implement the following plan:
+
+# Paywall UX + Service Worker Cache Fix
+
+## Context
+
+Two problems with the paywall:
+
+1. **Poor UX on unauthorized chapter access**: The middleware returns a 302 redirect to the book home page. Users don't understand why they were redirected. They should see a clear paywall page at the chapter URL explaining what happened.
+
+2. **Stale SW cache after purchase**: The SW uses NetworkFirst for navigation. When `fetch()` follows the 302 redirect, it caches the *redirected* book-page HTML under the *chapter* URL in the `pressy-pages` cache. After purchasing, the SW serves stale HTML, causing MIME type errors when chapter-specific JS modules are loaded.
+
+---
+
+## Fix 1: Serve a smart paywall page at the chapter URL
+
+**File: `packages/@pressy/cloudflare/src/middleware.ts`**
+
+Instead of returning a 302 redirect (line 162-165), return a self-contained HTML page that:
+
+1. **Auto-detects purchase**: On load, calls `/api/auth/status?book={slug}` to check if the user has a valid auth cookie
+2. **If authorized** (stale cache scenario): Clears the SW `pressy-pages` cache for this book via the Cache API, then reloads the page — the server now serves the actual chapter
+3. **If not authorized**: Shows the paywall UI:
+   - Book title
+   - "This chapter requires purchase to read" message
+   - Purchase button (`/api/checkout?book={slug}`)
+   - "Already purchased?" link that expands to an email form for magic link recovery (same UX as the book home page's `RecoverLink`)
+   - Minimal inline styling
+
+This is a standalone HTML page with an inline `<script>` — no framework dependencies. It keeps the user at the chapter URL they clicked.
+
+## Fix 2: Clear SW cache after purchase (for non-paywall-page navigations)
+
+Even with the smart paywall page, we should proactively clear stale caches when auth state changes elsewhere in the app (e.g., returning to the book page after checkout).
+
+**File: `packages/pressy/src/runtime/sw.ts`**
+
+Add a new message handler `INVALIDATE_BOOK_PAGES`:
+- Deletes all entries from `pressy-pages` cache matching `/books/{bookSlug}`
+- Deletes matching entries from `pressy-static` cache too (safety net for any JS/CSS cached with wrong content)
+
+**File: `packages/pressy/src/runtime/offline.ts`**
+
+Add and export `invalidateBookPages(bookSlug: string)` that sends the `INVALIDATE_BOOK_PAGES` message to the SW.
+
+**File: `packages/pressy/src/runtime/client.tsx`**
+
+In `usePaywallAuthorized` (~line 302) and `ChapterReaderWithProgress` (~line 526): when auth status resolves to `authorized: true`, call `invalidateBookPages(book.slug)`.
+
+## Fix 3: Update tests
+
+**File: `tests/paywall.test.ts`**
+
+Update test expectations — unauthorized chapter access now returns 200 with HTML paywall page instead of 302 redirect.
+
+## Files to modify
+
+1. `packages/@pressy/cloudflare/src/middleware.ts` — paywall HTML page instead of 302
+2. `packages/pressy/src/runtime/sw.ts` — `INVALIDATE_BOOK_PAGES` handler
+3. `packages/pressy/src/runtime/offline.ts` — `invalidateBookPages()` export
+4. `packages/pressy/src/runtime/client.tsx` — call invalidation on auth change
+5. `tests/paywall.test.ts` — update expectations
+
+## Verification
+
+- `pnpm test` — paywall tests pass with updated expectations
+- Manual: visit a paid chapter while unauthorized → see paywall page at chapter URL with purchase CTA + recovery link
+- Manual: purchase → navigate to paid chapter → paywall page auto-detects auth, clears cache, reloads to show chapter
+
+
+If you need specific details from before exiting plan mode (like exact code snippets, error messages, or content you generated), read the full transcript at: /Users/blittle/.REDACTED.jsonl
+
+---
+
+Yes, commit this and push
