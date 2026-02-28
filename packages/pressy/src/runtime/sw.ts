@@ -179,6 +179,21 @@ self.addEventListener('message', async (event) => {
     event.source?.postMessage({ type: 'CACHE_CLEARED', bookSlug })
   }
 
+  if (event.data?.type === 'INVALIDATE_BOOK_PAGES') {
+    const { bookSlug } = event.data
+    const cacheNames = ['pressy-pages', 'pressy-static']
+    for (const name of cacheNames) {
+      const cache = await caches.open(name)
+      const keys = await cache.keys()
+      for (const request of keys) {
+        if (request.url.includes(`/books/${bookSlug}`)) {
+          await cache.delete(request)
+        }
+      }
+    }
+    event.source?.postMessage({ type: 'BOOK_PAGES_INVALIDATED', bookSlug })
+  }
+
   if (event.data?.type === 'SKIP_WAITING') {
     self.skipWaiting()
   }

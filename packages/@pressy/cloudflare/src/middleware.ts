@@ -158,12 +158,219 @@ export function createPressyMiddleware(
       return next()
     }
 
-    // Not authorized — redirect to book page with purchase prompt
-    return new Response(null, {
-      status: 302,
-      headers: { Location: `/books/${book.slug}/?purchase=true`, ...NO_CACHE },
+    // Not authorized — serve inline paywall page at the chapter URL
+    return new Response(paywallPage(book, chapterMatch.chapterSlug), {
+      status: 200,
+      headers: { 'Content-Type': 'text/html; charset=utf-8', ...NO_CACHE, ...SECURITY_HEADERS },
     })
   }
+}
+
+function paywallPage(book: PressyBookManifest, chapterSlug: string): string {
+  const title = book.paywall?.price
+    ? `${book.slug} — Purchase Required`
+    : `${book.slug} — Access Required`
+  const price = book.paywall?.price || ''
+  const bookSlug = book.slug
+  // Sanitize slugs for safe embedding in HTML (alphanumeric + hyphens only)
+  const safeBookSlug = bookSlug.replace(/[^a-zA-Z0-9-]/g, '')
+  const safeChapterSlug = chapterSlug.replace(/[^a-zA-Z0-9-]/g, '')
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${title}</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: Georgia, 'Times New Roman', serif;
+    color: #1a1a1a;
+    background: #fff;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 2rem;
+  }
+  .paywall {
+    max-width: 420px;
+    text-align: center;
+  }
+  .paywall h1 {
+    font-size: 1.5rem;
+    margin-bottom: 0.75rem;
+  }
+  .paywall p {
+    color: #555;
+    line-height: 1.6;
+    margin-bottom: 1.25rem;
+  }
+  .paywall .cta {
+    display: inline-block;
+    padding: 0.75rem 1.75rem;
+    background: #2563eb;
+    color: #fff;
+    font-size: 1rem;
+    font-weight: 600;
+    text-decoration: none;
+    border-radius: 0.5rem;
+    transition: opacity 0.15s;
+  }
+  .paywall .cta:hover { opacity: 0.85; }
+  .recover-toggle {
+    display: inline-block;
+    margin-top: 1rem;
+    background: none;
+    border: none;
+    font: inherit;
+    font-size: 0.85rem;
+    color: #2563eb;
+    text-decoration: underline;
+    cursor: pointer;
+  }
+  .recover-toggle:hover { opacity: 0.75; }
+  .recover-form {
+    display: none;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+    justify-content: center;
+  }
+  .recover-form.visible { display: flex; }
+  .recover-form input {
+    flex: 1;
+    min-width: 180px;
+    padding: 0.5rem 0.75rem;
+    font: inherit;
+    font-size: 0.9rem;
+    border: 1.5px solid #e5e5e5;
+    border-radius: 0.375rem;
+  }
+  .recover-form button {
+    padding: 0.5rem 1rem;
+    font: inherit;
+    font-size: 0.9rem;
+    font-weight: 600;
+    background: #2563eb;
+    color: #fff;
+    border: none;
+    border-radius: 0.375rem;
+    cursor: pointer;
+  }
+  .recover-form button:hover { opacity: 0.85; }
+  .recover-form button:disabled { opacity: 0.6; cursor: not-allowed; }
+  .msg { margin-top: 0.75rem; font-size: 0.85rem; }
+  .msg.success { color: #2563eb; }
+  .msg.error { color: #dc2626; }
+  .hidden { display: none; }
+</style>
+</head>
+<body>
+<div class="paywall">
+  <div id="loading">Checking access&hellip;</div>
+  <div id="content" class="hidden">
+    <h1>${title}</h1>
+    <p>This chapter requires purchase to read.</p>
+    <a class="cta" href="/api/checkout?book=${safeBookSlug}">Purchase${price ? ' — ' + price : ''}</a>
+    <br>
+    <button class="recover-toggle" id="recoverBtn">Already purchased?</button>
+    <form class="recover-form" id="recoverForm">
+      <input type="email" placeholder="Email address" required id="recoverEmail">
+      <button type="submit" id="recoverSubmit">Send Recovery Link</button>
+    </form>
+    <div id="recoverMsg" class="msg hidden"></div>
+  </div>
+</div>
+<script>
+(function() {
+  var bookSlug = "${safeBookSlug}";
+  var chapterSlug = "${safeChapterSlug}";
+
+  // Check auth status — if authorized, clear stale SW cache and reload
+  fetch("/api/auth/status?book=" + encodeURIComponent(bookSlug))
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.authorized) {
+        // Authorized but seeing paywall page — stale SW cache scenario.
+        // Clear pressy-pages and pressy-static caches for this book, then reload.
+        var cleared = Promise.resolve();
+        if (typeof caches !== "undefined") {
+          cleared = Promise.all([
+            caches.open("pressy-pages").then(function(c) {
+              return c.keys().then(function(keys) {
+                return Promise.all(keys.filter(function(k) {
+                  return k.url.includes("/books/" + bookSlug);
+                }).map(function(k) { return c.delete(k); }));
+              });
+            }),
+            caches.open("pressy-static").then(function(c) {
+              return c.keys().then(function(keys) {
+                return Promise.all(keys.filter(function(k) {
+                  return k.url.includes("/books/" + bookSlug);
+                }).map(function(k) { return c.delete(k); }));
+              });
+            })
+          ]);
+        }
+        cleared.then(function() { location.reload(); });
+      } else {
+        // Not authorized — show the paywall UI
+        document.getElementById("loading").classList.add("hidden");
+        document.getElementById("content").classList.remove("hidden");
+      }
+    })
+    .catch(function() {
+      // Network error — show paywall UI anyway
+      document.getElementById("loading").classList.add("hidden");
+      document.getElementById("content").classList.remove("hidden");
+    });
+
+  // Recover link toggle
+  document.getElementById("recoverBtn").addEventListener("click", function() {
+    document.getElementById("recoverForm").classList.toggle("visible");
+    this.style.display = "none";
+  });
+
+  // Recover form submit
+  document.getElementById("recoverForm").addEventListener("submit", function(e) {
+    e.preventDefault();
+    var email = document.getElementById("recoverEmail").value;
+    var btn = document.getElementById("recoverSubmit");
+    var msg = document.getElementById("recoverMsg");
+    btn.disabled = true;
+    btn.textContent = "Sending\\u2026";
+    fetch("/api/auth/recover", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: email, book: bookSlug })
+    })
+    .then(function(r) {
+      msg.classList.remove("hidden", "error", "success");
+      if (r.ok) {
+        msg.classList.add("success");
+        msg.textContent = "Check your email for a recovery link.";
+        document.getElementById("recoverForm").classList.remove("visible");
+      } else {
+        msg.classList.add("error");
+        msg.textContent = "Something went wrong. Please try again.";
+        btn.disabled = false;
+        btn.textContent = "Send Recovery Link";
+      }
+    })
+    .catch(function() {
+      msg.classList.remove("hidden", "error", "success");
+      msg.classList.add("error");
+      msg.textContent = "Something went wrong. Please try again.";
+      btn.disabled = false;
+      btn.textContent = "Send Recovery Link";
+    });
+  });
+})();
+</script>
+</body>
+</html>`
 }
 
 function missingEnvError(...names: string[]): Response {

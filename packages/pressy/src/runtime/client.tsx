@@ -9,6 +9,7 @@ import {
   downloadBookForOffline,
   clearBookCache,
   isBookCached,
+  invalidateBookPages,
   cachedBooks,
   cacheProgress,
   installPrompt,
@@ -311,7 +312,10 @@ function usePaywallAuthorized(book: Book): boolean | undefined {
     }
     fetch(`/api/auth/status?book=${book.slug}`)
       .then((res) => res.json())
-      .then((data: { authorized: boolean }) => setAuthorized(data.authorized))
+      .then((data: { authorized: boolean }) => {
+        setAuthorized(data.authorized)
+        if (data.authorized) invalidateBookPages(book.slug)
+      })
       .catch(() => setAuthorized(false))
   }, [book.slug, book.metadata.paywall?.enabled])
 
@@ -530,7 +534,10 @@ function ChapterReaderWithProgress({
     }
     fetch(`/api/auth/status?book=${book.slug}`)
       .then((res) => res.json())
-      .then((data: { authorized: boolean }) => setPaywallAuthorized(data.authorized))
+      .then((data: { authorized: boolean }) => {
+        setPaywallAuthorized(data.authorized)
+        if (data.authorized) invalidateBookPages(book.slug)
+      })
       .catch(() => setPaywallAuthorized(true)) // fail open on network error
   }, [book.slug, book.metadata.paywall?.enabled])
 

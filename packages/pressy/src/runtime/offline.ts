@@ -195,6 +195,17 @@ export async function checkCacheStatus(urls: string[]): Promise<void> {
   })
 }
 
+// Invalidate SW navigation/static caches for a book (clears stale paywall pages)
+export function invalidateBookPages(bookSlug: string): void {
+  if (!('serviceWorker' in navigator) || !navigator.serviceWorker.controller) {
+    return
+  }
+  navigator.serviceWorker.controller.postMessage({
+    type: 'INVALIDATE_BOOK_PAGES',
+    bookSlug,
+  })
+}
+
 // Clear cached book
 export async function clearBookCache(bookSlug: string): Promise<boolean> {
   // Update state and persist immediately

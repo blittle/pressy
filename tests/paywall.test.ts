@@ -209,7 +209,7 @@ describe('middleware paywall enforcement', () => {
     expect(next).toHaveBeenCalled()
   })
 
-  it('paid chapter without auth redirects to ?purchase=true (302)', async () => {
+  it('paid chapter without auth serves paywall page (200)', async () => {
     const env = createMockEnv()
     const next = vi.fn(async () => new Response('OK', { status: 200 }))
 
@@ -219,8 +219,12 @@ describe('middleware paywall enforcement', () => {
       next,
     })
 
-    expect(response.status).toBe(302)
-    expect(response.headers.get('Location')).toBe('/books/test-book/?purchase=true')
+    expect(response.status).toBe(200)
+    expect(response.headers.get('Content-Type')).toContain('text/html')
+    const body = await response.text()
+    expect(body).toContain('This chapter requires purchase to read')
+    expect(body).toContain('/api/checkout?book=test-book')
+    expect(body).toContain('Already purchased?')
     expect(next).not.toHaveBeenCalled()
   })
 
