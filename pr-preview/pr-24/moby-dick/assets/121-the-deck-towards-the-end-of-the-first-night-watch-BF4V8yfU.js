@@ -1,0 +1,7 @@
+import{u as t,k as a}from"./client-BHuPlGpf.js";function i(n){const e={em:"em",p:"p",...n.components};return t(a,{children:[t(e.p,{children:t(e.em,{children:"Ahab standing by the helm. Starbuck approaching him."})}),`
+`,t(e.p,{children:"“We must send down the main-top-sail yard, sir. The band is working loose and the lee lift is half-stranded. Shall I strike it, sir?”"}),`
+`,t(e.p,{children:"“Strike nothing; lash it. If I had sky-sail poles, I’d sway them up now.”"}),`
+`,t(e.p,{children:"“Sir!—in God’s name!—sir?”"}),`
+`,t(e.p,{children:"“Well.”"}),`
+`,t(e.p,{children:"“The anchors are working, sir. Shall I get them inboard?”"}),`
+`,t(e.p,{children:"“Strike nothing, and stir nothing, but lash everything. The wind rises, but it has not got up to my table-lands yet. Quick, and see to it.—By masts and keels! he takes me for the hunch-backed skipper of some coasting smack. Send down my main-top-sail yard! Ho, gluepots! Loftiest trucks were made for wildest winds, and this brain-truck of mine now sails amid the cloud-scud. Shall I strike that? Oh, none but cowards send down their brain-trucks in tempest time. What a hooroosh aloft there! I would e’en take it for sublime, did I not know that the colic is a noisy malady. Oh, take medicine, take medicine!”"})]})}function s(n={}){const{wrapper:e}=n.components||{};return e?t(e,{...n,children:t(i,{...n})}):i(n)}const r={title:"Chapter 120. The Deck Towards the End of the First Night Watch"};export{s as default,r as frontmatter};
