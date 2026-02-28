@@ -748,41 +748,23 @@ const HOME_STYLES = `
   /* ── Hero layout ────────────────────────── */
   .pressy-hero {
     display: flex;
-    align-items: flex-start;
-    gap: 2.5rem;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 2rem;
     margin-bottom: 2.5rem;
   }
   .pressy-hero-cover {
-    flex-shrink: 0;
-    max-width: 280px;
+    max-width: 220px;
     width: 100%;
     height: auto;
+    margin: 0 auto;
     border-radius: 4px;
     box-shadow: 0 4px 24px rgba(0,0,0,0.15);
     animation: pressy-fade-in 0.6s ease-out both;
   }
   .pressy-hero-text {
-    flex: 1;
     animation: pressy-fade-in 0.6s ease-out 0.15s both;
-  }
-  @media (max-width: 700px) {
-    .pressy-hero {
-      flex-direction: column;
-      align-items: center;
-    }
-    .pressy-hero-cover {
-      max-width: 220px;
-    }
-    .pressy-hero-text {
-      text-align: center;
-    }
-    .pressy-home-desc {
-      margin-left: auto;
-      margin-right: auto;
-    }
-    .pressy-stats {
-      justify-content: center;
-    }
   }
 
   /* ── Header ─────────────────────────────── */
@@ -801,13 +783,14 @@ const HOME_STYLES = `
     color: var(--color-text-muted, #666);
     line-height: 1.6;
     max-width: 50ch;
-    margin: 0.5rem 0 0;
+    margin: 0.5rem auto 0;
   }
 
   /* ── Stats row ──────────────────────────── */
   .pressy-stats {
     display: flex;
     flex-wrap: wrap;
+    justify-content: center;
     gap: 0.4em;
     font-size: 0.85rem;
     color: var(--color-text-muted, #666);
@@ -821,6 +804,7 @@ const HOME_STYLES = `
   .pressy-cta-group {
     display: flex;
     flex-wrap: wrap;
+    justify-content: center;
     gap: 0.75rem;
     align-items: center;
   }

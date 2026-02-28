@@ -424,7 +424,7 @@ describe('/api/auth/verify', () => {
     })
 
     expect(response.status).toBe(302)
-    expect(response.headers.get('Location')).toBe('/books/test-book/chapter-3/')
+    expect(response.headers.get('Location')).toBe('/books/test-book/')
     expect(response.headers.get('Set-Cookie')).toContain('pressy-auth-test-book=')
   })
 

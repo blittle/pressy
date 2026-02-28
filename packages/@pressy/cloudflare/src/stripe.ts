@@ -165,13 +165,8 @@ export async function handleAuthCallback(
     env.COOKIE_SECRET,
   )
 
-  // Redirect to first paid chapter
-  const firstPaidChapter = book.chapters.find(
-    (ch) => ch.order >= (book.paywall?.previewChapters || 0),
-  )
-  const redirectPath = firstPaidChapter
-    ? `/books/${bookSlug}/${firstPaidChapter.slug}/`
-    : `/books/${bookSlug}/`
+  // Redirect to the book home page so the user can click "Continue Reading"
+  const redirectPath = `/books/${bookSlug}/`
 
   return new Response(null, {
     status: 302,
@@ -362,13 +357,8 @@ export async function handleVerifyToken(
     env.COOKIE_SECRET,
   )
 
-  // Redirect to first paid chapter
-  const firstPaidChapter = book?.chapters.find(
-    (ch) => ch.order >= (book?.paywall?.previewChapters || 0),
-  )
-  const redirectPath = firstPaidChapter
-    ? `/books/${payload.bookSlug}/${firstPaidChapter.slug}/`
-    : `/books/${payload.bookSlug}/`
+  // Redirect to the book home page so the user can click "Continue Reading"
+  const redirectPath = `/books/${payload.bookSlug}/`
 
   return new Response(null, {
     status: 302,
