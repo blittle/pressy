@@ -16,7 +16,7 @@ import {
   setupInstallPrompt,
   triggerInstall,
 } from './offline.js'
-import type { ContentManifest, Route, Book, Chapter, Article, ReadingProgress, ChapterMapData } from '../types.js'
+import type { ContentManifest, Route, Book, Chapter, Article, ReadingProgress, Bookmark, ChapterMapData } from '../types.js'
 import type { PaginationConfig } from '../config.js'
 
 // State signals
@@ -26,9 +26,10 @@ export const isOffline = signal<boolean>(!navigator.onLine)
 
 // IndexedDB for reading progress
 const DB_NAME = 'pressy'
-const DB_VERSION = 1
+const DB_VERSION = 2
 const PROGRESS_STORE = 'reading-progress'
 const UNLOCKS_STORE = 'unlocks'
+const BOOKMARKS_STORE = 'bookmarks'
 
 let db: IDBDatabase | null = null
 
@@ -39,6 +40,7 @@ async function initDB(): Promise<IDBDatabase> {
     const request = indexedDB.open(DB_NAME, DB_VERSION)
 
     request.onerror = () => reject(request.error)
+    request.onblocked = () => reject(new Error('Database upgrade blocked by open connection'))
     request.onsuccess = () => {
       db = request.result
       resolve(db)
@@ -51,6 +53,9 @@ async function initDB(): Promise<IDBDatabase> {
       }
       if (!database.objectStoreNames.contains(UNLOCKS_STORE)) {
         database.createObjectStore(UNLOCKS_STORE, { keyPath: 'bookSlug' })
+      }
+      if (!database.objectStoreNames.contains(BOOKMARKS_STORE)) {
+        database.createObjectStore(BOOKMARKS_STORE, { keyPath: 'id' })
       }
     }
   })
@@ -111,6 +116,45 @@ export async function unlockBook(bookSlug: string, orderId?: string): Promise<vo
   })
 }
 
+export async function saveBookmark(bookmark: Bookmark): Promise<void> {
+  const database = await initDB()
+  return new Promise((resolve, reject) => {
+    const tx = database.transaction(BOOKMARKS_STORE, 'readwrite')
+    const store = tx.objectStore(BOOKMARKS_STORE)
+    const request = store.put(bookmark)
+    request.onsuccess = () => resolve()
+    request.onerror = () => reject(request.error)
+  })
+}
+
+export async function deleteBookmark(id: string): Promise<void> {
+  const database = await initDB()
+  return new Promise((resolve, reject) => {
+    const tx = database.transaction(BOOKMARKS_STORE, 'readwrite')
+    const store = tx.objectStore(BOOKMARKS_STORE)
+    const request = store.delete(id)
+    request.onsuccess = () => resolve()
+    request.onerror = () => reject(request.error)
+  })
+}
+
+export async function getBookmarksByBook(bookSlug: string): Promise<Bookmark[]> {
+  const database = await initDB()
+  return new Promise((resolve, reject) => {
+    const tx = database.transaction(BOOKMARKS_STORE, 'readonly')
+    const store = tx.objectStore(BOOKMARKS_STORE)
+    const request = store.getAll()
+    request.onsuccess = () => {
+      const all: Bookmark[] = request.result || []
+      const filtered = all
+        .filter(b => b.bookSlug === bookSlug)
+        .sort((a, b) => b.createdAt - a.createdAt)
+      resolve(filtered)
+    }
+    request.onerror = () => reject(request.error)
+  })
+}
+
 // Client-side router
 export function navigate(path: string, replace = false): void {
   if (replace) {
@@ -162,34 +206,43 @@ function setupOfflineDetection(): void {
 // ── Page renderers ──────────────────────────────────────────
 
 function StartReadingCTA({ book }: { book: Book }) {
-  const [target, setTarget] = useState<{ label: string; href: string } | null>(null)
+  if (book.chapters.length === 0) return null
 
-  useEffect(() => {
-    if (book.chapters.length === 0) return
-    const firstHref = `${basePath}/books/${book.slug}/${book.chapters[0].slug}`
+  const firstHref = `${basePath}/books/${book.slug}/${book.chapters[0].slug}`
 
-    // Check localStorage for exact last-read position first
+  // Synchronously check localStorage so the first render can already show
+  // "Continue Reading" without waiting for IndexedDB.
+  const initialTarget = (() => {
     try {
       const lastRead = localStorage.getItem('pressy-last-read')
       if (lastRead) {
         const { bookSlug, chapterSlug } = JSON.parse(lastRead)
         if (bookSlug === book.slug && book.chapters.some(ch => ch.slug === chapterSlug)) {
-          setTarget({
+          return {
             label: 'Continue Reading',
             href: `${basePath}/books/${book.slug}/${chapterSlug}`,
-          })
-          return
+          }
         }
       }
     } catch {
       // ignore
     }
+    return { label: 'Start Reading', href: firstHref }
+  })()
 
-    // Fall back to IndexedDB per-chapter progress
+  // Always render a visible button immediately. The async IndexedDB check
+  // below may upgrade "Start Reading" → "Continue Reading", but the button
+  // is never invisible — previously it started as null which meant any
+  // failure in the async chain (blocked IDB upgrade, race condition, etc.)
+  // left the CTA permanently missing.
+  const [target, setTarget] = useState(initialTarget)
+
+  useEffect(() => {
+    // IndexedDB has per-chapter progress that may be more accurate than
+    // the single localStorage entry. Try to find an in-progress chapter.
     getAllReadingProgress().then((allProgress) => {
       const progressMap = new Map(allProgress.map((p) => [p.chapterSlug, p]))
 
-      // Walk chapters in order and find the furthest one that's in-progress (not completed)
       let furthestInProgress: Chapter | null = null
       for (const ch of book.chapters) {
         const p = progressMap.get(ch.slug)
@@ -205,15 +258,11 @@ function StartReadingCTA({ book }: { book: Book }) {
           label: 'Continue Reading',
           href: `${basePath}/books/${book.slug}/${furthestInProgress.slug}`,
         })
-      } else {
-        setTarget({ label: 'Start Reading', href: firstHref })
       }
     }).catch(() => {
-      setTarget({ label: 'Start Reading', href: firstHref })
+      // IndexedDB unavailable — keep the synchronously-determined target
     })
   }, [book])
-
-  if (!target) return null
 
   return (
     <a href={target.href} class="pressy-cta">
@@ -521,6 +570,7 @@ function ChapterReaderWithProgress({
   Content: ComponentType<{ components?: Record<string, unknown> }>
   chapterMapData?: ChapterMapData
 }) {
+  const [bookmarks, setBookmarks] = useState<Bookmark[]>([])
   const [bookProgressPercent, setBookProgressPercent] = useState<number | undefined>(undefined)
   const [paywallAuthorized, setPaywallAuthorized] = useState<boolean | undefined>(
     book.metadata.paywall?.enabled ? undefined : true,
@@ -548,6 +598,66 @@ function ChapterReaderWithProgress({
       setBookProgressPercent(percent)
     })
   }, [book, chapterSlug])
+
+  // Load bookmarks on mount
+  useEffect(() => {
+    getBookmarksByBook(book.slug).then(setBookmarks).catch(() => {})
+  }, [book.slug])
+
+  const handleAddBookmark = (data: {
+    chapterSlug: string
+    chapterTitle: string
+    page: number
+    totalPages: number
+    scrollPosition: number
+  }) => {
+    const bookmark: Bookmark = {
+      id: `${book.slug}:${data.chapterSlug}:${Date.now()}`,
+      bookSlug: book.slug,
+      chapterSlug: data.chapterSlug,
+      chapterTitle: data.chapterTitle,
+      page: data.page,
+      totalPages: data.totalPages,
+      scrollPosition: data.scrollPosition,
+      createdAt: Date.now(),
+    }
+    saveBookmark(bookmark).then(() => {
+      getBookmarksByBook(book.slug).then(setBookmarks)
+    })
+  }
+
+  const handleDeleteBookmark = (id: string) => {
+    deleteBookmark(id).then(() => {
+      getBookmarksByBook(book.slug).then(setBookmarks)
+    })
+  }
+
+  const handleNavigateBookmark = (bookmark: Bookmark) => {
+    if (bookmark.chapterSlug === chapterSlug) {
+      // Same chapter — scroll or page jump directly
+      if (bookmark.scrollPosition > 0) {
+        window.scrollTo(0, bookmark.scrollPosition)
+      }
+      // For paginated mode, the reader will handle page restore via the bookmark-restore key
+      localStorage.setItem('pressy-bookmark-restore', JSON.stringify({
+        chapterSlug: bookmark.chapterSlug,
+        page: bookmark.page,
+        totalPages: bookmark.totalPages,
+        scrollPosition: bookmark.scrollPosition,
+      }))
+      // Trigger re-render/restore
+      window.location.reload()
+    } else {
+      // Cross-chapter: store restore data and navigate
+      localStorage.setItem('pressy-bookmark-restore', JSON.stringify({
+        chapterSlug: bookmark.chapterSlug,
+        page: bookmark.page,
+        totalPages: bookmark.totalPages,
+        scrollPosition: bookmark.scrollPosition,
+      }))
+      window.location.href = `${basePath}/books/${book.slug}/${bookmark.chapterSlug}`
+    }
+  }
 
   const handleSaveProgress = (data: ProgressData) => {
     const saveSlug = data.activeChapterSlug || chapterSlug
@@ -581,6 +691,20 @@ function ChapterReaderWithProgress({
   }
 
   const handleRestoreProgress = async (): Promise<ProgressData | null> => {
+    // Check bookmark restore first (cross-chapter bookmark navigation)
+    try {
+      const bookmarkRestore = localStorage.getItem('pressy-bookmark-restore')
+      if (bookmarkRestore) {
+        localStorage.removeItem('pressy-bookmark-restore')
+        const parsed = JSON.parse(bookmarkRestore)
+        if (parsed.chapterSlug === chapterSlug) {
+          return { page: parsed.page, totalPages: parsed.totalPages, scrollPosition: parsed.scrollPosition || 0 }
+        }
+      }
+    } catch {
+      // ignore
+    }
+
     // Read from localStorage — synchronous, always up to date.
     try {
       const lastRead = localStorage.getItem('pressy-last-read')
@@ -652,6 +776,12 @@ function ChapterReaderWithProgress({
         authorized: paywallAuthorized ?? false,
         bookSlug: book.slug,
       } : undefined}
+      bookmarkProps={{
+        bookmarks,
+        onAddBookmark: handleAddBookmark,
+        onDeleteBookmark: handleDeleteBookmark,
+        onNavigateBookmark: handleNavigateBookmark,
+      }}
       offlineProps={{
         bookSlug: book.slug,
         chapterUrls: book.chapters.map(ch => `${basePath}/books/${book.slug}/${ch.slug}`),

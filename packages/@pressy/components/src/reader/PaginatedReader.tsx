@@ -5,7 +5,8 @@ import { TextShare } from "../TextShare.js";
 import { OfflineIndicator } from "../OfflineIndicator.js";
 import { OfflineFooterIcon } from "./ScrollReader.js";
 import { PAGINATED_STYLES } from "./paginated-reader-styles.js";
-import type { ProgressData, ChapterMapData, OfflineProps, ReaderPaywallConfig } from "./types.js";
+import type { ProgressData, ChapterMapData, OfflineProps, ReaderPaywallConfig, BookmarkProps } from "./types.js";
+import { formatRelativeTime } from "./utils.js";
 
 // ── Paginated Reader ──────────────────────────────────────────
 
@@ -39,6 +40,7 @@ export interface PaginatedReaderProps {
   mdxComponents?: Record<string, unknown>;
   paywall?: ReaderPaywallConfig;
   offlineProps?: OfflineProps;
+  bookmarkProps?: BookmarkProps;
 }
 
 function ChapterDivider({ title }: { title: string }) {
@@ -67,6 +69,7 @@ export function PaginatedReader({
   mdxComponents,
   paywall,
   offlineProps,
+  bookmarkProps,
 }: PaginatedReaderProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
@@ -136,6 +139,7 @@ export function PaginatedReader({
   // Settings & TOC panel state
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [tocOpen, setTocOpen] = useState(false);
+  const [bookmarksOpen, setBookmarksOpen] = useState(false);
   const [activeTheme, setActiveTheme] = useState<string>(() => {
     if (typeof localStorage !== "undefined") {
       return localStorage.getItem("pressy-theme") || "light";
@@ -767,17 +771,18 @@ export function PaginatedReader({
       // Clicks inside panels or on interactive elements — ignore
       if (
         target.closest(
-          ".pressy-settings-panel, .pressy-settings-toggle, .pressy-toc-drawer, .pressy-toc-toggle"
+          ".pressy-settings-panel, .pressy-settings-toggle, .pressy-toc-drawer, .pressy-toc-toggle, .pressy-bookmarks-panel, .pressy-bookmarks-toggle"
         )
       )
         return;
       if (target.closest('a, button, input, select, textarea, [role="button"]'))
         return;
 
-      // If settings or TOC panel is open, close it on any outside click
-      if (settingsOpen || tocOpen) {
+      // If settings, TOC, or bookmarks panel is open, close it on any outside click
+      if (settingsOpen || tocOpen || bookmarksOpen) {
         setSettingsOpen(false);
         setTocOpen(false);
+        setBookmarksOpen(false);
         return;
       }
 
@@ -835,6 +840,7 @@ export function PaginatedReader({
       isTouchDevice,
       settingsOpen,
       tocOpen,
+      bookmarksOpen,
       showFooterTemporarily,
       toggleFullscreen,
     ]
@@ -866,22 +872,22 @@ export function PaginatedReader({
       if (y > rect.height * 0.75) {
         setFooterVisible(true);
         if (footerTimerRef.current) clearTimeout(footerTimerRef.current);
-      } else if (!settingsOpen && !tocOpen) {
+      } else if (!settingsOpen && !tocOpen && !bookmarksOpen) {
         // Hide after a short delay when leaving the bottom area (not when panels are open)
         if (footerTimerRef.current) clearTimeout(footerTimerRef.current);
         footerTimerRef.current = setTimeout(() => setFooterVisible(false), 600);
       }
     },
-    [isTouchDevice, settingsOpen, tocOpen]
+    [isTouchDevice, settingsOpen, tocOpen, bookmarksOpen]
   );
 
   const handleMouseLeave = useCallback(() => {
     setHoverZone(null);
-    if (!settingsOpen && !tocOpen) {
+    if (!settingsOpen && !tocOpen && !bookmarksOpen) {
       if (footerTimerRef.current) clearTimeout(footerTimerRef.current);
       footerTimerRef.current = setTimeout(() => setFooterVisible(false), 600);
     }
-  }, [settingsOpen, tocOpen]);
+  }, [settingsOpen, tocOpen, bookmarksOpen]);
 
   // Keyboard navigation
   useEffect(() => {
@@ -1291,7 +1297,7 @@ export function PaginatedReader({
       {/* Page footer with progress — hidden by default */}
       <div
         class={`pressy-page-footer ${
-          footerVisible || settingsOpen || tocOpen
+          footerVisible || settingsOpen || tocOpen || bookmarksOpen
             ? "pressy-page-footer--visible"
             : ""
         }`}
@@ -1309,6 +1315,7 @@ export function PaginatedReader({
               onClick={(e: MouseEvent) => {
                 e.stopPropagation();
                 setSettingsOpen(false);
+                setBookmarksOpen(false);
                 setTocOpen(!tocOpen);
               }}
               aria-label="Table of contents"
@@ -1336,6 +1343,7 @@ export function PaginatedReader({
                 e.stopPropagation();
                 if (allChapters && allChapters.length > 0) {
                   setSettingsOpen(false);
+                  setBookmarksOpen(false);
                   setTocOpen(!tocOpen);
                 }
               }}
@@ -1344,11 +1352,37 @@ export function PaginatedReader({
             </button>
           )}
           <OfflineFooterIcon offlineProps={offlineProps} />
+          {bookmarkProps && (
+            <button
+              class="pressy-bookmarks-toggle"
+              onClick={(e: MouseEvent) => {
+                e.stopPropagation();
+                setSettingsOpen(false);
+                setTocOpen(false);
+                setBookmarksOpen(!bookmarksOpen);
+              }}
+              aria-label="Bookmarks"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                fill={bookmarksOpen ? "currentColor" : "none"}
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                width="18"
+                height="18"
+              >
+                <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+              </svg>
+            </button>
+          )}
           <button
             class="pressy-settings-toggle"
             onClick={(e: MouseEvent) => {
               e.stopPropagation();
               setTocOpen(false);
+              setBookmarksOpen(false);
               setSettingsOpen(!settingsOpen);
             }}
             aria-label="Settings"
@@ -1511,6 +1545,76 @@ export function PaginatedReader({
             </div>
           </div>
         </div>
+
+        {/* Bookmarks panel */}
+        {bookmarkProps && (
+          <div
+            class={`pressy-bookmarks-panel ${
+              bookmarksOpen ? "pressy-bookmarks-panel--open" : ""
+            }`}
+          >
+            {bookmarkProps.bookmarks.length === 0 ? (
+              <div class="pressy-bookmarks-empty">No bookmarks yet</div>
+            ) : (
+              <div class="pressy-bookmarks-list">
+                {bookmarkProps.bookmarks.map((bm) => (
+                  <div
+                    key={bm.id}
+                    class="pressy-bookmark-item"
+                    onClick={(e: MouseEvent) => {
+                      e.stopPropagation();
+                      bookmarkProps.onNavigateBookmark(bm);
+                      setBookmarksOpen(false);
+                    }}
+                  >
+                    <div class="pressy-bookmark-info">
+                      <span class="pressy-bookmark-chapter">{bm.chapterTitle}</span>
+                      <span class="pressy-bookmark-detail">
+                        {bm.totalPages > 0
+                          ? `Page ${bm.page + 1} of ${bm.totalPages}`
+                          : bm.scrollPosition > 0
+                            ? `Scroll ${Math.round(bm.scrollPosition)}px`
+                            : "Start"}
+                        {" \u00b7 "}
+                        {formatRelativeTime(bm.createdAt)}
+                      </span>
+                    </div>
+                    <button
+                      class="pressy-bookmark-delete"
+                      onClick={(e: MouseEvent) => {
+                        e.stopPropagation();
+                        bookmarkProps.onDeleteBookmark(bm.id);
+                      }}
+                      aria-label="Delete bookmark"
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+                        <line x1="18" y1="6" x2="6" y2="18" />
+                        <line x1="6" y1="6" x2="18" y2="18" />
+                      </svg>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <button
+              class="pressy-bookmark-add"
+              onClick={(e: MouseEvent) => {
+                e.stopPropagation();
+                const chapterSlug = activeChapterSlug || currentChapterSlug || "";
+                const chapterTitle = allChapters?.find(ch => ch.slug === chapterSlug)?.title || chapterSlug;
+                bookmarkProps.onAddBookmark({
+                  chapterSlug,
+                  chapterTitle,
+                  page: currentPage,
+                  totalPages,
+                  scrollPosition: 0,
+                });
+              }}
+            >
+              Bookmark this page
+            </button>
+          </div>
+        )}
       </div>
 
       <TextShare />

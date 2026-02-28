@@ -53,7 +53,13 @@ registerRoute(
     try {
       return await navigationHandler.handle(params)
     } catch {
-      // Network failed and not in cache — serve offline fallback
+      // Network failed — try ignoring query string (e.g. ?page=last)
+      // so cached chapter pages still serve offline
+      const pagesCache = await caches.open('pressy-pages')
+      const pagesCached = await pagesCache.match(params.request, { ignoreSearch: true })
+      if (pagesCached) return pagesCached
+
+      // Last resort — serve offline fallback
       const cache = await caches.open(OFFLINE_CACHE)
       const fallback = await cache.match(OFFLINE_URL)
       return fallback || Response.error()
@@ -62,7 +68,9 @@ registerRoute(
 )
 
 // Offline-cached book chapters: try the book cache first,
-// then fall through to the normal navigation handler
+// then fall through to the normal navigation handler.
+// ignoreSearch: true so ?page=last (backward chapter nav) matches
+// the cached response for the base URL.
 registerRoute(
   new Route(
     ({ request, url }) =>
@@ -70,13 +78,19 @@ registerRoute(
     async (params) => {
       // Check offline book cache first
       const bookCache = await caches.open(BOOK_CACHE)
-      const cached = await bookCache.match(params.request)
+      const cached = await bookCache.match(params.request, { ignoreSearch: true })
       if (cached) return cached
 
       // Fall through to network
       try {
         return await navigationHandler.handle(params)
       } catch {
+        // Network failed — try the general navigation cache with ignoreSearch
+        // so ?page=last variants still hit cached chapter pages
+        const pagesCache = await caches.open('pressy-pages')
+        const pagesCached = await pagesCache.match(params.request, { ignoreSearch: true })
+        if (pagesCached) return pagesCached
+
         const cache = await caches.open(OFFLINE_CACHE)
         const fallback = await cache.match(OFFLINE_URL)
         return fallback || Response.error()

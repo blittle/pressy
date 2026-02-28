@@ -3,7 +3,7 @@ import { ComponentChildren, ComponentType } from "preact";
 import { ScrollReader } from "./reader/ScrollReader.js";
 import { PaginatedReader } from "./reader/PaginatedReader.js";
 
-export type { ProgressData, ChapterMapData, OfflineProps, ReaderPaywallConfig } from "./reader/types.js";
+export type { ProgressData, ChapterMapData, OfflineProps, ReaderPaywallConfig, BookmarkData, BookmarkProps } from "./reader/types.js";
 
 export interface ReaderProps {
   children: ComponentChildren;
@@ -26,6 +26,7 @@ export interface ReaderProps {
   mdxComponents?: Record<string, unknown>;
   paywall?: import("./reader/types.js").ReaderPaywallConfig;
   offlineProps?: import("./reader/types.js").OfflineProps;
+  bookmarkProps?: import("./reader/types.js").BookmarkProps;
 }
 
 export function Reader({
@@ -47,6 +48,7 @@ export function Reader({
   mdxComponents,
   paywall,
   offlineProps,
+  bookmarkProps,
 }: ReaderProps) {
   if (paginationMode === "paginated") {
     return (
@@ -67,6 +69,7 @@ export function Reader({
         mdxComponents={mdxComponents}
         paywall={paywall}
         offlineProps={offlineProps}
+        bookmarkProps={bookmarkProps}
       >
         {children}
       </PaginatedReader>
@@ -85,6 +88,7 @@ export function Reader({
       bookBasePath={bookBasePath}
       currentChapterSlug={currentChapterSlug}
       offlineProps={offlineProps}
+      bookmarkProps={bookmarkProps}
     >
       {children}
     </ScrollReader>
