@@ -3,12 +3,22 @@
   "checkpoint_id": "92cd4cb5deaf",
   "strategy": "manual-commit",
   "branch": "bookmarks",
-  "checkpoints_count": 0,
+  "checkpoints_count": 2,
   "files_touched": [
     "packages/@pressy/cloudflare/src/middleware.ts",
+    "packages/@pressy/components/src/Reader.tsx",
+    "packages/@pressy/components/src/index.ts",
+    "packages/@pressy/components/src/reader/PaginatedReader.tsx",
+    "packages/@pressy/components/src/reader/ScrollReader.tsx",
+    "packages/@pressy/components/src/reader/paginated-reader-styles.ts",
+    "packages/@pressy/components/src/reader/scroll-reader-styles.ts",
+    "packages/@pressy/components/src/reader/types.ts",
+    "packages/@pressy/components/src/reader/utils.ts",
     "packages/pressy/src/runtime/client.tsx",
     "packages/pressy/src/runtime/offline.ts",
     "packages/pressy/src/runtime/sw.ts",
+    "packages/pressy/src/types.ts",
+    "tests/bookmarks.test.ts",
     "tests/paywall.test.ts"
   ],
   "sessions": [
@@ -18,13 +28,20 @@
       "context": "/92/cd4cb5deaf/0/context.md",
       "content_hash": "/92/cd4cb5deaf/0/content_hash.txt",
       "prompt": "/92/cd4cb5deaf/0/prompt.txt"
+    },
+    {
+      "metadata": "/92/cd4cb5deaf/1/metadata.json",
+      "transcript": "/92/cd4cb5deaf/1/full.jsonl",
+      "context": "/92/cd4cb5deaf/1/context.md",
+      "content_hash": "/92/cd4cb5deaf/1/content_hash.txt",
+      "prompt": "/92/cd4cb5deaf/1/prompt.txt"
     }
   ],
   "token_usage": {
-    "input_tokens": 24,
-    "cache_creation_tokens": 44396,
-    "cache_read_tokens": 2354870,
-    "output_tokens": 10112,
-    "api_call_count": 18
+    "input_tokens": 114,
+    "cache_creation_tokens": 142410,
+    "cache_read_tokens": 9550476,
+    "output_tokens": 39062,
+    "api_call_count": 100
   }
 }
