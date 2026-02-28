@@ -1,0 +1,29 @@
+Commit the changes we have made so far and push
+
+---
+
+Could we setup a deploy to cloudflare on merge to main for the moby-dick example?
+
+---
+
+[Request interrupted by user for tool use]
+
+---
+
+Should we have a new workflow file instead of combining it with the gh pages deploy?
+
+---
+
+[Request interrupted by user for tool use]
+
+---
+
+What permissions do I need to give the cloudflare_api_token?
+
+---
+
+Yes
+
+---
+
+yes
