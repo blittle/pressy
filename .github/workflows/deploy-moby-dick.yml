@@ -1,0 +1,42 @@
+name: Deploy Moby-Dick to Cloudflare Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-moby-dick
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build packages
+        run: pnpm build
+
+      - name: Re-install to link workspace bins
+        run: pnpm install --frozen-lockfile
+
+      - name: Build moby-dick
+        run: pnpm --filter moby-dick-example build
+
+      - name: Deploy to Cloudflare Pages
+        working-directory: examples/moby-dick
+        run: npx wrangler pages deploy dist --project-name=moby-dick
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
