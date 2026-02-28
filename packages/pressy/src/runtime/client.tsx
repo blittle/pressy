@@ -234,7 +234,110 @@ function InstallButton() {
   )
 }
 
-function renderBookPage(book: Book, articles: Article[] = []) {
+function PurchaseCTA({ book, prominent }: { book: Book; prominent?: boolean }) {
+  const paywall = book.metadata.paywall
+  if (!paywall?.enabled || !paywall.price) return null
+
+  return (
+    <a
+      href={`/api/checkout?book=${book.slug}`}
+      class={`pressy-cta ${prominent ? '' : 'pressy-cta-secondary'}`}
+    >
+      Purchase — {paywall.price}
+    </a>
+  )
+}
+
+function RecoverLink({ book }: { book: Book }) {
+  const [state, setState] = useState<'idle' | 'form' | 'sending' | 'success' | 'error'>('idle')
+  const [email, setEmail] = useState('')
+
+  const handleSubmit = (e: Event) => {
+    e.preventDefault()
+    if (!email) return
+    setState('sending')
+    fetch('/api/auth/recover', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, book: book.slug }),
+    })
+      .then((res) => {
+        setState(res.ok ? 'success' : 'error')
+      })
+      .catch(() => setState('error'))
+  }
+
+  if (state === 'success') {
+    return <p class="pressy-recover-success">Check your email for a recovery link.</p>
+  }
+
+  if (state === 'error') {
+    return <p class="pressy-recover-error">Something went wrong. Please try again.</p>
+  }
+
+  if (state === 'idle') {
+    return (
+      <button class="pressy-recover-link" onClick={() => setState('form')}>
+        Already purchased?
+      </button>
+    )
+  }
+
+  return (
+    <form class="pressy-recover-form" onSubmit={handleSubmit}>
+      <input
+        type="email"
+        placeholder="Email address"
+        value={email}
+        onInput={(e) => setEmail((e.target as HTMLInputElement).value)}
+        required
+      />
+      <button type="submit" disabled={state === 'sending'}>
+        {state === 'sending' ? 'Sending…' : 'Send Recovery Link'}
+      </button>
+    </form>
+  )
+}
+
+function usePaywallAuthorized(book: Book): boolean | undefined {
+  const [authorized, setAuthorized] = useState<boolean | undefined>(
+    book.metadata.paywall?.enabled ? undefined : true,
+  )
+
+  useEffect(() => {
+    if (!book.metadata.paywall?.enabled) {
+      setAuthorized(true)
+      return
+    }
+    fetch(`/api/auth/status?book=${book.slug}`)
+      .then((res) => res.json())
+      .then((data: { authorized: boolean }) => setAuthorized(data.authorized))
+      .catch(() => setAuthorized(false))
+  }, [book.slug, book.metadata.paywall?.enabled])
+
+  return authorized
+}
+
+function PaywallActions({ book, showPurchasePrompt, authorized }: { book: Book; showPurchasePrompt: boolean; authorized: boolean | undefined }) {
+  if (!book.metadata.paywall?.enabled || authorized) return null
+
+  if (showPurchasePrompt) {
+    return (
+      <div class="pressy-purchase-prompt">
+        <p>This chapter requires purchase to read.</p>
+        <PurchaseCTA book={book} prominent />
+        <RecoverLink book={book} />
+      </div>
+    )
+  }
+
+  return <RecoverLink book={book} />
+}
+
+function BookPage({ book, articles }: { book: Book; articles?: Article[] }) {
+  const showPurchasePrompt = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('purchase') === 'true'
+  const authorized = usePaywallAuthorized(book)
+
   // Stats calculations
   const totalWords = book.chapters.reduce((sum, ch) => sum + (ch.wordCount || 0), 0)
   const readingMinutes = Math.ceil(totalWords / 200)
@@ -278,15 +381,17 @@ function renderBookPage(book: Book, articles: Article[] = []) {
               )}
             </div>
           )}
+          <PaywallActions book={book} showPurchasePrompt={showPurchasePrompt} authorized={authorized} />
           {chapterCount > 0 && (
             <div class="pressy-cta-group">
               <StartReadingCTA book={book} />
+              {!authorized && !showPurchasePrompt && <PurchaseCTA book={book} />}
               <InstallButton />
             </div>
           )}
         </div>
       </div>
-      {articles.length > 0 && (
+      {articles && articles.length > 0 && (
         <section class="pressy-home-section pressy-fade-sections">
           <h2>Articles</h2>
           <nav class="pressy-chapter-list">
@@ -309,7 +414,7 @@ function renderBookPage(book: Book, articles: Article[] = []) {
 function renderHomePage(manifest: ContentManifest) {
   // Single-book site: render as the book page
   if (manifest.books.length === 1) {
-    return renderBookPage(manifest.books[0], manifest.articles)
+    return <BookPage book={manifest.books[0]} articles={manifest.articles} />
   }
 
   const siteTitle = manifest.books[0]?.metadata.title || 'Library'
@@ -413,6 +518,21 @@ function ChapterReaderWithProgress({
   chapterMapData?: ChapterMapData
 }) {
   const [bookProgressPercent, setBookProgressPercent] = useState<number | undefined>(undefined)
+  const [paywallAuthorized, setPaywallAuthorized] = useState<boolean | undefined>(
+    book.metadata.paywall?.enabled ? undefined : true,
+  )
+
+  // Check server-side auth status when paywall is enabled
+  useEffect(() => {
+    if (!book.metadata.paywall?.enabled) {
+      setPaywallAuthorized(true)
+      return
+    }
+    fetch(`/api/auth/status?book=${book.slug}`)
+      .then((res) => res.json())
+      .then((data: { authorized: boolean }) => setPaywallAuthorized(data.authorized))
+      .catch(() => setPaywallAuthorized(true)) // fail open on network error
+  }, [book.slug, book.metadata.paywall?.enabled])
 
   // Load initial global book progress
   useEffect(() => {
@@ -520,6 +640,11 @@ function ChapterReaderWithProgress({
       bookBasePath={`${basePath}/books/${book.slug}`}
       onChapterChange={handleChapterChange}
       mdxComponents={useMDXComponents()}
+      paywall={book.metadata.paywall?.enabled ? {
+        previewChapters: book.metadata.paywall.previewChapters,
+        authorized: paywallAuthorized ?? false,
+        bookSlug: book.slug,
+      } : undefined}
       offlineProps={{
         bookSlug: book.slug,
         chapterUrls: book.chapters.map(ch => `${basePath}/books/${book.slug}/${ch.slug}`),
@@ -623,41 +748,23 @@ const HOME_STYLES = `
   /* ── Hero layout ────────────────────────── */
   .pressy-hero {
     display: flex;
-    align-items: flex-start;
-    gap: 2.5rem;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 2rem;
     margin-bottom: 2.5rem;
   }
   .pressy-hero-cover {
-    flex-shrink: 0;
-    max-width: 280px;
+    max-width: 220px;
     width: 100%;
     height: auto;
+    margin: 0 auto;
     border-radius: 4px;
     box-shadow: 0 4px 24px rgba(0,0,0,0.15);
     animation: pressy-fade-in 0.6s ease-out both;
   }
   .pressy-hero-text {
-    flex: 1;
     animation: pressy-fade-in 0.6s ease-out 0.15s both;
-  }
-  @media (max-width: 700px) {
-    .pressy-hero {
-      flex-direction: column;
-      align-items: center;
-    }
-    .pressy-hero-cover {
-      max-width: 220px;
-    }
-    .pressy-hero-text {
-      text-align: center;
-    }
-    .pressy-home-desc {
-      margin-left: auto;
-      margin-right: auto;
-    }
-    .pressy-stats {
-      justify-content: center;
-    }
   }
 
   /* ── Header ─────────────────────────────── */
@@ -676,13 +783,14 @@ const HOME_STYLES = `
     color: var(--color-text-muted, #666);
     line-height: 1.6;
     max-width: 50ch;
-    margin: 0.5rem 0 0;
+    margin: 0.5rem auto 0;
   }
 
   /* ── Stats row ──────────────────────────── */
   .pressy-stats {
     display: flex;
     flex-wrap: wrap;
+    justify-content: center;
     gap: 0.4em;
     font-size: 0.85rem;
     color: var(--color-text-muted, #666);
@@ -696,6 +804,7 @@ const HOME_STYLES = `
   .pressy-cta-group {
     display: flex;
     flex-wrap: wrap;
+    justify-content: center;
     gap: 0.75rem;
     align-items: center;
   }
@@ -724,6 +833,87 @@ const HOME_STYLES = `
   .pressy-cta-secondary:hover {
     background: var(--color-link, #2563eb);
     color: #fff;
+  }
+
+  /* ── Purchase prompt ──────────────────── */
+  .pressy-purchase-prompt {
+    margin-top: 1.25rem;
+    padding: 1.25rem;
+    background: var(--color-bg-subtle, #f5f5f5);
+    border-radius: 0.5rem;
+    border: 1.5px solid var(--color-link, #2563eb);
+    text-align: center;
+  }
+  .pressy-purchase-prompt p {
+    margin: 0 0 0.75rem;
+    font-weight: 500;
+  }
+  .pressy-purchase-prompt .pressy-cta {
+    margin-top: 0;
+  }
+
+  /* ── Recover link ────────────────────────── */
+  .pressy-recover-link {
+    display: inline-block;
+    margin-top: 0.75rem;
+    background: none;
+    border: none;
+    padding: 0;
+    font: inherit;
+    font-size: 0.85rem;
+    color: var(--color-link, #2563eb);
+    text-decoration: underline;
+    cursor: pointer;
+  }
+  .pressy-recover-link:hover {
+    opacity: 0.75;
+  }
+  .pressy-recover-form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+    align-items: center;
+  }
+  .pressy-recover-form input {
+    flex: 1;
+    min-width: 180px;
+    padding: 0.5rem 0.75rem;
+    font: inherit;
+    font-size: 0.9rem;
+    border: 1.5px solid var(--color-border, #e5e5e5);
+    border-radius: 0.375rem;
+    background: var(--color-bg, #fff);
+    color: var(--color-text, #1a1a1a);
+  }
+  .pressy-recover-form button {
+    padding: 0.5rem 1rem;
+    font: inherit;
+    font-size: 0.9rem;
+    font-weight: 600;
+    background: var(--color-link, #2563eb);
+    color: #fff;
+    border: none;
+    border-radius: 0.375rem;
+    cursor: pointer;
+    transition: opacity 0.15s;
+  }
+  .pressy-recover-form button:hover {
+    opacity: 0.85;
+  }
+  .pressy-recover-form button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+  .pressy-recover-success {
+    margin-top: 0.75rem;
+    font-size: 0.85rem;
+    color: var(--color-link, #2563eb);
+  }
+  .pressy-recover-error {
+    margin-top: 0.75rem;
+    font-size: 0.85rem;
+    color: #dc2626;
   }
 
   /* ── Sections below hero ────────────────── */
@@ -898,7 +1088,7 @@ export function hydrate(data: HydrateData, Content?: ComponentType, chapterMapDa
     case 'book': {
       const bookSlug = data.route.split('/')[2]
       const book = data.manifest.books.find((b: Book) => b.slug === bookSlug)
-      page = book ? renderBookPage(book) : <div>Book not found</div>
+      page = book ? <BookPage book={book} /> : <div>Book not found</div>
       break
     }
     case 'chapter':

@@ -18,6 +18,12 @@ export interface ChapterMapData {
   chapterOrder: string[];
 }
 
+export interface ReaderPaywallConfig {
+  previewChapters: number;
+  authorized: boolean;
+  bookSlug: string;
+}
+
 export interface OfflineProps {
   bookSlug: string;
   chapterUrls: string[];

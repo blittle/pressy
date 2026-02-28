@@ -1,0 +1,16 @@
+name = "moby-dick"
+compatibility_date = "2024-01-01"
+pages_build_output_dir = "dist"
+
+[[kv_namespaces]]
+binding = "PRESSY_KV"
+id = "91e1f06fbe914edabe7b415a956a3e78"
+
+# Secrets (set via `wrangler pages secret put`):
+#   STRIPE_SECRET_KEY      - Stripe secret key (sk_test_... or sk_live_...)
+#   STRIPE_WEBHOOK_SECRET  - Stripe webhook signing secret (whsec_...)
+#   COOKIE_SECRET          - Random 32+ char string for HMAC cookie signing
+#   RESEND_API_KEY         - Resend API key for magic link emails (re_...)
+
+[vars]
+EMAIL_FROM = "noreply@pwalibrary.app"  # Change to your verified sender domain

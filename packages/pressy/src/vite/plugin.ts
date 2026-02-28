@@ -640,6 +640,30 @@ export const config = ${JSON.stringify(config)};`
           }
         }
 
+        // Emit _pressy/manifest.json for server-side middleware (paywall enforcement)
+        const pressyManifest = {
+          books: manifest.books.map((book) => ({
+            slug: book.slug,
+            paywall: book.metadata.paywall
+              ? {
+                  enabled: book.metadata.paywall.enabled,
+                  previewChapters: book.metadata.paywall.previewChapters,
+                  price: book.metadata.paywall.price,
+                  stripePriceId: book.metadata.paywall.stripePriceId,
+                }
+              : undefined,
+            chapters: book.chapters.map((ch) => ({
+              slug: ch.slug,
+              order: ch.order,
+            })),
+          })),
+        }
+        this.emitFile({
+          type: 'asset',
+          fileName: '_pressy/manifest.json',
+          source: JSON.stringify(pressyManifest, null, 2),
+        })
+
         // Generate HTML files for each route during build
         for (const route of routes) {
           const title = escapeHtmlAttr(getRouteTitle(route, config))
