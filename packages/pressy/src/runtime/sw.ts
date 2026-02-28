@@ -31,10 +31,21 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(self.clients.claim())
 })
 
+// Plugin that respects Cache-Control: no-store (workbox ignores it by default).
+// This prevents paywall/auth-gated responses from polluting the SW cache.
+const respectNoStore = {
+  cacheWillUpdate: async ({ response }: { response: Response }) => {
+    const cc = response.headers.get('Cache-Control')
+    if (cc && cc.includes('no-store')) return null
+    return response
+  },
+}
+
 // Navigation: NetworkFirst with offline fallback
 const navigationHandler = new NetworkFirst({
   cacheName: 'pressy-pages',
   networkTimeoutSeconds: 3,
+  plugins: [respectNoStore],
 })
 
 registerRoute(
@@ -116,6 +127,7 @@ registerRoute(
   new NetworkFirst({
     cacheName: 'pressy-static',
     networkTimeoutSeconds: 3,
+    plugins: [respectNoStore],
   })
 )
 
