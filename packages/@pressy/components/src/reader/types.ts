@@ -34,3 +34,27 @@ export interface OfflineProps {
   onDownload: (bookSlug: string, chapterUrls: string[]) => void;
   onRemove: (bookSlug: string) => void;
 }
+
+export interface BookmarkData {
+  id: string
+  bookSlug: string
+  chapterSlug: string
+  chapterTitle: string
+  page: number
+  totalPages: number
+  scrollPosition: number
+  createdAt: number
+}
+
+export interface BookmarkProps {
+  bookmarks: BookmarkData[]
+  onAddBookmark: (data: {
+    chapterSlug: string
+    chapterTitle: string
+    page: number
+    totalPages: number
+    scrollPosition: number
+  }) => void
+  onDeleteBookmark: (id: string) => void
+  onNavigateBookmark: (bookmark: BookmarkData) => void
+}

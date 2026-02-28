@@ -16,7 +16,7 @@ import {
   setupInstallPrompt,
   triggerInstall,
 } from './offline.js'
-import type { ContentManifest, Route, Book, Chapter, Article, ReadingProgress, ChapterMapData } from '../types.js'
+import type { ContentManifest, Route, Book, Chapter, Article, ReadingProgress, Bookmark, ChapterMapData } from '../types.js'
 import type { PaginationConfig } from '../config.js'
 
 // State signals
@@ -26,9 +26,10 @@ export const isOffline = signal<boolean>(!navigator.onLine)
 
 // IndexedDB for reading progress
 const DB_NAME = 'pressy'
-const DB_VERSION = 1
+const DB_VERSION = 2
 const PROGRESS_STORE = 'reading-progress'
 const UNLOCKS_STORE = 'unlocks'
+const BOOKMARKS_STORE = 'bookmarks'
 
 let db: IDBDatabase | null = null
 
@@ -51,6 +52,9 @@ async function initDB(): Promise<IDBDatabase> {
       }
       if (!database.objectStoreNames.contains(UNLOCKS_STORE)) {
         database.createObjectStore(UNLOCKS_STORE, { keyPath: 'bookSlug' })
+      }
+      if (!database.objectStoreNames.contains(BOOKMARKS_STORE)) {
+        database.createObjectStore(BOOKMARKS_STORE, { keyPath: 'id' })
       }
     }
   })
@@ -107,6 +111,45 @@ export async function unlockBook(bookSlug: string, orderId?: string): Promise<vo
     const store = tx.objectStore(UNLOCKS_STORE)
     const request = store.put({ bookSlug, orderId, unlockedAt: Date.now() })
     request.onsuccess = () => resolve()
+    request.onerror = () => reject(request.error)
+  })
+}
+
+export async function saveBookmark(bookmark: Bookmark): Promise<void> {
+  const database = await initDB()
+  return new Promise((resolve, reject) => {
+    const tx = database.transaction(BOOKMARKS_STORE, 'readwrite')
+    const store = tx.objectStore(BOOKMARKS_STORE)
+    const request = store.put(bookmark)
+    request.onsuccess = () => resolve()
+    request.onerror = () => reject(request.error)
+  })
+}
+
+export async function deleteBookmark(id: string): Promise<void> {
+  const database = await initDB()
+  return new Promise((resolve, reject) => {
+    const tx = database.transaction(BOOKMARKS_STORE, 'readwrite')
+    const store = tx.objectStore(BOOKMARKS_STORE)
+    const request = store.delete(id)
+    request.onsuccess = () => resolve()
+    request.onerror = () => reject(request.error)
+  })
+}
+
+export async function getBookmarksByBook(bookSlug: string): Promise<Bookmark[]> {
+  const database = await initDB()
+  return new Promise((resolve, reject) => {
+    const tx = database.transaction(BOOKMARKS_STORE, 'readonly')
+    const store = tx.objectStore(BOOKMARKS_STORE)
+    const request = store.getAll()
+    request.onsuccess = () => {
+      const all: Bookmark[] = request.result || []
+      const filtered = all
+        .filter(b => b.bookSlug === bookSlug)
+        .sort((a, b) => b.createdAt - a.createdAt)
+      resolve(filtered)
+    }
     request.onerror = () => reject(request.error)
   })
 }
@@ -521,6 +564,7 @@ function ChapterReaderWithProgress({
   Content: ComponentType<{ components?: Record<string, unknown> }>
   chapterMapData?: ChapterMapData
 }) {
+  const [bookmarks, setBookmarks] = useState<Bookmark[]>([])
   const [bookProgressPercent, setBookProgressPercent] = useState<number | undefined>(undefined)
   const [paywallAuthorized, setPaywallAuthorized] = useState<boolean | undefined>(
     book.metadata.paywall?.enabled ? undefined : true,
@@ -548,6 +592,66 @@ function ChapterReaderWithProgress({
       setBookProgressPercent(percent)
     })
   }, [book, chapterSlug])
+
+  // Load bookmarks on mount
+  useEffect(() => {
+    getBookmarksByBook(book.slug).then(setBookmarks).catch(() => {})
+  }, [book.slug])
+
+  const handleAddBookmark = (data: {
+    chapterSlug: string
+    chapterTitle: string
+    page: number
+    totalPages: number
+    scrollPosition: number
+  }) => {
+    const bookmark: Bookmark = {
+      id: `${book.slug}:${data.chapterSlug}:${Date.now()}`,
+      bookSlug: book.slug,
+      chapterSlug: data.chapterSlug,
+      chapterTitle: data.chapterTitle,
+      page: data.page,
+      totalPages: data.totalPages,
+      scrollPosition: data.scrollPosition,
+      createdAt: Date.now(),
+    }
+    saveBookmark(bookmark).then(() => {
+      getBookmarksByBook(book.slug).then(setBookmarks)
+    })
+  }
+
+  const handleDeleteBookmark = (id: string) => {
+    deleteBookmark(id).then(() => {
+      getBookmarksByBook(book.slug).then(setBookmarks)
+    })
+  }
+
+  const handleNavigateBookmark = (bookmark: Bookmark) => {
+    if (bookmark.chapterSlug === chapterSlug) {
+      // Same chapter — scroll or page jump directly
+      if (bookmark.scrollPosition > 0) {
+        window.scrollTo(0, bookmark.scrollPosition)
+      }
+      // For paginated mode, the reader will handle page restore via the bookmark-restore key
+      localStorage.setItem('pressy-bookmark-restore', JSON.stringify({
+        chapterSlug: bookmark.chapterSlug,
+        page: bookmark.page,
+        totalPages: bookmark.totalPages,
+        scrollPosition: bookmark.scrollPosition,
+      }))
+      // Trigger re-render/restore
+      window.location.reload()
+    } else {
+      // Cross-chapter: store restore data and navigate
+      localStorage.setItem('pressy-bookmark-restore', JSON.stringify({
+        chapterSlug: bookmark.chapterSlug,
+        page: bookmark.page,
+        totalPages: bookmark.totalPages,
+        scrollPosition: bookmark.scrollPosition,
+      }))
+      window.location.href = `${basePath}/books/${book.slug}/${bookmark.chapterSlug}`
+    }
+  }
 
   const handleSaveProgress = (data: ProgressData) => {
     const saveSlug = data.activeChapterSlug || chapterSlug
@@ -581,6 +685,20 @@ function ChapterReaderWithProgress({
   }
 
   const handleRestoreProgress = async (): Promise<ProgressData | null> => {
+    // Check bookmark restore first (cross-chapter bookmark navigation)
+    try {
+      const bookmarkRestore = localStorage.getItem('pressy-bookmark-restore')
+      if (bookmarkRestore) {
+        localStorage.removeItem('pressy-bookmark-restore')
+        const parsed = JSON.parse(bookmarkRestore)
+        if (parsed.chapterSlug === chapterSlug) {
+          return { page: parsed.page, totalPages: parsed.totalPages, scrollPosition: parsed.scrollPosition || 0 }
+        }
+      }
+    } catch {
+      // ignore
+    }
+
     // Read from localStorage — synchronous, always up to date.
     try {
       const lastRead = localStorage.getItem('pressy-last-read')
@@ -652,6 +770,12 @@ function ChapterReaderWithProgress({
         authorized: paywallAuthorized ?? false,
         bookSlug: book.slug,
       } : undefined}
+      bookmarkProps={{
+        bookmarks,
+        onAddBookmark: handleAddBookmark,
+        onDeleteBookmark: handleDeleteBookmark,
+        onNavigateBookmark: handleNavigateBookmark,
+      }}
       offlineProps={{
         bookSlug: book.slug,
         chapterUrls: book.chapters.map(ch => `${basePath}/books/${book.slug}/${ch.slug}`),

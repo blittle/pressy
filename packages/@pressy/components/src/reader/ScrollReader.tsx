@@ -5,7 +5,8 @@ import { Navigation } from "../Navigation.js";
 import { TextShare } from "../TextShare.js";
 import { OfflineIndicator } from "../OfflineIndicator.js";
 import { SCROLL_STYLES } from "./scroll-reader-styles.js";
-import type { ProgressData, OfflineProps } from "./types.js";
+import type { ProgressData, OfflineProps, BookmarkProps } from "./types.js";
+import { formatRelativeTime } from "./utils.js";
 
 // ── Offline Footer Icon ───────────────────────────────────────
 
@@ -108,6 +109,7 @@ export interface ScrollReaderProps {
   bookBasePath?: string;
   currentChapterSlug?: string;
   offlineProps?: OfflineProps;
+  bookmarkProps?: BookmarkProps;
 }
 
 export function ScrollReader({
@@ -122,6 +124,7 @@ export function ScrollReader({
   bookBasePath,
   currentChapterSlug,
   offlineProps,
+  bookmarkProps,
 }: ScrollReaderProps) {
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -130,6 +133,7 @@ export function ScrollReader({
   const footerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [tocOpen, setTocOpen] = useState(false);
+  const [bookmarksOpen, setBookmarksOpen] = useState(false);
 
   const showFooterTemporarily = useCallback(() => {
     setFooterVisible(true);
@@ -200,16 +204,17 @@ export function ScrollReader({
       const target = e.target as HTMLElement;
       if (
         target.closest(
-          ".pressy-page-footer, .pressy-toc-backdrop, .pressy-toc-toggle"
+          ".pressy-page-footer, .pressy-toc-backdrop, .pressy-toc-toggle, .pressy-bookmarks-panel, .pressy-bookmarks-toggle"
         )
       )
         return;
       if (target.closest('a, button, input, select, textarea, [role="button"]'))
         return;
 
-      if (settingsOpen || tocOpen) {
+      if (settingsOpen || tocOpen || bookmarksOpen) {
         setSettingsOpen(false);
         setTocOpen(false);
+        setBookmarksOpen(false);
         return;
       }
 
@@ -220,7 +225,7 @@ export function ScrollReader({
         showFooterTemporarily();
       }
     },
-    [footerVisible, settingsOpen, tocOpen, showFooterTemporarily]
+    [footerVisible, settingsOpen, tocOpen, bookmarksOpen, showFooterTemporarily]
   );
 
   // Restore scroll position on mount
@@ -366,7 +371,7 @@ export function ScrollReader({
       {/* Footer */}
       <div
         class={`pressy-page-footer pressy-page-footer--scroll ${
-          footerVisible || settingsOpen || tocOpen
+          footerVisible || settingsOpen || tocOpen || bookmarksOpen
             ? "pressy-page-footer--visible"
             : ""
         }`}
@@ -378,6 +383,7 @@ export function ScrollReader({
               onClick={(e: MouseEvent) => {
                 e.stopPropagation();
                 setSettingsOpen(false);
+                setBookmarksOpen(false);
                 setTocOpen(!tocOpen);
               }}
               aria-label="Table of contents"
@@ -405,6 +411,7 @@ export function ScrollReader({
                 e.stopPropagation();
                 if (allChapters && allChapters.length > 0) {
                   setSettingsOpen(false);
+                  setBookmarksOpen(false);
                   setTocOpen(!tocOpen);
                 }
               }}
@@ -413,11 +420,37 @@ export function ScrollReader({
             </button>
           )}
           <OfflineFooterIcon offlineProps={offlineProps} />
+          {bookmarkProps && (
+            <button
+              class="pressy-bookmarks-toggle"
+              onClick={(e: MouseEvent) => {
+                e.stopPropagation();
+                setSettingsOpen(false);
+                setTocOpen(false);
+                setBookmarksOpen(!bookmarksOpen);
+              }}
+              aria-label="Bookmarks"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                fill={bookmarksOpen ? "currentColor" : "none"}
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                width="18"
+                height="18"
+              >
+                <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+              </svg>
+            </button>
+          )}
           <button
             class="pressy-settings-toggle"
             onClick={(e: MouseEvent) => {
               e.stopPropagation();
               setTocOpen(false);
+              setBookmarksOpen(false);
               setSettingsOpen(!settingsOpen);
             }}
             aria-label="Settings"
@@ -580,6 +613,74 @@ export function ScrollReader({
             </div>
           </div>
         </div>
+
+        {/* Bookmarks panel */}
+        {bookmarkProps && (
+          <div
+            class={`pressy-bookmarks-panel ${
+              bookmarksOpen ? "pressy-bookmarks-panel--open" : ""
+            }`}
+          >
+            {bookmarkProps.bookmarks.length === 0 ? (
+              <div class="pressy-bookmarks-empty">No bookmarks yet</div>
+            ) : (
+              <div class="pressy-bookmarks-list">
+                {bookmarkProps.bookmarks.map((bm) => (
+                  <div
+                    key={bm.id}
+                    class="pressy-bookmark-item"
+                    onClick={(e: MouseEvent) => {
+                      e.stopPropagation();
+                      bookmarkProps.onNavigateBookmark(bm);
+                      setBookmarksOpen(false);
+                    }}
+                  >
+                    <div class="pressy-bookmark-info">
+                      <span class="pressy-bookmark-chapter">{bm.chapterTitle}</span>
+                      <span class="pressy-bookmark-detail">
+                        {bm.scrollPosition > 0
+                          ? `Scroll ${Math.round(bm.scrollPosition)}px`
+                          : bm.totalPages > 0
+                            ? `Page ${bm.page + 1} of ${bm.totalPages}`
+                            : "Start"}
+                        {" \u00b7 "}
+                        {formatRelativeTime(bm.createdAt)}
+                      </span>
+                    </div>
+                    <button
+                      class="pressy-bookmark-delete"
+                      onClick={(e: MouseEvent) => {
+                        e.stopPropagation();
+                        bookmarkProps.onDeleteBookmark(bm.id);
+                      }}
+                      aria-label="Delete bookmark"
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+                        <line x1="18" y1="6" x2="6" y2="18" />
+                        <line x1="6" y1="6" x2="18" y2="18" />
+                      </svg>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <button
+              class="pressy-bookmark-add"
+              onClick={(e: MouseEvent) => {
+                e.stopPropagation();
+                bookmarkProps.onAddBookmark({
+                  chapterSlug: currentChapterSlug || "",
+                  chapterTitle: allChapters?.find(ch => ch.slug === currentChapterSlug)?.title || currentChapterSlug || "",
+                  page: 0,
+                  totalPages: 0,
+                  scrollPosition: window.scrollY,
+                });
+              }}
+            >
+              Bookmark this page
+            </button>
+          </div>
+        )}
       </div>
 
       <style>{SCROLL_STYLES}</style>

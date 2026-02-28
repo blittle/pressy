@@ -353,6 +353,142 @@ export const SCROLL_STYLES = `
     cursor: default;
   }
 
+  /* ── Bookmark toggle for scroll reader ───────────────────── */
+  .pressy-page-footer--scroll .pressy-bookmarks-toggle {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border: none;
+    background: transparent;
+    color: var(--color-text-muted, #6c757d);
+    cursor: pointer;
+    border-radius: 0.375rem;
+    transition: color 0.15s, background 0.15s;
+    padding: 0;
+  }
+
+  .pressy-page-footer--scroll .pressy-bookmarks-toggle:hover {
+    color: var(--color-text, #212529);
+    background: var(--color-bg-subtle, #f8f9fa);
+  }
+
+  /* ── Bookmark panel for scroll reader ────────────────────── */
+  .pressy-page-footer--scroll .pressy-bookmarks-panel {
+    overflow: hidden;
+    max-height: 0;
+    opacity: 0;
+    transition: max-height 0.25s ease, opacity 0.2s ease;
+    border-top: 0 solid var(--color-border, #dee2e6);
+  }
+
+  .pressy-page-footer--scroll .pressy-bookmarks-panel--open {
+    max-height: 300px;
+    opacity: 1;
+    border-top-width: 1px;
+    margin-top: 0.5rem;
+    padding-top: 0.75rem;
+    overflow-y: auto;
+  }
+
+  .pressy-page-footer--scroll .pressy-bookmarks-empty {
+    font-family: var(--font-heading, system-ui, -apple-system, sans-serif);
+    font-size: 0.8125rem;
+    color: var(--color-text-muted, #6c757d);
+    text-align: center;
+    padding: 0.5rem 0;
+  }
+
+  .pressy-page-footer--scroll .pressy-bookmarks-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .pressy-page-footer--scroll .pressy-bookmark-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.375rem 0.5rem;
+    border-radius: 0.375rem;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+
+  .pressy-page-footer--scroll .pressy-bookmark-item:hover {
+    background: var(--color-bg-subtle, #f8f9fa);
+  }
+
+  .pressy-page-footer--scroll .pressy-bookmark-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+  }
+
+  .pressy-page-footer--scroll .pressy-bookmark-chapter {
+    font-family: var(--font-heading, system-ui, -apple-system, sans-serif);
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--color-text, #212529);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-align: left;
+  }
+
+  .pressy-page-footer--scroll .pressy-bookmark-detail {
+    font-family: var(--font-heading, system-ui, -apple-system, sans-serif);
+    font-size: 0.6875rem;
+    color: var(--color-text-muted, #6c757d);
+    text-align: left;
+  }
+
+  .pressy-page-footer--scroll .pressy-bookmark-delete {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    border: none;
+    background: transparent;
+    color: var(--color-text-muted, #6c757d);
+    cursor: pointer;
+    border-radius: 0.25rem;
+    padding: 0;
+    transition: color 0.15s, background 0.15s;
+  }
+
+  .pressy-page-footer--scroll .pressy-bookmark-delete:hover {
+    color: #dc2626;
+    background: var(--color-bg-subtle, #f8f9fa);
+  }
+
+  .pressy-page-footer--scroll .pressy-bookmark-add {
+    display: block;
+    width: 100%;
+    padding: 0.5rem;
+    border: 1.5px dashed var(--color-border, #dee2e6);
+    border-radius: 0.375rem;
+    background: transparent;
+    color: var(--color-text-muted, #6c757d);
+    font-family: var(--font-heading, system-ui, -apple-system, sans-serif);
+    font-size: 0.75rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: border-color 0.15s, color 0.15s;
+  }
+
+  .pressy-page-footer--scroll .pressy-bookmark-add:hover {
+    border-color: var(--color-accent, #212529);
+    color: var(--color-text, #212529);
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .pressy-page-footer--scroll {
       transition: none;

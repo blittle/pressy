@@ -76,6 +76,17 @@ export interface ReadingProgress {
   timestamp: number
 }
 
+export interface Bookmark {
+  id: string              // "bookSlug:chapterSlug:timestamp"
+  bookSlug: string
+  chapterSlug: string
+  chapterTitle: string
+  page: number
+  totalPages: number
+  scrollPosition: number
+  createdAt: number
+}
+
 export interface ChapterMapData {
   chapterMap: Record<string, () => Promise<{ default: import('preact').ComponentType<{ components?: Record<string, unknown> }> }>>
   chapterOrder: string[]
