@@ -1,0 +1,30 @@
+{
+  "cli_version": "0.4.2",
+  "checkpoint_id": "92cd4cb5deaf",
+  "strategy": "manual-commit",
+  "branch": "bookmarks",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "packages/@pressy/cloudflare/src/middleware.ts",
+    "packages/pressy/src/runtime/client.tsx",
+    "packages/pressy/src/runtime/offline.ts",
+    "packages/pressy/src/runtime/sw.ts",
+    "tests/paywall.test.ts"
+  ],
+  "sessions": [
+    {
+      "metadata": "/92/cd4cb5deaf/0/metadata.json",
+      "transcript": "/92/cd4cb5deaf/0/full.jsonl",
+      "context": "/92/cd4cb5deaf/0/context.md",
+      "content_hash": "/92/cd4cb5deaf/0/content_hash.txt",
+      "prompt": "/92/cd4cb5deaf/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 24,
+    "cache_creation_tokens": 44396,
+    "cache_read_tokens": 2354870,
+    "output_tokens": 10112,
+    "api_call_count": 18
+  }
+}

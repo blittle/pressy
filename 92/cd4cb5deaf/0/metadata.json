@@ -1,0 +1,36 @@
+{
+  "cli_version": "0.4.2",
+  "checkpoint_id": "92cd4cb5deaf",
+  "session_id": "d648c75c-4351-4d25-a1a8-fe533a32b4a1",
+  "strategy": "manual-commit",
+  "created_at": "2026-02-28T18:05:31.759046Z",
+  "branch": "bookmarks",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "packages/@pressy/cloudflare/src/middleware.ts",
+    "packages/pressy/src/runtime/client.tsx",
+    "packages/pressy/src/runtime/offline.ts",
+    "packages/pressy/src/runtime/sw.ts",
+    "tests/paywall.test.ts"
+  ],
+  "agent": "Claude Code",
+  "transcript_identifier_at_start": "b005798d-e050-4ad0-90ac-a7fee2687eca",
+  "checkpoint_transcript_start": 193,
+  "transcript_lines_at_start": 193,
+  "token_usage": {
+    "input_tokens": 24,
+    "cache_creation_tokens": 44396,
+    "cache_read_tokens": 2354870,
+    "output_tokens": 10112,
+    "api_call_count": 18
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-02-28T18:05:31.561042Z",
+    "agent_lines": 126,
+    "human_added": 864,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 990,
+    "agent_percentage": 12.727272727272727
+  }
+}
