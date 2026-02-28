@@ -209,7 +209,7 @@ describe('middleware paywall enforcement', () => {
     expect(next).toHaveBeenCalled()
   })
 
-  it('paid chapter without auth serves paywall page (200)', async () => {
+  it('paid chapter without auth serves paywall page (402)', async () => {
     const env = createMockEnv()
     const next = vi.fn(async () => new Response('OK', { status: 200 }))
 
@@ -219,7 +219,7 @@ describe('middleware paywall enforcement', () => {
       next,
     })
 
-    expect(response.status).toBe(200)
+    expect(response.status).toBe(402)
     expect(response.headers.get('Content-Type')).toContain('text/html')
     const body = await response.text()
     expect(body).toContain('This chapter requires purchase to read')

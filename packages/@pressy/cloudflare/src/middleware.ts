@@ -158,9 +158,10 @@ export function createPressyMiddleware(
       return next()
     }
 
-    // Not authorized — serve inline paywall page at the chapter URL
+    // Not authorized — serve inline paywall page at the chapter URL.
+    // 402 prevents workbox from caching (it only caches 200/0 by default).
     return new Response(paywallPage(book, chapterMatch.chapterSlug), {
-      status: 200,
+      status: 402,
       headers: { 'Content-Type': 'text/html; charset=utf-8', ...NO_CACHE, ...SECURITY_HEADERS },
     })
   }
@@ -288,44 +289,48 @@ function paywallPage(book: PressyBookManifest, chapterSlug: string): string {
   var bookSlug = "${safeBookSlug}";
   var chapterSlug = "${safeChapterSlug}";
 
-  // Check auth status — if authorized, clear stale SW cache and reload
+  // Check auth status — if authorized, fetch the real chapter directly.
+  // A regular fetch() has mode "cors"/"same-origin" (not "navigate"), so it
+  // bypasses the SW's NavigationRoute and goes straight to the origin with cookies.
+  // This avoids the infinite-reload loop caused by the SW re-serving the cached paywall.
   fetch("/api/auth/status?book=" + encodeURIComponent(bookSlug))
     .then(function(r) { return r.json(); })
     .then(function(data) {
       if (data.authorized) {
-        // Authorized but seeing paywall page — stale SW cache scenario.
-        // Clear pressy-pages and pressy-static caches for this book, then reload.
-        var cleared = Promise.resolve();
+        // Clear stale SW caches for this book (fire-and-forget)
         if (typeof caches !== "undefined") {
-          cleared = Promise.all([
-            caches.open("pressy-pages").then(function(c) {
-              return c.keys().then(function(keys) {
-                return Promise.all(keys.filter(function(k) {
-                  return k.url.includes("/books/" + bookSlug);
-                }).map(function(k) { return c.delete(k); }));
+          ["pressy-pages", "pressy-static"].forEach(function(name) {
+            caches.open(name).then(function(c) {
+              c.keys().then(function(keys) {
+                keys.forEach(function(k) {
+                  if (k.url.includes("/books/" + bookSlug)) c.delete(k);
+                });
               });
-            }),
-            caches.open("pressy-static").then(function(c) {
-              return c.keys().then(function(keys) {
-                return Promise.all(keys.filter(function(k) {
-                  return k.url.includes("/books/" + bookSlug);
-                }).map(function(k) { return c.delete(k); }));
-              });
-            })
-          ]);
+            });
+          });
         }
-        cleared.then(function() { location.reload(); });
+        // Fetch the real chapter HTML directly (bypasses SW)
+        fetch(location.href, { credentials: "include" })
+          .then(function(r) {
+            if (r.ok) return r.text();
+            throw new Error("not ok");
+          })
+          .then(function(html) {
+            document.open();
+            document.write(html);
+            document.close();
+          })
+          .catch(function() { showPaywall(); });
       } else {
-        // Not authorized — show the paywall UI
-        document.getElementById("loading").classList.add("hidden");
-        document.getElementById("content").classList.remove("hidden");
+        showPaywall();
       }
     })
-    .catch(function() {
-      // Network error — show paywall UI anyway
-      document.getElementById("loading").classList.add("hidden");
-      document.getElementById("content").classList.remove("hidden");
-    });
+    .catch(function() { showPaywall(); });
+
+  function showPaywall() {
+    document.getElementById("loading").classList.add("hidden");
+    document.getElementById("content").classList.remove("hidden");
+  }
 
   // Recover link toggle
   document.getElementById("recoverBtn").addEventListener("click", function() {
