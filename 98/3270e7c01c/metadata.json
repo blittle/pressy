@@ -1,0 +1,27 @@
+{
+  "cli_version": "0.4.2",
+  "checkpoint_id": "983270e7c01c",
+  "strategy": "manual-commit",
+  "branch": "main",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "packages/@pressy/cloudflare/src/middleware.ts",
+    "tests/paywall.test.ts"
+  ],
+  "sessions": [
+    {
+      "metadata": "/98/3270e7c01c/0/metadata.json",
+      "transcript": "/98/3270e7c01c/0/full.jsonl",
+      "context": "/98/3270e7c01c/0/context.md",
+      "content_hash": "/98/3270e7c01c/0/content_hash.txt",
+      "prompt": "/98/3270e7c01c/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 13,
+    "cache_creation_tokens": 104255,
+    "cache_read_tokens": 878167,
+    "output_tokens": 18169,
+    "api_call_count": 9
+  }
+}
