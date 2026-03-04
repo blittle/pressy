@@ -7,6 +7,11 @@ const swSource = readFileSync(
   'utf-8',
 )
 
+const offlineSource = readFileSync(
+  join(import.meta.dirname, '..', 'packages/pressy/src/runtime/offline.ts'),
+  'utf-8',
+)
+
 describe('service worker offline cache matching', () => {
   // The PaginatedReader navigates backward with ?page=last appended to
   // chapter URLs (e.g. /books/flatland/chapter-2?page=last). Cache.match()
@@ -73,5 +78,27 @@ describe('service worker offline cache matching', () => {
         `cache.match without ignoreSearch at line ${num} appears to be in a navigation handler: ${line}`,
       ).toContain('GET_CACHE_STATUS')
     }
+  })
+})
+
+describe('service worker update orchestration', () => {
+  // After a new deploy the service worker must update and the page must
+  // reload to pick up the new version. Without these mechanisms, users
+  // see stale content even after refreshing.
+
+  it('calls registration.update() to proactively check for new versions', () => {
+    expect(offlineSource).toContain('registration.update()')
+  })
+
+  it('listens for controllerchange and reloads the page', () => {
+    expect(offlineSource).toContain("addEventListener('controllerchange'")
+    expect(offlineSource).toContain('window.location.reload()')
+  })
+
+  it('guards against reload on first install (no prior controller)', () => {
+    // The controllerchange handler must only reload when a SW was already
+    // controlling the page (hadController). Without this guard, first-time
+    // visitors get an unnecessary reload.
+    expect(offlineSource).toContain('hadController')
   })
 })
