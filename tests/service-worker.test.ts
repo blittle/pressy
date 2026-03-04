@@ -81,6 +81,87 @@ describe('service worker offline cache matching', () => {
   })
 })
 
+describe('Cache.match ignoreSearch behavior', () => {
+  // Behavioral test: demonstrates the exact bug that ignoreSearch fixes.
+  // The Cache API is not available in Node, so we use a spec-compliant
+  // mock that matches the browser's URL-based lookup semantics.
+
+  class MockCache {
+    private entries = new Map<string, Response>()
+
+    async put(request: Request | string, response: Response) {
+      const url = typeof request === 'string' ? request : request.url
+      this.entries.set(url, response)
+    }
+
+    async match(
+      request: Request | string,
+      options?: { ignoreSearch?: boolean },
+    ): Promise<Response | undefined> {
+      const raw = typeof request === 'string' ? request : request.url
+      const url = new URL(raw, 'https://example.com')
+
+      if (options?.ignoreSearch) {
+        // Strip query string before matching (spec behavior)
+        const keyWithoutSearch = `${url.origin}${url.pathname}`
+        for (const [cached] of this.entries) {
+          const cachedUrl = new URL(cached, 'https://example.com')
+          if (`${cachedUrl.origin}${cachedUrl.pathname}` === keyWithoutSearch) {
+            return this.entries.get(cached)
+          }
+        }
+        return undefined
+      }
+
+      // Default: exact match including query string (spec behavior)
+      return this.entries.get(url.href)
+    }
+  }
+
+  it('default match FAILS for cached URL requested with ?page=last', async () => {
+    const cache = new MockCache()
+    const html = new Response('<html>Chapter 2</html>')
+    await cache.put('https://example.com/books/flatland/chapter-2', html)
+
+    // This is the bug: PaginatedReader requests ?page=last, cache has no match
+    const result = await cache.match(
+      'https://example.com/books/flatland/chapter-2?page=last',
+    )
+    expect(result).toBeUndefined()
+  })
+
+  it('ignoreSearch match SUCCEEDS for cached URL requested with ?page=last', async () => {
+    const cache = new MockCache()
+    const html = new Response('<html>Chapter 2</html>')
+    await cache.put('https://example.com/books/flatland/chapter-2', html)
+
+    // The fix: ignoreSearch strips query string before matching
+    const result = await cache.match(
+      'https://example.com/books/flatland/chapter-2?page=last',
+      { ignoreSearch: true },
+    )
+    expect(result).toBeDefined()
+    expect(await result!.text()).toBe('<html>Chapter 2</html>')
+  })
+
+  it('ignoreSearch matches regardless of which query params are present', async () => {
+    const cache = new MockCache()
+    await cache.put(
+      'https://example.com/books/flatland/chapter-5',
+      new Response('ch5'),
+    )
+
+    // Various query strings that should all match the same cached chapter
+    for (const qs of ['?page=last', '?page=3', '?foo=bar&page=last']) {
+      const result = await cache.match(
+        `https://example.com/books/flatland/chapter-5${qs}`,
+        { ignoreSearch: true },
+      )
+      expect(result, `should match for ${qs}`).toBeDefined()
+    }
+  })
+})
+
 describe('service worker update orchestration', () => {
   // After a new deploy the service worker must update and the page must
   // reload to pick up the new version. Without these mechanisms, users
