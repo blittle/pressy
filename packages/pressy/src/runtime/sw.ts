@@ -48,16 +48,43 @@ const navigationHandler = new NetworkFirst({
   plugins: [respectNoStore],
 })
 
+// Offline-cached book chapters: registered BEFORE the general
+// NavigationRoute so Workbox matches it first for book URLs.
+// (Workbox uses the first matching route in registration order.)
+registerRoute(
+  new Route(
+    ({ request, url }) =>
+      request.mode === 'navigate' && url.pathname.match(/^\/books\/[^/]+\/[^/]+/),
+    async (params) => {
+      // Check offline book cache first (exact URL match — the CACHE_BOOK
+      // handler stores both /chapter and /chapter?page=last variants)
+      const bookCache = await caches.open(BOOK_CACHE)
+      const cached = await bookCache.match(params.request)
+      if (cached) return cached
+
+      // Fall through to network
+      try {
+        return await navigationHandler.handle(params)
+      } catch {
+        const cache = await caches.open(OFFLINE_CACHE)
+        const fallback = await cache.match(OFFLINE_URL)
+        return fallback || Response.error()
+      }
+    }
+  )
+)
+
+// General navigation fallback for non-book pages
 registerRoute(
   new NavigationRoute(async (params) => {
     try {
       return await navigationHandler.handle(params)
     } catch {
-      // Network failed — try ignoring query string (e.g. ?page=last)
-      // so cached chapter pages still serve offline
-      const pagesCache = await caches.open('pressy-pages')
-      const pagesCached = await pagesCache.match(params.request, { ignoreSearch: true })
-      if (pagesCached) return pagesCached
+      // Check the book cache as a fallback (e.g. subpath deployments
+      // where the pathname regex didn't match)
+      const bookCache = await caches.open(BOOK_CACHE)
+      const bookCached = await bookCache.match(params.request)
+      if (bookCached) return bookCached
 
       // Last resort — serve offline fallback
       const cache = await caches.open(OFFLINE_CACHE)
@@ -65,38 +92,6 @@ registerRoute(
       return fallback || Response.error()
     }
   })
-)
-
-// Offline-cached book chapters: try the book cache first,
-// then fall through to the normal navigation handler.
-// ignoreSearch: true so ?page=last (backward chapter nav) matches
-// the cached response for the base URL.
-registerRoute(
-  new Route(
-    ({ request, url }) =>
-      request.mode === 'navigate' && url.pathname.match(/^\/books\/[^/]+\/[^/]+/),
-    async (params) => {
-      // Check offline book cache first
-      const bookCache = await caches.open(BOOK_CACHE)
-      const cached = await bookCache.match(params.request, { ignoreSearch: true })
-      if (cached) return cached
-
-      // Fall through to network
-      try {
-        return await navigationHandler.handle(params)
-      } catch {
-        // Network failed — try the general navigation cache with ignoreSearch
-        // so ?page=last variants still hit cached chapter pages
-        const pagesCache = await caches.open('pressy-pages')
-        const pagesCached = await pagesCache.match(params.request, { ignoreSearch: true })
-        if (pagesCached) return pagesCached
-
-        const cache = await caches.open(OFFLINE_CACHE)
-        const fallback = await cache.match(OFFLINE_URL)
-        return fallback || Response.error()
-      }
-    }
-  )
 )
 
 // Cache images with CacheFirst strategy (exclude PWA icons — they're
@@ -156,7 +151,13 @@ self.addEventListener('message', async (event) => {
       try {
         const response = await fetch(url)
         if (response.ok) {
-          await cache.put(url, response)
+          // Cache the base URL and the ?page=last variant (used for
+          // backward chapter navigation in paginated mode). Storing
+          // both means exact-match cache lookups work without needing
+          // ignoreSearch, which is unreliable across browsers.
+          const pageLastUrl = url + (url.includes('?') ? '&' : '?') + 'page=last'
+          await cache.put(url, response.clone())
+          await cache.put(pageLastUrl, response)
         }
       } catch (err) {
         console.error(`Failed to cache ${url}:`, err)

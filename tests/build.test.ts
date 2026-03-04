@@ -118,6 +118,23 @@ describe('pressy build (flatland example)', () => {
       expect(sw.length).toBeGreaterThan(100)
     })
 
+    it('does not precache HTML pages', () => {
+      // HTML pages must NOT be in the precache manifest. precacheAndRoute
+      // uses a cache-first strategy that overrides the NetworkFirst
+      // NavigationRoute, which would prevent new deploys from showing up.
+      const sw = readFileSync(join(DIST, 'sw.js'), 'utf-8')
+      expect(sw).not.toMatch(/["']\.\/index\.html["']/)
+      expect(sw).not.toMatch(/["']\.\/books\/[^"']*\/index\.html["']/)
+      expect(sw).not.toMatch(/["']\.\/articles\/[^"']*\/index\.html["']/)
+      expect(sw).not.toMatch(/["']\.\/offline\.html["']/)
+    })
+
+    it('still precaches JS and CSS chunks', () => {
+      const sw = readFileSync(join(DIST, 'sw.js'), 'utf-8')
+      expect(sw).toMatch(/\.js["']/)
+      expect(sw).toMatch(/\.css["']/)
+    })
+
     it('generates offline fallback page', () => {
       const offlinePath = join(DIST, 'offline.html')
       expect(existsSync(offlinePath)).toBe(true)
