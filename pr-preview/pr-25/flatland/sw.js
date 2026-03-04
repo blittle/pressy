@@ -1,7 +1,7 @@
 "use strict";
 (() => {
   // <define:self.__WB_MANIFEST>
-  var define_self_WB_MANIFEST_default = [{ url: "./assets/pressy-entry-BIzKIDDA.css", revision: null }, { url: "./assets/pressy-entry-C1pfTEgY.js", revision: null }, { url: "./assets/index-DwMGIAr2.js", revision: null }, { url: "./assets/books-Z530Pkvt.js", revision: null }, { url: "./assets/articles-C7-3f16C.js", revision: null }, { url: "./assets/books-flatland-CI3IuepD.js", revision: null }, { url: "./assets/books-flatland-preface-MUTdI_1H.js", revision: null }, { url: "./assets/books-flatland-of-the-nature-of-flatland-DeZbx-7w.js", revision: null }, { url: "./assets/books-flatland-of-the-climate-and-houses-C_E6ZUKb.js", revision: null }, { url: "./assets/books-flatland-concerning-the-inhabitants-oFUdHT13.js", revision: null }, { url: "./assets/books-flatland-concerning-the-women-CO2PQ2Yx.js", revision: null }, { url: "./assets/books-flatland-of-our-methods-of-recognizing-voLpuqvW.js", revision: null }, { url: "./assets/books-flatland-of-recognition-by-sight-COCw7wsd.js", revision: null }, { url: "./assets/books-flatland-concerning-a-stranger-D0euCDPQ.js", revision: null }, { url: "./assets/_virtual_pressy-chapter-map_flatland-Dydn3FtG.js", revision: null }, { url: "./assets/articles-about-flatland-BjEosWcx.js", revision: null }, { url: "./assets/client-CWfCw9iX.js", revision: null }, { url: "./assets/00-preface-DVoHTTUb.js", revision: null }, { url: "./assets/01-of-the-nature-of-flatland-DLffTdRo.js", revision: null }, { url: "./assets/02-of-the-climate-and-houses-DsIk4uFs.js", revision: null }, { url: "./assets/03-concerning-the-inhabitants-B1LRqGWG.js", revision: null }, { url: "./assets/04-concerning-the-women-CLe8V1sD.js", revision: null }, { url: "./assets/05-of-our-methods-of-recognizing-BlWkjovA.js", revision: null }, { url: "./assets/06-of-recognition-by-sight-BAEBHRSN.js", revision: null }, { url: "./assets/07-concerning-a-stranger-B9mR1dX1.js", revision: null }];
+  var define_self_WB_MANIFEST_default = [{ url: "./assets/pressy-entry-BIzKIDDA.css", revision: null }, { url: "./assets/pressy-entry-DAEhqK8Z.js", revision: null }, { url: "./assets/index-C2naqVB4.js", revision: null }, { url: "./assets/books-CZ2WOyAi.js", revision: null }, { url: "./assets/articles-I08jRf77.js", revision: null }, { url: "./assets/books-flatland-DnoHJrq_.js", revision: null }, { url: "./assets/books-flatland-preface-jWELaCgF.js", revision: null }, { url: "./assets/books-flatland-of-the-nature-of-flatland-CIbT2WDq.js", revision: null }, { url: "./assets/books-flatland-of-the-climate-and-houses-CRP7ifXd.js", revision: null }, { url: "./assets/books-flatland-concerning-the-inhabitants-EaWgFU2l.js", revision: null }, { url: "./assets/books-flatland-concerning-the-women-DAhk0Xra.js", revision: null }, { url: "./assets/books-flatland-of-our-methods-of-recognizing-CETUAIzn.js", revision: null }, { url: "./assets/books-flatland-of-recognition-by-sight-BnuOiV4P.js", revision: null }, { url: "./assets/books-flatland-concerning-a-stranger-C3pryqa8.js", revision: null }, { url: "./assets/_virtual_pressy-chapter-map_flatland-COYsDPqT.js", revision: null }, { url: "./assets/articles-about-flatland-BAcNx-vZ.js", revision: null }, { url: "./assets/client-DHJlvR4i.js", revision: null }, { url: "./assets/00-preface-D7o4-klr.js", revision: null }, { url: "./assets/01-of-the-nature-of-flatland-BHbTNdfq.js", revision: null }, { url: "./assets/02-of-the-climate-and-houses-CGuhLzMl.js", revision: null }, { url: "./assets/03-concerning-the-inhabitants-D5trSACb.js", revision: null }, { url: "./assets/04-concerning-the-women-CaKCDz6z.js", revision: null }, { url: "./assets/05-of-our-methods-of-recognizing-D_-RqoSR.js", revision: null }, { url: "./assets/06-of-recognition-by-sight-DPsf1pvY.js", revision: null }, { url: "./assets/07-concerning-a-stranger-Eyou5Zq-.js", revision: null }];
 
   // ../../node_modules/.pnpm/workbox-core@7.4.0/node_modules/workbox-core/_version.js
   try {
@@ -3240,14 +3240,11 @@ This is generally NOT safe. Learn more at https://bit.ly/wb-precache`;
       ({ request, url }) => request.mode === "navigate" && url.pathname.match(/^\/books\/[^/]+\/[^/]+/),
       async (params) => {
         const bookCache = await caches.open(BOOK_CACHE);
-        const cached = await bookCache.match(params.request, { ignoreSearch: true });
+        const cached = await bookCache.match(params.request);
         if (cached) return cached;
         try {
           return await navigationHandler.handle(params);
         } catch {
-          const pagesCache = await caches.open("pressy-pages");
-          const pagesCached = await pagesCache.match(params.request, { ignoreSearch: true });
-          if (pagesCached) return pagesCached;
           const cache = await caches.open(OFFLINE_CACHE);
           const fallback = await cache.match(OFFLINE_URL);
           return fallback || Response.error();
@@ -3260,11 +3257,8 @@ This is generally NOT safe. Learn more at https://bit.ly/wb-precache`;
       try {
         return await navigationHandler.handle(params);
       } catch {
-        const pagesCache = await caches.open("pressy-pages");
-        const pagesCached = await pagesCache.match(params.request, { ignoreSearch: true });
-        if (pagesCached) return pagesCached;
         const bookCache = await caches.open(BOOK_CACHE);
-        const bookCached = await bookCache.match(params.request, { ignoreSearch: true });
+        const bookCached = await bookCache.match(params.request);
         if (bookCached) return bookCached;
         const cache = await caches.open(OFFLINE_CACHE);
         const fallback = await cache.match(OFFLINE_URL);
@@ -3315,7 +3309,9 @@ This is generally NOT safe. Learn more at https://bit.ly/wb-precache`;
         try {
           const response = await fetch(url);
           if (response.ok) {
-            await cache.put(url, response);
+            const pageLastUrl = url + (url.includes("?") ? "&" : "?") + "page=last";
+            await cache.put(url, response.clone());
+            await cache.put(pageLastUrl, response);
           }
         } catch (err) {
           console.error(`Failed to cache ${url}:`, err);

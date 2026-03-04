@@ -1,7 +1,7 @@
 "use strict";
 (() => {
   // <define:self.__WB_MANIFEST>
-  var define_self_WB_MANIFEST_default = [{ url: "./assets/pressy-entry-BIzKIDDA.css", revision: null }, { url: "./assets/pressy-entry-C1pfTEgY.js", revision: null }, { url: "./assets/index-dPBMOgD9.js", revision: null }, { url: "./assets/books-C2BQ0Svp.js", revision: null }, { url: "./assets/articles-mywrHVy4.js", revision: null }, { url: "./assets/books-frankenstein-6odgvctt.js", revision: null }, { url: "./assets/books-frankenstein-authors-introduction-DjCRCtSv.js", revision: null }, { url: "./assets/books-frankenstein-letter-1-B_v_GG8M.js", revision: null }, { url: "./assets/books-frankenstein-letter-2-BfI6bp-z.js", revision: null }, { url: "./assets/books-frankenstein-letter-3-DLDz5Ce7.js", revision: null }, { url: "./assets/books-frankenstein-letter-4-CADD3XRP.js", revision: null }, { url: "./assets/books-frankenstein-chapter-1-BNkT5q1_.js", revision: null }, { url: "./assets/books-frankenstein-chapter-2-Dr4b7vep.js", revision: null }, { url: "./assets/books-frankenstein-chapter-3-DoAQGbHl.js", revision: null }, { url: "./assets/books-frankenstein-chapter-4-Bp47pyFu.js", revision: null }, { url: "./assets/books-frankenstein-chapter-5-CAeV7WXy.js", revision: null }, { url: "./assets/_virtual_pressy-chapter-map_frankenstein-BV2RInzD.js", revision: null }, { url: "./assets/articles-about-frankenstein-BSrbT9J4.js", revision: null }, { url: "./assets/client-CWfCw9iX.js", revision: null }, { url: "./assets/00-authors-introduction-8rBzVlAy.js", revision: null }, { url: "./assets/01-letter-1-Cvu3B2WN.js", revision: null }, { url: "./assets/02-letter-2-BsZqAKIv.js", revision: null }, { url: "./assets/03-letter-3-qLujBMUZ.js", revision: null }, { url: "./assets/04-letter-4-DbofiL1H.js", revision: null }, { url: "./assets/05-chapter-1-BWDiWmnB.js", revision: null }, { url: "./assets/06-chapter-2-f-5HwXFn.js", revision: null }, { url: "./assets/07-chapter-3-CThMMlsV.js", revision: null }, { url: "./assets/08-chapter-4-B134A60l.js", revision: null }, { url: "./assets/09-chapter-5-DEs_IDYf.js", revision: null }];
+  var define_self_WB_MANIFEST_default = [{ url: "./assets/pressy-entry-BIzKIDDA.css", revision: null }, { url: "./assets/pressy-entry-DAEhqK8Z.js", revision: null }, { url: "./assets/index-gr0B4iaM.js", revision: null }, { url: "./assets/books-Dyb_9Zns.js", revision: null }, { url: "./assets/articles-CT9YUDzt.js", revision: null }, { url: "./assets/books-frankenstein-NlxW4qcO.js", revision: null }, { url: "./assets/books-frankenstein-authors-introduction-BkFD3oiX.js", revision: null }, { url: "./assets/books-frankenstein-letter-1-Be2RSM_q.js", revision: null }, { url: "./assets/books-frankenstein-letter-2-DRcfeJ4W.js", revision: null }, { url: "./assets/books-frankenstein-letter-3-CjwKt9vu.js", revision: null }, { url: "./assets/books-frankenstein-letter-4-Dwxnpnck.js", revision: null }, { url: "./assets/books-frankenstein-chapter-1-DmL-t_Po.js", revision: null }, { url: "./assets/books-frankenstein-chapter-2-5_HHEVOo.js", revision: null }, { url: "./assets/books-frankenstein-chapter-3-DROKZ72W.js", revision: null }, { url: "./assets/books-frankenstein-chapter-4-Ch9NTPjK.js", revision: null }, { url: "./assets/books-frankenstein-chapter-5-DbKw0dqn.js", revision: null }, { url: "./assets/_virtual_pressy-chapter-map_frankenstein-D5VP2npy.js", revision: null }, { url: "./assets/articles-about-frankenstein-1jDJOr6D.js", revision: null }, { url: "./assets/client-DHJlvR4i.js", revision: null }, { url: "./assets/00-authors-introduction-BBZ6z6IS.js", revision: null }, { url: "./assets/01-letter-1-BXNvTNlF.js", revision: null }, { url: "./assets/02-letter-2-DFU-dZmD.js", revision: null }, { url: "./assets/03-letter-3-M8o2DxkD.js", revision: null }, { url: "./assets/04-letter-4-IqsuDEq2.js", revision: null }, { url: "./assets/05-chapter-1-q0MiFLqn.js", revision: null }, { url: "./assets/06-chapter-2-D7Xb0Vjc.js", revision: null }, { url: "./assets/07-chapter-3-iJlfVJyr.js", revision: null }, { url: "./assets/08-chapter-4-C7gE7R4u.js", revision: null }, { url: "./assets/09-chapter-5-BPGNiCwZ.js", revision: null }];
 
   // ../../node_modules/.pnpm/workbox-core@7.4.0/node_modules/workbox-core/_version.js
   try {
@@ -3240,14 +3240,11 @@ This is generally NOT safe. Learn more at https://bit.ly/wb-precache`;
       ({ request, url }) => request.mode === "navigate" && url.pathname.match(/^\/books\/[^/]+\/[^/]+/),
       async (params) => {
         const bookCache = await caches.open(BOOK_CACHE);
-        const cached = await bookCache.match(params.request, { ignoreSearch: true });
+        const cached = await bookCache.match(params.request);
         if (cached) return cached;
         try {
           return await navigationHandler.handle(params);
         } catch {
-          const pagesCache = await caches.open("pressy-pages");
-          const pagesCached = await pagesCache.match(params.request, { ignoreSearch: true });
-          if (pagesCached) return pagesCached;
           const cache = await caches.open(OFFLINE_CACHE);
           const fallback = await cache.match(OFFLINE_URL);
           return fallback || Response.error();
@@ -3260,11 +3257,8 @@ This is generally NOT safe. Learn more at https://bit.ly/wb-precache`;
       try {
         return await navigationHandler.handle(params);
       } catch {
-        const pagesCache = await caches.open("pressy-pages");
-        const pagesCached = await pagesCache.match(params.request, { ignoreSearch: true });
-        if (pagesCached) return pagesCached;
         const bookCache = await caches.open(BOOK_CACHE);
-        const bookCached = await bookCache.match(params.request, { ignoreSearch: true });
+        const bookCached = await bookCache.match(params.request);
         if (bookCached) return bookCached;
         const cache = await caches.open(OFFLINE_CACHE);
         const fallback = await cache.match(OFFLINE_URL);
@@ -3315,7 +3309,9 @@ This is generally NOT safe. Learn more at https://bit.ly/wb-precache`;
         try {
           const response = await fetch(url);
           if (response.ok) {
-            await cache.put(url, response);
+            const pageLastUrl = url + (url.includes("?") ? "&" : "?") + "page=last";
+            await cache.put(url, response.clone());
+            await cache.put(pageLastUrl, response);
           }
         } catch (err) {
           console.error(`Failed to cache ${url}:`, err);
