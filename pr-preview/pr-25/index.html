@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pressy Examples</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: system-ui, -apple-system, sans-serif; background: #f8f9fa; color: #1a1a1a; min-height: 100dvh; display: flex; align-items: center; justify-content: center; }
+    .container { max-width: 640px; width: 100%; padding: 2rem; }
+    h1 { font-size: 1.5rem; font-weight: 600; margin-bottom: 0.5rem; }
+    p { color: #666; margin-bottom: 2rem; }
+    .books { display: flex; flex-direction: column; gap: 1rem; }
+    a.book { display: block; padding: 1.25rem 1.5rem; background: #fff; border: 1px solid #e0e0e0; border-radius: 8px; text-decoration: none; color: inherit; transition: border-color 0.15s, box-shadow 0.15s; }
+    a.book:hover { border-color: #999; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+    .book-title { font-weight: 600; font-size: 1.1rem; }
+    .book-author { color: #666; font-size: 0.9rem; margin-top: 0.25rem; }
+    .book-meta { color: #999; font-size: 0.8rem; margin-top: 0.25rem; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Pressy Examples</h1>
+    <p>Example books built with Pressy, a web framework for self-publishing.</p>
+    <div class="books">
+      <a class="book" href="flatland/">
+        <div class="book-title">Flatland: A Romance of Many Dimensions</div>
+        <div class="book-author">Edwin A. Abbott</div>
+      </a>
+      <a class="book" href="frankenstein/">
+        <div class="book-title">Frankenstein; or, The Modern Prometheus</div>
+        <div class="book-author">Mary Wollstonecraft Shelley</div>
+      </a>
+      <a class="book" href="moby-dick/">
+        <div class="book-title">Moby-Dick; or, The Whale</div>
+        <div class="book-author">Herman Melville</div>
+        <div class="book-meta">135 chapters &middot; 211,000+ words</div>
+      </a>
+    </div>
+  </div>
+</body>
+</html>
