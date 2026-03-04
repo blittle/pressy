@@ -3236,20 +3236,6 @@ This is generally NOT safe. Learn more at https://bit.ly/wb-precache`;
     plugins: [respectNoStore]
   });
   registerRoute(
-    new NavigationRoute(async (params) => {
-      try {
-        return await navigationHandler.handle(params);
-      } catch {
-        const pagesCache = await caches.open("pressy-pages");
-        const pagesCached = await pagesCache.match(params.request, { ignoreSearch: true });
-        if (pagesCached) return pagesCached;
-        const cache = await caches.open(OFFLINE_CACHE);
-        const fallback = await cache.match(OFFLINE_URL);
-        return fallback || Response.error();
-      }
-    })
-  );
-  registerRoute(
     new Route(
       ({ request, url }) => request.mode === "navigate" && url.pathname.match(/^\/books\/[^/]+\/[^/]+/),
       async (params) => {
@@ -3268,6 +3254,23 @@ This is generally NOT safe. Learn more at https://bit.ly/wb-precache`;
         }
       }
     )
+  );
+  registerRoute(
+    new NavigationRoute(async (params) => {
+      try {
+        return await navigationHandler.handle(params);
+      } catch {
+        const pagesCache = await caches.open("pressy-pages");
+        const pagesCached = await pagesCache.match(params.request, { ignoreSearch: true });
+        if (pagesCached) return pagesCached;
+        const bookCache = await caches.open(BOOK_CACHE);
+        const bookCached = await bookCache.match(params.request, { ignoreSearch: true });
+        if (bookCached) return bookCached;
+        const cache = await caches.open(OFFLINE_CACHE);
+        const fallback = await cache.match(OFFLINE_URL);
+        return fallback || Response.error();
+      }
+    })
   );
   registerRoute(
     ({ request, url }) => request.destination === "image" && !url.pathname.endsWith("/icon-192.png") && !url.pathname.endsWith("/icon-512.png") && !url.pathname.endsWith("/favicon.png"),
