@@ -33,7 +33,7 @@ describe('service worker offline cache matching', () => {
     // pressy-pages. This fallback must also ignore the query string.
     const bookRouteSection = swSource.slice(
       swSource.indexOf('// Offline-cached book chapters'),
-      swSource.indexOf('// Cache images'),
+      swSource.indexOf('// General navigation fallback'),
     )
     const pagesFallbackMatches = [...bookRouteSection.matchAll(/pagesCache\.match\([^)]+\)/g)]
     expect(pagesFallbackMatches.length).toBeGreaterThanOrEqual(1)
@@ -43,14 +43,27 @@ describe('service worker offline cache matching', () => {
   })
 
   it('uses ignoreSearch on the general NavigationRoute fallback', () => {
-    // The top-level NavigationRoute handler also falls back to pressy-pages
-    // when the network fails. It must use ignoreSearch so ?page=last works
-    // even for URLs that don't match the book chapter route pattern.
+    // The NavigationRoute handler also falls back to pressy-pages and
+    // BOOK_CACHE when the network fails. It must use ignoreSearch so
+    // ?page=last works even for URLs that don't match the book chapter
+    // route pattern.
     const navRouteSection = swSource.slice(
-      swSource.indexOf('new NavigationRoute'),
-      swSource.indexOf('// Offline-cached book chapters'),
+      swSource.indexOf('// General navigation fallback'),
+      swSource.indexOf('// Cache images'),
     )
     expect(navRouteSection).toContain('ignoreSearch: true')
+  })
+
+  it('registers the book chapter route BEFORE the general NavigationRoute', () => {
+    // Workbox matches routes in registration order. The book chapter route
+    // must come first so it can check BOOK_CACHE for offline-downloaded
+    // chapters. If the NavigationRoute is first, it matches all navigation
+    // requests and the book route is dead code.
+    const bookRouteIndex = swSource.indexOf('// Offline-cached book chapters')
+    const navRouteIndex = swSource.indexOf('// General navigation fallback')
+    expect(bookRouteIndex).toBeGreaterThan(-1)
+    expect(navRouteIndex).toBeGreaterThan(-1)
+    expect(bookRouteIndex).toBeLessThan(navRouteIndex)
   })
 
   it('every cache.match call in a navigation handler uses ignoreSearch', () => {

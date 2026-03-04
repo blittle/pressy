@@ -48,27 +48,9 @@ const navigationHandler = new NetworkFirst({
   plugins: [respectNoStore],
 })
 
-registerRoute(
-  new NavigationRoute(async (params) => {
-    try {
-      return await navigationHandler.handle(params)
-    } catch {
-      // Network failed — try ignoring query string (e.g. ?page=last)
-      // so cached chapter pages still serve offline
-      const pagesCache = await caches.open('pressy-pages')
-      const pagesCached = await pagesCache.match(params.request, { ignoreSearch: true })
-      if (pagesCached) return pagesCached
-
-      // Last resort — serve offline fallback
-      const cache = await caches.open(OFFLINE_CACHE)
-      const fallback = await cache.match(OFFLINE_URL)
-      return fallback || Response.error()
-    }
-  })
-)
-
-// Offline-cached book chapters: try the book cache first,
-// then fall through to the normal navigation handler.
+// Offline-cached book chapters: registered BEFORE the general
+// NavigationRoute so Workbox matches it first for book URLs.
+// (Workbox uses the first matching route in registration order.)
 // ignoreSearch: true so ?page=last (backward chapter nav) matches
 // the cached response for the base URL.
 registerRoute(
@@ -97,6 +79,32 @@ registerRoute(
       }
     }
   )
+)
+
+// General navigation fallback for non-book pages
+registerRoute(
+  new NavigationRoute(async (params) => {
+    try {
+      return await navigationHandler.handle(params)
+    } catch {
+      // Network failed — try ignoring query string (e.g. ?page=last)
+      // so cached pages still serve offline
+      const pagesCache = await caches.open('pressy-pages')
+      const pagesCached = await pagesCache.match(params.request, { ignoreSearch: true })
+      if (pagesCached) return pagesCached
+
+      // Also check the book cache in case the route matcher didn't
+      // match (e.g. subpath deployments)
+      const bookCache = await caches.open(BOOK_CACHE)
+      const bookCached = await bookCache.match(params.request, { ignoreSearch: true })
+      if (bookCached) return bookCached
+
+      // Last resort — serve offline fallback
+      const cache = await caches.open(OFFLINE_CACHE)
+      const fallback = await cache.match(OFFLINE_URL)
+      return fallback || Response.error()
+    }
+  })
 )
 
 // Cache images with CacheFirst strategy (exclude PWA icons — they're
