@@ -784,7 +784,10 @@ function ChapterReaderWithProgress({
       }}
       offlineProps={{
         bookSlug: book.slug,
-        chapterUrls: book.chapters.map(ch => `${basePath}/books/${book.slug}/${ch.slug}`),
+        chapterUrls: [
+          `${basePath}/books/${book.slug}`,
+          ...book.chapters.map(ch => `${basePath}/books/${book.slug}/${ch.slug}`),
+        ],
         cachedBooks,
         cacheProgress,
         onDownload: downloadBookForOffline,
@@ -1175,11 +1178,16 @@ export function hydrate(data: HydrateData, Content?: ComponentType, chapterMapDa
   // Register service worker for PWA offline support
   registerServiceWorker(basePath)
 
-  // Auto-download books for offline when the user installs the PWA
+  // Auto-download all books for offline when the user installs the PWA.
+  // Includes the home page and book index pages so the whole app works
+  // offline like a native app.
   window.addEventListener('appinstalled', () => {
     for (const book of data.manifest.books) {
       if (isBookCached(book.slug)) continue
-      const chapterUrls = book.chapters.map(ch => `${basePath}/books/${book.slug}/${ch.slug}`)
+      const chapterUrls = [
+        `${basePath}/books/${book.slug}`,
+        ...book.chapters.map(ch => `${basePath}/books/${book.slug}/${ch.slug}`),
+      ]
       downloadBookForOffline(book.slug, chapterUrls)
     }
   })
