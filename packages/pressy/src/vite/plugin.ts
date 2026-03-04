@@ -1,7 +1,6 @@
 import { Plugin, ViteDevServer } from 'vite'
 import { resolve, join, relative, dirname } from 'path'
 import { existsSync, readFileSync } from 'fs'
-import { createHash } from 'crypto'
 import { createRequire } from 'module'
 
 const _require = createRequire(import.meta.url)
@@ -819,27 +818,16 @@ ${cssLinks}${buildPwaTags}
           // (e.g. /pressy/ or /pressy/pr-preview/pr-1/)
           // The SW resolves these relative to its own scope.
 
-          // Helper: generate a short content hash for revision tracking.
-          // Files with hashed names (JS/CSS chunks) use revision: null since
-          // the hash is in the URL. Non-hashed files (HTML) need an explicit
-          // revision so workbox knows when to update them.
-          const contentRevision = (source: string) =>
-            createHash('md5').update(source).digest('hex').slice(0, 8)
-
-          // Add all HTML pages (non-hashed filenames → need revision)
-          for (const route of routes) {
-            const fileName = route.path === '/' ? 'index.html' : `${route.path.slice(1)}/index.html`
-            const htmlAsset = bundle[fileName]
-            const source = htmlAsset && htmlAsset.type === 'asset' ? String(htmlAsset.source) : ''
-            precacheEntries.push({
-              url: `./${fileName}`,
-              revision: contentRevision(source),
-            })
-          }
-
-          // Add offline page (non-hashed → need revision)
-          const offlineSource = generateOfflinePage(config.site.title)
-          precacheEntries.push({ url: './offline.html', revision: contentRevision(offlineSource) })
+          // HTML pages are intentionally excluded from precaching.
+          // precacheAndRoute uses a cache-first strategy that takes priority
+          // over all other routes, which would override the NetworkFirst
+          // NavigationRoute in sw.ts and prevent new deploys from showing up
+          // until the SW itself updates. By excluding HTML, navigation
+          // requests fall through to the NetworkFirst handler, which fetches
+          // fresh HTML from the network on every visit.
+          //
+          // offline.html is also excluded — the SW's install handler already
+          // caches it directly via caches.open() / cache.add().
 
           // Add built JS/CSS chunks (hashed filenames → revision: null)
           for (const [fileName] of Object.entries(bundle)) {

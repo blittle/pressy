@@ -70,14 +70,26 @@ export async function registerServiceWorker(basePath = ''): Promise<ServiceWorke
     // Listen for messages from service worker
     navigator.serviceWorker.addEventListener('message', handleSWMessage)
 
-    // Mark SW as ready when controller is available
+    // Track whether a SW was already controlling this page on load.
+    // If so, any future controllerchange means a new SW has taken over
+    // and we should reload to pick up the new version.
+    const hadController = !!navigator.serviceWorker.controller
+
     if (navigator.serviceWorker.controller) {
       swReady.value = true
-    } else {
-      navigator.serviceWorker.addEventListener('controllerchange', () => {
-        swReady.value = true
-      })
     }
+
+    // Reload when a new service worker takes control so the page picks
+    // up the latest deploy. Skip the initial claim (first visit with no
+    // prior controller) to avoid an unnecessary reload.
+    let refreshing = false
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      swReady.value = true
+      if (hadController && !refreshing) {
+        refreshing = true
+        window.location.reload()
+      }
+    })
 
     // Handle updates
     registration.addEventListener('updatefound', () => {
@@ -90,6 +102,11 @@ export async function registerServiceWorker(basePath = ''): Promise<ServiceWorke
         }
       })
     })
+
+    // Proactively check for a new SW version. The browser checks on
+    // navigation automatically, but this ensures an update is discovered
+    // even if the user keeps the same tab open for a long time.
+    registration.update().catch(() => {})
 
     return registration
   } catch (err) {
