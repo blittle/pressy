@@ -38,14 +38,31 @@ describe('service worker offline cache matching', () => {
   })
 
   it('uses ignoreSearch on the general NavigationRoute fallback', () => {
-    // The top-level NavigationRoute handler also falls back to pressy-pages
+    // The general NavigationRoute handler also falls back to pressy-pages
     // when the network fails. It must use ignoreSearch so ?page=last works
     // even for URLs that don't match the book chapter route pattern.
     const navRouteSection = swSource.slice(
-      swSource.indexOf('new NavigationRoute'),
-      swSource.indexOf('// Offline-cached book chapters'),
+      swSource.indexOf('// General navigation'),
+      swSource.indexOf('// Cache images'),
     )
     expect(navRouteSection).toContain('ignoreSearch: true')
+  })
+
+  it('registers the book chapter route before the general NavigationRoute', () => {
+    // The book chapter Route must be registered before the NavigationRoute
+    // so it gets priority for book URLs — otherwise the catch-all
+    // NavigationRoute shadows it and the offline book cache is never checked.
+    const bookRouteIdx = swSource.indexOf('// Offline-cached book chapters')
+    const navRouteIdx = swSource.indexOf('// General navigation')
+    expect(bookRouteIdx).toBeLessThan(navRouteIdx)
+  })
+
+  it('precacheAndRoute ignores the page query parameter', () => {
+    // The ?page=last query parameter is used for backward chapter navigation.
+    // precacheAndRoute must ignore it so precached chapters serve for
+    // ?page=last requests without falling through to the network.
+    expect(swSource).toContain('ignoreURLParametersMatching')
+    expect(swSource).toMatch(/ignoreURLParametersMatching.*page/)
   })
 
   it('every cache.match call in a navigation handler uses ignoreSearch', () => {
