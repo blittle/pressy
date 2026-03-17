@@ -3208,6 +3208,30 @@ This is generally NOT safe. Learn more at https://bit.ly/wb-precache`;
   };
 
   // ../../packages/pressy/dist/runtime/sw.js
+  function isBookChapterNavigation(pathname, requestMode) {
+    return requestMode === "navigate" && /\/books\/[^/]+\/[^/]+/.test(pathname);
+  }
+  function needsTrailingSlashRedirect(pathname) {
+    return !pathname.endsWith("/");
+  }
+  function normalizeCacheUrl(url) {
+    if (url.startsWith("http://") || url.startsWith("https://")) {
+      const parsed = new URL(url);
+      if (!parsed.pathname.endsWith("/")) {
+        parsed.pathname += "/";
+      }
+      return parsed.href;
+    }
+    return url.endsWith("/") ? url : url + "/";
+  }
+  function prepareResponseForCache(response) {
+    if (!response.redirected) return response;
+    return new Response(response.body, {
+      status: response.status,
+      statusText: response.statusText,
+      headers: response.headers
+    });
+  }
   var OFFLINE_CACHE = "pressy-offline";
   var SW_BASE = new URL("./", self.location.href).pathname;
   var OFFLINE_URL = `${SW_BASE}offline.html`;
@@ -3239,9 +3263,9 @@ This is generally NOT safe. Learn more at https://bit.ly/wb-precache`;
   });
   registerRoute(
     new Route(
-      ({ request, url }) => request.mode === "navigate" && url.pathname.match(/\/books\/[^/]+\/[^/]+/),
+      ({ request, url }) => isBookChapterNavigation(url.pathname, request.mode),
       async (params) => {
-        if (!params.url.pathname.endsWith("/")) {
+        if (needsTrailingSlashRedirect(params.url.pathname)) {
           const dest = new URL(params.url.href);
           dest.pathname += "/";
           return Response.redirect(dest.href, 302);
@@ -3322,12 +3346,8 @@ This is generally NOT safe. Learn more at https://bit.ly/wb-precache`;
         try {
           const response = await fetch(url);
           if (response.ok) {
-            const clean = response.redirected ? new Response(response.body, {
-              status: response.status,
-              statusText: response.statusText,
-              headers: response.headers
-            }) : response;
-            const cacheUrl = url.endsWith("/") ? url : url + "/";
+            const clean = prepareResponseForCache(response);
+            const cacheUrl = normalizeCacheUrl(url);
             await cache.put(cacheUrl, clean);
           }
         } catch (err) {
@@ -3348,7 +3368,7 @@ This is generally NOT safe. Learn more at https://bit.ly/wb-precache`;
       const cache = await caches.open(BOOK_CACHE);
       const cached = [];
       for (const url of urls) {
-        const matchUrl = url.endsWith("/") ? url : url + "/";
+        const matchUrl = normalizeCacheUrl(url);
         const response = await cache.match(matchUrl);
         if (response) {
           cached.push(url);
