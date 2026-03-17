@@ -65,15 +65,11 @@ describe('service worker offline cache matching', () => {
     expect(swSource).toMatch(/ignoreURLParametersMatching.*page/)
   })
 
-  it('book chapter route regex works on subpath deployments', () => {
-    // The route regex must NOT be anchored with ^ because on subpath
-    // deployments (e.g. /pressy/pr-preview/pr-1/books/flatland/chapter-2)
-    // the pathname starts with the base path, not /books/.
-    const routeMatch = swSource.match(/url\.pathname\.match\(([^)]+)\)/)
-    expect(routeMatch).toBeTruthy()
-    const regex = routeMatch![1]
-    // Must not start with /^ (anchored to start of string)
-    expect(regex).not.toMatch(/^\/\^/)
+  it('book chapter route uses isBookChapterNavigation helper', () => {
+    // The route predicate is extracted to sw-logic.ts for testability.
+    // The sw.ts file must import and use it (the regex there is unanchored
+    // so it works on subpath deployments — tested in sw-logic.test.ts).
+    expect(swSource).toContain('isBookChapterNavigation')
   })
 
   it('book chapter route redirects non-trailing-slash URLs', () => {
@@ -86,7 +82,7 @@ describe('service worker offline cache matching', () => {
       swSource.indexOf('// General navigation'),
     )
     expect(bookRouteSection).toContain('Response.redirect')
-    expect(bookRouteSection).toContain("pathname.endsWith('/')")
+    expect(bookRouteSection).toContain('needsTrailingSlashRedirect')
   })
 
   it('CACHE_BOOK normalizes cache keys to trailing-slash', () => {
@@ -96,7 +92,7 @@ describe('service worker offline cache matching', () => {
       swSource.indexOf("type === 'CACHE_BOOK'"),
       swSource.indexOf("type === 'GET_CACHE_STATUS'"),
     )
-    expect(cacheBookSection).toContain("url + '/'")
+    expect(cacheBookSection).toContain('normalizeCacheUrl')
   })
 
   it('GET_CACHE_STATUS normalizes URLs to trailing-slash for matching', () => {
@@ -106,7 +102,7 @@ describe('service worker offline cache matching', () => {
       swSource.indexOf("type === 'GET_CACHE_STATUS'"),
       swSource.indexOf("type === 'CLEAR_BOOK_CACHE'"),
     )
-    expect(statusSection).toContain("url + '/'")
+    expect(statusSection).toContain('normalizeCacheUrl')
   })
 
   it('general NavigationRoute fallback checks offline book cache', () => {

@@ -3,6 +3,12 @@ import { precacheAndRoute, cleanupOutdatedCaches } from 'workbox-precaching'
 import { registerRoute, NavigationRoute, Route } from 'workbox-routing'
 import { NetworkFirst, CacheFirst, StaleWhileRevalidate } from 'workbox-strategies'
 import { ExpirationPlugin } from 'workbox-expiration'
+import {
+  isBookChapterNavigation,
+  needsTrailingSlashRedirect,
+  normalizeCacheUrl,
+  prepareResponseForCache,
+} from './sw-logic'
 
 declare const self: ServiceWorkerGlobalScope
 
@@ -58,13 +64,12 @@ const navigationHandler = new NetworkFirst({
 // the cached response for the base URL.
 registerRoute(
   new Route(
-    ({ request, url }) =>
-      request.mode === 'navigate' && url.pathname.match(/\/books\/[^/]+\/[^/]+/),
+    ({ request, url }) => isBookChapterNavigation(url.pathname, request.mode),
     async (params) => {
       // Redirect non-trailing-slash URLs so relative asset paths in the
       // HTML (e.g. ../../../assets/foo.js) resolve against the correct
       // directory. Without the slash, the browser uses the parent path.
-      if (!params.url.pathname.endsWith('/')) {
+      if (needsTrailingSlashRedirect(params.url.pathname)) {
         const dest = new URL(params.url.href)
         dest.pathname += '/'
         return Response.redirect(dest.href, 302)
@@ -176,16 +181,10 @@ self.addEventListener('message', async (event) => {
         if (response.ok) {
           // Strip the redirected flag — navigation requests reject
           // already-followed redirect responses from the cache.
-          const clean = response.redirected
-            ? new Response(response.body, {
-                status: response.status,
-                statusText: response.statusText,
-                headers: response.headers,
-              })
-            : response
+          const clean = prepareResponseForCache(response)
           // Normalize cache key to trailing-slash so it matches
           // redirected navigation requests (e.g. /chapter-2/)
-          const cacheUrl = url.endsWith('/') ? url : url + '/'
+          const cacheUrl = normalizeCacheUrl(url)
           await cache.put(cacheUrl, clean)
         }
       } catch (err) {
@@ -213,7 +212,7 @@ self.addEventListener('message', async (event) => {
 
     for (const url of urls) {
       // Normalize to trailing-slash to match CACHE_BOOK keys
-      const matchUrl = url.endsWith('/') ? url : url + '/'
+      const matchUrl = normalizeCacheUrl(url)
       const response = await cache.match(matchUrl)
       if (response) {
         cached.push(url)
