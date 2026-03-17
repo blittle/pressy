@@ -59,7 +59,7 @@ const navigationHandler = new NetworkFirst({
 registerRoute(
   new Route(
     ({ request, url }) =>
-      request.mode === 'navigate' && url.pathname.match(/^\/books\/[^/]+\/[^/]+/),
+      request.mode === 'navigate' && url.pathname.match(/\/books\/[^/]+\/[^/]+/),
     async (params) => {
       // Check offline book cache first
       const bookCache = await caches.open(BOOK_CACHE)
@@ -90,8 +90,12 @@ registerRoute(
     try {
       return await navigationHandler.handle(params)
     } catch {
-      // Network failed — try ignoring query string (e.g. ?page=last)
-      // so cached chapter pages still serve offline
+      // Network failed — try offline book cache and pressy-pages with
+      // ignoreSearch so ?page=last (backward chapter nav) still resolves
+      const bookCache = await caches.open(BOOK_CACHE)
+      const bookCached = await bookCache.match(params.request, { ignoreSearch: true })
+      if (bookCached) return bookCached
+
       const pagesCache = await caches.open('pressy-pages')
       const pagesCached = await pagesCache.match(params.request, { ignoreSearch: true })
       if (pagesCached) return pagesCached

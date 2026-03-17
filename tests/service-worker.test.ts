@@ -65,6 +65,30 @@ describe('service worker offline cache matching', () => {
     expect(swSource).toMatch(/ignoreURLParametersMatching.*page/)
   })
 
+  it('book chapter route regex works on subpath deployments', () => {
+    // The route regex must NOT be anchored with ^ because on subpath
+    // deployments (e.g. /pressy/pr-preview/pr-1/books/flatland/chapter-2)
+    // the pathname starts with the base path, not /books/.
+    const routeMatch = swSource.match(/url\.pathname\.match\(([^)]+)\)/)
+    expect(routeMatch).toBeTruthy()
+    const regex = routeMatch![1]
+    // Must not start with /^ (anchored to start of string)
+    expect(regex).not.toMatch(/^\/\^/)
+  })
+
+  it('general NavigationRoute fallback checks offline book cache', () => {
+    // The NavigationRoute is a catch-all. When the network fails, it must
+    // check pressy-offline-books (not just pressy-pages) so chapters
+    // downloaded for offline reading are served even if the book chapter
+    // Route didn't match (e.g. due to unexpected URL patterns).
+    const navRouteSection = swSource.slice(
+      swSource.indexOf('// General navigation'),
+      swSource.indexOf('// Cache images'),
+    )
+    expect(navRouteSection).toContain('BOOK_CACHE')
+    expect(navRouteSection).toContain('ignoreSearch: true')
+  })
+
   it('every cache.match call in a navigation handler uses ignoreSearch', () => {
     // Broad safety net: every cache.match in a navigation/book route handler
     // should use ignoreSearch. The only cache.match calls that should NOT use
