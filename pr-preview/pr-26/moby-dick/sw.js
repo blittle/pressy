@@ -3239,7 +3239,7 @@ This is generally NOT safe. Learn more at https://bit.ly/wb-precache`;
   });
   registerRoute(
     new Route(
-      ({ request, url }) => request.mode === "navigate" && url.pathname.match(/^\/books\/[^/]+\/[^/]+/),
+      ({ request, url }) => request.mode === "navigate" && url.pathname.match(/\/books\/[^/]+\/[^/]+/),
       async (params) => {
         const bookCache = await caches.open(BOOK_CACHE);
         const cached = await bookCache.match(params.request, { ignoreSearch: true });
@@ -3262,6 +3262,9 @@ This is generally NOT safe. Learn more at https://bit.ly/wb-precache`;
       try {
         return await navigationHandler.handle(params);
       } catch {
+        const bookCache = await caches.open(BOOK_CACHE);
+        const bookCached = await bookCache.match(params.request, { ignoreSearch: true });
+        if (bookCached) return bookCached;
         const pagesCache = await caches.open("pressy-pages");
         const pagesCached = await pagesCache.match(params.request, { ignoreSearch: true });
         if (pagesCached) return pagesCached;
