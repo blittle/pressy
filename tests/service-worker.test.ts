@@ -76,6 +76,39 @@ describe('service worker offline cache matching', () => {
     expect(regex).not.toMatch(/^\/\^/)
   })
 
+  it('book chapter route redirects non-trailing-slash URLs', () => {
+    // HTML uses relative asset paths (../../../assets/foo.js) that resolve
+    // based on the URL's "directory". Without a trailing slash, the browser
+    // resolves one level too high, causing 404s. The route must redirect
+    // non-trailing-slash URLs to trailing-slash before serving.
+    const bookRouteSection = swSource.slice(
+      swSource.indexOf('// Offline-cached book chapters'),
+      swSource.indexOf('// General navigation'),
+    )
+    expect(bookRouteSection).toContain('Response.redirect')
+    expect(bookRouteSection).toContain("pathname.endsWith('/')")
+  })
+
+  it('CACHE_BOOK normalizes cache keys to trailing-slash', () => {
+    // Cache keys must use trailing-slash URLs so they match the redirected
+    // navigation requests (e.g. /books/flatland/chapter-2/).
+    const cacheBookSection = swSource.slice(
+      swSource.indexOf("type === 'CACHE_BOOK'"),
+      swSource.indexOf("type === 'GET_CACHE_STATUS'"),
+    )
+    expect(cacheBookSection).toContain("url + '/'")
+  })
+
+  it('GET_CACHE_STATUS normalizes URLs to trailing-slash for matching', () => {
+    // Client sends non-trailing-slash URLs, but cache keys are normalized
+    // to trailing-slash by CACHE_BOOK. GET_CACHE_STATUS must normalize too.
+    const statusSection = swSource.slice(
+      swSource.indexOf("type === 'GET_CACHE_STATUS'"),
+      swSource.indexOf("type === 'CLEAR_BOOK_CACHE'"),
+    )
+    expect(statusSection).toContain("url + '/'")
+  })
+
   it('general NavigationRoute fallback checks offline book cache', () => {
     // The NavigationRoute is a catch-all. When the network fails, it must
     // check pressy-offline-books (not just pressy-pages) so chapters

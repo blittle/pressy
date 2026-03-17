@@ -61,7 +61,16 @@ registerRoute(
     ({ request, url }) =>
       request.mode === 'navigate' && url.pathname.match(/\/books\/[^/]+\/[^/]+/),
     async (params) => {
-      // Check offline book cache first
+      // Redirect non-trailing-slash URLs so relative asset paths in the
+      // HTML (e.g. ../../../assets/foo.js) resolve against the correct
+      // directory. Without the slash, the browser uses the parent path.
+      if (!params.url.pathname.endsWith('/')) {
+        const dest = new URL(params.url.href)
+        dest.pathname += '/'
+        return Response.redirect(dest.href, 302)
+      }
+
+      // Check offline book cache (trailing-slash keys)
       const bookCache = await caches.open(BOOK_CACHE)
       const cached = await bookCache.match(params.request, { ignoreSearch: true })
       if (cached) return cached
@@ -174,7 +183,10 @@ self.addEventListener('message', async (event) => {
                 headers: response.headers,
               })
             : response
-          await cache.put(url, clean)
+          // Normalize cache key to trailing-slash so it matches
+          // redirected navigation requests (e.g. /chapter-2/)
+          const cacheUrl = url.endsWith('/') ? url : url + '/'
+          await cache.put(cacheUrl, clean)
         }
       } catch (err) {
         console.error(`Failed to cache ${url}:`, err)
@@ -200,7 +212,9 @@ self.addEventListener('message', async (event) => {
     const cached: string[] = []
 
     for (const url of urls) {
-      const response = await cache.match(url)
+      // Normalize to trailing-slash to match CACHE_BOOK keys
+      const matchUrl = url.endsWith('/') ? url : url + '/'
+      const response = await cache.match(matchUrl)
       if (response) {
         cached.push(url)
       }
