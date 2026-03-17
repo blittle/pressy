@@ -3241,6 +3241,11 @@ This is generally NOT safe. Learn more at https://bit.ly/wb-precache`;
     new Route(
       ({ request, url }) => request.mode === "navigate" && url.pathname.match(/\/books\/[^/]+\/[^/]+/),
       async (params) => {
+        if (!params.url.pathname.endsWith("/")) {
+          const dest = new URL(params.url.href);
+          dest.pathname += "/";
+          return Response.redirect(dest.href, 302);
+        }
         const bookCache = await caches.open(BOOK_CACHE);
         const cached = await bookCache.match(params.request, { ignoreSearch: true });
         if (cached) return cached;
@@ -3322,7 +3327,8 @@ This is generally NOT safe. Learn more at https://bit.ly/wb-precache`;
               statusText: response.statusText,
               headers: response.headers
             }) : response;
-            await cache.put(url, clean);
+            const cacheUrl = url.endsWith("/") ? url : url + "/";
+            await cache.put(cacheUrl, clean);
           }
         } catch (err) {
           console.error(`Failed to cache ${url}:`, err);
@@ -3342,7 +3348,8 @@ This is generally NOT safe. Learn more at https://bit.ly/wb-precache`;
       const cache = await caches.open(BOOK_CACHE);
       const cached = [];
       for (const url of urls) {
-        const response = await cache.match(url);
+        const matchUrl = url.endsWith("/") ? url : url + "/";
+        const response = await cache.match(matchUrl);
         if (response) {
           cached.push(url);
         }
