@@ -3317,7 +3317,12 @@ This is generally NOT safe. Learn more at https://bit.ly/wb-precache`;
         try {
           const response = await fetch(url);
           if (response.ok) {
-            await cache.put(url, response);
+            const clean = response.redirected ? new Response(response.body, {
+              status: response.status,
+              statusText: response.statusText,
+              headers: response.headers
+            }) : response;
+            await cache.put(url, clean);
           }
         } catch (err) {
           console.error(`Failed to cache ${url}:`, err);
