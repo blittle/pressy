@@ -38,13 +38,83 @@ describe('service worker offline cache matching', () => {
   })
 
   it('uses ignoreSearch on the general NavigationRoute fallback', () => {
-    // The top-level NavigationRoute handler also falls back to pressy-pages
+    // The general NavigationRoute handler also falls back to pressy-pages
     // when the network fails. It must use ignoreSearch so ?page=last works
     // even for URLs that don't match the book chapter route pattern.
     const navRouteSection = swSource.slice(
-      swSource.indexOf('new NavigationRoute'),
-      swSource.indexOf('// Offline-cached book chapters'),
+      swSource.indexOf('// General navigation'),
+      swSource.indexOf('// Cache images'),
     )
+    expect(navRouteSection).toContain('ignoreSearch: true')
+  })
+
+  it('registers the book chapter route before the general NavigationRoute', () => {
+    // The book chapter Route must be registered before the NavigationRoute
+    // so it gets priority for book URLs — otherwise the catch-all
+    // NavigationRoute shadows it and the offline book cache is never checked.
+    const bookRouteIdx = swSource.indexOf('// Offline-cached book chapters')
+    const navRouteIdx = swSource.indexOf('// General navigation')
+    expect(bookRouteIdx).toBeLessThan(navRouteIdx)
+  })
+
+  it('precacheAndRoute ignores the page query parameter', () => {
+    // The ?page=last query parameter is used for backward chapter navigation.
+    // precacheAndRoute must ignore it so precached chapters serve for
+    // ?page=last requests without falling through to the network.
+    expect(swSource).toContain('ignoreURLParametersMatching')
+    expect(swSource).toMatch(/ignoreURLParametersMatching.*page/)
+  })
+
+  it('book chapter route uses isBookChapterNavigation helper', () => {
+    // The route predicate is extracted to sw-logic.ts for testability.
+    // The sw.ts file must import and use it (the regex there is unanchored
+    // so it works on subpath deployments — tested in sw-logic.test.ts).
+    expect(swSource).toContain('isBookChapterNavigation')
+  })
+
+  it('book chapter route redirects non-trailing-slash URLs', () => {
+    // HTML uses relative asset paths (../../../assets/foo.js) that resolve
+    // based on the URL's "directory". Without a trailing slash, the browser
+    // resolves one level too high, causing 404s. The route must redirect
+    // non-trailing-slash URLs to trailing-slash before serving.
+    const bookRouteSection = swSource.slice(
+      swSource.indexOf('// Offline-cached book chapters'),
+      swSource.indexOf('// General navigation'),
+    )
+    expect(bookRouteSection).toContain('Response.redirect')
+    expect(bookRouteSection).toContain('needsTrailingSlashRedirect')
+  })
+
+  it('CACHE_BOOK normalizes cache keys to trailing-slash', () => {
+    // Cache keys must use trailing-slash URLs so they match the redirected
+    // navigation requests (e.g. /books/flatland/chapter-2/).
+    const cacheBookSection = swSource.slice(
+      swSource.indexOf("type === 'CACHE_BOOK'"),
+      swSource.indexOf("type === 'GET_CACHE_STATUS'"),
+    )
+    expect(cacheBookSection).toContain('normalizeCacheUrl')
+  })
+
+  it('GET_CACHE_STATUS normalizes URLs to trailing-slash for matching', () => {
+    // Client sends non-trailing-slash URLs, but cache keys are normalized
+    // to trailing-slash by CACHE_BOOK. GET_CACHE_STATUS must normalize too.
+    const statusSection = swSource.slice(
+      swSource.indexOf("type === 'GET_CACHE_STATUS'"),
+      swSource.indexOf("type === 'CLEAR_BOOK_CACHE'"),
+    )
+    expect(statusSection).toContain('normalizeCacheUrl')
+  })
+
+  it('general NavigationRoute fallback checks offline book cache', () => {
+    // The NavigationRoute is a catch-all. When the network fails, it must
+    // check pressy-offline-books (not just pressy-pages) so chapters
+    // downloaded for offline reading are served even if the book chapter
+    // Route didn't match (e.g. due to unexpected URL patterns).
+    const navRouteSection = swSource.slice(
+      swSource.indexOf('// General navigation'),
+      swSource.indexOf('// Cache images'),
+    )
+    expect(navRouteSection).toContain('BOOK_CACHE')
     expect(navRouteSection).toContain('ignoreSearch: true')
   })
 

@@ -3,6 +3,12 @@ import { precacheAndRoute, cleanupOutdatedCaches } from 'workbox-precaching'
 import { registerRoute, NavigationRoute, Route } from 'workbox-routing'
 import { NetworkFirst, CacheFirst, StaleWhileRevalidate } from 'workbox-strategies'
 import { ExpirationPlugin } from 'workbox-expiration'
+import {
+  isBookChapterNavigation,
+  needsTrailingSlashRedirect,
+  normalizeCacheUrl,
+  prepareResponseForCache,
+} from './sw-logic'
 
 declare const self: ServiceWorkerGlobalScope
 
@@ -14,7 +20,9 @@ const OFFLINE_URL = `${SW_BASE}offline.html`
 const BOOK_CACHE = 'pressy-offline-books'
 
 // Precache all static assets (injected by build tool)
-precacheAndRoute(self.__WB_MANIFEST)
+precacheAndRoute(self.__WB_MANIFEST, {
+  ignoreURLParametersMatching: [/^page$/],
+})
 
 // Clean up old caches
 cleanupOutdatedCaches()
@@ -48,35 +56,26 @@ const navigationHandler = new NetworkFirst({
   plugins: [respectNoStore],
 })
 
-registerRoute(
-  new NavigationRoute(async (params) => {
-    try {
-      return await navigationHandler.handle(params)
-    } catch {
-      // Network failed — try ignoring query string (e.g. ?page=last)
-      // so cached chapter pages still serve offline
-      const pagesCache = await caches.open('pressy-pages')
-      const pagesCached = await pagesCache.match(params.request, { ignoreSearch: true })
-      if (pagesCached) return pagesCached
-
-      // Last resort — serve offline fallback
-      const cache = await caches.open(OFFLINE_CACHE)
-      const fallback = await cache.match(OFFLINE_URL)
-      return fallback || Response.error()
-    }
-  })
-)
-
 // Offline-cached book chapters: try the book cache first,
 // then fall through to the normal navigation handler.
+// Registered BEFORE the general NavigationRoute so book chapter
+// URLs are checked against the offline book cache first.
 // ignoreSearch: true so ?page=last (backward chapter nav) matches
 // the cached response for the base URL.
 registerRoute(
   new Route(
-    ({ request, url }) =>
-      request.mode === 'navigate' && url.pathname.match(/^\/books\/[^/]+\/[^/]+/),
+    ({ request, url }) => isBookChapterNavigation(url.pathname, request.mode),
     async (params) => {
-      // Check offline book cache first
+      // Redirect non-trailing-slash URLs so relative asset paths in the
+      // HTML (e.g. ../../../assets/foo.js) resolve against the correct
+      // directory. Without the slash, the browser uses the parent path.
+      if (needsTrailingSlashRedirect(params.url.pathname)) {
+        const dest = new URL(params.url.href)
+        dest.pathname += '/'
+        return Response.redirect(dest.href, 302)
+      }
+
+      // Check offline book cache (trailing-slash keys)
       const bookCache = await caches.open(BOOK_CACHE)
       const cached = await bookCache.match(params.request, { ignoreSearch: true })
       if (cached) return cached
@@ -97,6 +96,30 @@ registerRoute(
       }
     }
   )
+)
+
+// General navigation: NetworkFirst with offline fallback
+registerRoute(
+  new NavigationRoute(async (params) => {
+    try {
+      return await navigationHandler.handle(params)
+    } catch {
+      // Network failed — try offline book cache and pressy-pages with
+      // ignoreSearch so ?page=last (backward chapter nav) still resolves
+      const bookCache = await caches.open(BOOK_CACHE)
+      const bookCached = await bookCache.match(params.request, { ignoreSearch: true })
+      if (bookCached) return bookCached
+
+      const pagesCache = await caches.open('pressy-pages')
+      const pagesCached = await pagesCache.match(params.request, { ignoreSearch: true })
+      if (pagesCached) return pagesCached
+
+      // Last resort — serve offline fallback
+      const cache = await caches.open(OFFLINE_CACHE)
+      const fallback = await cache.match(OFFLINE_URL)
+      return fallback || Response.error()
+    }
+  })
 )
 
 // Cache images with CacheFirst strategy (exclude PWA icons — they're
@@ -156,7 +179,13 @@ self.addEventListener('message', async (event) => {
       try {
         const response = await fetch(url)
         if (response.ok) {
-          await cache.put(url, response)
+          // Strip the redirected flag — navigation requests reject
+          // already-followed redirect responses from the cache.
+          const clean = prepareResponseForCache(response)
+          // Normalize cache key to trailing-slash so it matches
+          // redirected navigation requests (e.g. /chapter-2/)
+          const cacheUrl = normalizeCacheUrl(url)
+          await cache.put(cacheUrl, clean)
         }
       } catch (err) {
         console.error(`Failed to cache ${url}:`, err)
@@ -182,7 +211,9 @@ self.addEventListener('message', async (event) => {
     const cached: string[] = []
 
     for (const url of urls) {
-      const response = await cache.match(url)
+      // Normalize to trailing-slash to match CACHE_BOOK keys
+      const matchUrl = normalizeCacheUrl(url)
+      const response = await cache.match(matchUrl)
       if (response) {
         cached.push(url)
       }
