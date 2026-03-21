@@ -14,10 +14,10 @@
   --pressy-dropcap-font-size: 3.5em;
 
   /* Custom accent color — deep ocean blue */
-  --pressy-accent: #1e3a5f;
+  --pressy-color-accent: #1e3a5f;
 }
 
 [data-theme='dark'] {
   --pressy-dropcap-color: #7db4d8;
-  --pressy-accent: #7db4d8;
+  --pressy-color-accent: #7db4d8;
 }

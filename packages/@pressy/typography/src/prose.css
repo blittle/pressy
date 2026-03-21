@@ -2,12 +2,12 @@
 
 .pressy-prose {
   /* Base reading styles */
-  max-width: 65ch;
+  max-width: var(--pressy-prose-max-width, 65ch);
   margin-inline: auto;
-  padding-inline: var(--prose-padding, 1.5rem);
-  font-family: var(--font-prose, Georgia, "Times New Roman", serif);
+  padding-inline: var(--pressy-prose-padding, 1.5rem);
+  font-family: var(--font-prose);
   font-size: var(--font-size-base);
-  line-height: var(--line-height-prose, 1.6);
+  line-height: var(--line-height-prose);
   color: var(--color-text);
 
   /* Smooth text rendering */
@@ -23,7 +23,7 @@
 .pressy-prose h4,
 .pressy-prose h5,
 .pressy-prose h6 {
-  font-family: var(--font-heading, system-ui, -apple-system, sans-serif);
+  font-family: var(--font-heading);
   font-weight: 600;
   line-height: 1.25;
   margin-top: 0.5em;
@@ -71,11 +71,11 @@
 .pressy-prose .drop-cap::first-letter,
 .pressy-prose[data-drop-cap] > p:first-of-type::first-letter {
   float: left;
-  font-size: 3.5em;
+  font-size: var(--pressy-dropcap-font-size, 3.5em);
   line-height: 0.8;
   padding-right: 0.1em;
   font-weight: 700;
-  color: var(--color-accent);
+  color: var(--pressy-dropcap-color, var(--color-accent));
 }
 
 /* Links */
@@ -133,7 +133,7 @@
 
 /* Code */
 .pressy-prose code {
-  font-family: var(--font-mono, "SF Mono", Menlo, monospace);
+  font-family: var(--font-mono);
   font-size: 0.875em;
   background: var(--color-code-bg);
   padding: 0.2em 0.4em;
@@ -141,7 +141,7 @@
 }
 
 .pressy-prose pre {
-  font-family: var(--font-mono, "SF Mono", Menlo, monospace);
+  font-family: var(--font-mono);
   font-size: 0.875em;
   background: var(--color-code-bg);
   padding: 1em 1.5em;

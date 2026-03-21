@@ -121,7 +121,7 @@ export const PAGINATED_STYLES = `
     z-index: 20;
     pointer-events: none;
     animation: pressy-hint-fade-in 0.15s ease-out;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    box-shadow: var(--shadow-md);
     max-width: 60%;
     white-space: nowrap;
     overflow: hidden;
@@ -392,7 +392,7 @@ export const PAGINATED_STYLES = `
   .pressy-toc-backdrop {
     position: absolute;
     inset: 0;
-    background: rgba(0, 0, 0, 0.3);
+    background: var(--color-overlay);
     z-index: 20;
     display: flex;
     align-items: flex-end;
@@ -407,7 +407,7 @@ export const PAGINATED_STYLES = `
     display: flex;
     flex-direction: column;
     animation: pressy-toc-slide-up 0.25s ease-out;
-    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
+    box-shadow: var(--shadow-lg);
   }
 
   .pressy-toc-header {
@@ -530,11 +530,11 @@ export const PAGINATED_STYLES = `
   }
 
   .pressy-offline-icon--cached {
-    color: #16a34a;
+    color: var(--color-success);
   }
 
   .pressy-offline-icon--cached:hover {
-    color: #dc2626;
+    color: var(--color-danger);
   }
 
   .pressy-offline-check {
@@ -669,7 +669,7 @@ export const PAGINATED_STYLES = `
   }
 
   .pressy-bookmark-delete:hover {
-    color: #dc2626;
+    color: var(--color-danger);
     background: var(--color-bg-subtle, #f8f9fa);
   }
 

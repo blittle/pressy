@@ -2,32 +2,49 @@
 
 [data-theme="dark"] {
   /* Background colors */
-  --color-bg: #1a1a1a;
-  --color-bg-subtle: #242424;
-  --color-bg-muted: #2d2d2d;
+  --color-bg: var(--pressy-color-bg, #1a1a1a);
+  --color-bg-subtle: var(--pressy-color-bg-subtle, #242424);
+  --color-bg-muted: var(--pressy-color-bg-muted, #2d2d2d);
 
   /* Text colors */
-  --color-text: #e0e0e0;
-  --color-text-muted: #a0a0a0;
-  --color-heading: #ffffff;
+  --color-text: var(--pressy-color-text, #e0e0e0);
+  --color-text-muted: var(--pressy-color-text-muted, #a0a0a0);
+  --color-heading: var(--pressy-color-heading, #ffffff);
 
   /* Accent colors */
-  --color-accent: #e0e0e0;
-  --color-link: #66b3ff;
-  --color-link-hover: #99ccff;
+  --color-accent: var(--pressy-color-accent, #e0e0e0);
+  --color-link: var(--pressy-color-link, #66b3ff);
+  --color-link-hover: var(--pressy-color-link-hover, #99ccff);
 
   /* UI colors */
-  --color-border: #404040;
-  --color-code-bg: #2d2d2d;
+  --color-border: var(--pressy-color-border, #404040);
+  --color-code-bg: var(--pressy-color-code-bg, #2d2d2d);
+
+  /* Status colors */
+  --color-success: var(--pressy-color-success, #86efac);
+  --color-danger: var(--pressy-color-danger, #fca5a5);
 
   /* Selection */
-  --color-selection-bg: rgba(102, 179, 255, 0.3);
-  --color-selection-text: inherit;
+  --color-selection-bg: var(--pressy-color-selection-bg, rgba(102, 179, 255, 0.3));
+  --color-selection-text: var(--pressy-color-selection-text, inherit);
 
-  /* Shadows (more subtle in dark mode) */
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
-  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.3);
-  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.4);
+  /* Shadows */
+  --shadow-sm: var(--pressy-shadow-sm, 0 1px 2px rgba(0, 0, 0, 0.2));
+  --shadow-md: var(--pressy-shadow-md, 0 4px 6px rgba(0, 0, 0, 0.3));
+  --shadow-lg: var(--pressy-shadow-lg, 0 10px 15px rgba(0, 0, 0, 0.4));
+
+  /* Overlay */
+  --color-overlay: var(--pressy-color-overlay, rgba(0, 0, 0, 0.5));
+
+  /* Callout colors */
+  --color-callout-note-bg: var(--pressy-callout-note-bg, #1e3a5f);
+  --color-callout-note-border: var(--pressy-callout-note-border, #1e40af);
+  --color-callout-tip-bg: var(--pressy-callout-tip-bg, #052e16);
+  --color-callout-tip-border: var(--pressy-callout-tip-border, #166534);
+  --color-callout-warning-bg: var(--pressy-callout-warning-bg, #422006);
+  --color-callout-warning-border: var(--pressy-callout-warning-border, #854d0e);
+  --color-callout-important-bg: var(--pressy-callout-important-bg, #450a0a);
+  --color-callout-important-border: var(--pressy-callout-important-border, #991b1b);
 
   /* Apply to element */
   background-color: var(--color-bg);

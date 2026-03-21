@@ -67,15 +67,15 @@ export function OfflineIndicator() {
         }
 
         .pressy-offline-indicator.offline {
-          background: #fef2f2;
-          color: #dc2626;
-          border: 1px solid #fecaca;
+          background: var(--color-callout-important-bg);
+          color: var(--color-danger);
+          border: 1px solid var(--color-callout-important-border);
         }
 
         .pressy-offline-indicator.online {
-          background: #f0fdf4;
-          color: #16a34a;
-          border: 1px solid #bbf7d0;
+          background: var(--color-callout-tip-bg);
+          color: var(--color-success);
+          border: 1px solid var(--color-callout-tip-border);
         }
 
         @keyframes slideUp {
@@ -86,20 +86,6 @@ export function OfflineIndicator() {
           to {
             opacity: 1;
             transform: translateX(-50%) translateY(0);
-          }
-        }
-
-        @media (prefers-color-scheme: dark) {
-          .pressy-offline-indicator.offline {
-            background: #450a0a;
-            color: #fca5a5;
-            border-color: #7f1d1d;
-          }
-
-          .pressy-offline-indicator.online {
-            background: #052e16;
-            color: #86efac;
-            border-color: #166534;
           }
         }
       `}</style>

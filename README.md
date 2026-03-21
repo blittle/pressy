@@ -180,7 +180,125 @@ Pressy ships with three themes plus system auto-detection:
 - **Sepia** — warm paper tones for extended reading
 - **System** — follows OS light/dark preference
 
-Themes are applied via `data-theme` on `<html>` and use CSS custom properties. Override any variable in a custom theme file.
+## Customizing Look & Feel
+
+Create a `theme/custom.css` file in your project root. Pressy auto-discovers it and loads it after the built-in styles, so your overrides take precedence.
+
+### Fonts
+
+```css
+@import url('https://fonts.googleapis.com/css2?family=Crimson+Pro:ital,wght@0,400;0,600;1,400&display=swap');
+
+:root {
+  --pressy-font-body: 'Crimson Pro', Georgia, 'Times New Roman', serif;
+  --pressy-font-heading: 'My Heading Font', system-ui, sans-serif;
+  --pressy-font-mono: 'Fira Code', monospace;
+}
+```
+
+### Brand Colors
+
+Override colors globally or per-theme. Values set on `:root` apply to all themes unless a more specific selector overrides them:
+
+```css
+:root {
+  --pressy-color-accent: #6d28d9;
+  --pressy-color-link: #7c3aed;
+}
+
+[data-theme='dark'] {
+  --pressy-color-accent: #a78bfa;
+  --pressy-color-link: #c4b5fd;
+}
+
+[data-theme='sepia'] {
+  --pressy-color-accent: #92400e;
+}
+```
+
+### Drop Caps
+
+```css
+:root {
+  --pressy-dropcap-color: #8b5cf6;
+  --pressy-dropcap-font-size: 4em;
+}
+
+[data-theme='dark'] {
+  --pressy-dropcap-color: #a78bfa;
+}
+```
+
+### Reading Layout
+
+```css
+:root {
+  --pressy-prose-max-width: 70ch;   /* default: 65ch */
+  --pressy-prose-padding: 2rem;     /* default: 1.5rem */
+}
+```
+
+### All Available Tokens
+
+Every token below can be prefixed with `--pressy-` and set in your `custom.css` to override the default. Scope overrides to `[data-theme="dark"]` or `[data-theme="sepia"]` for theme-specific values.
+
+**Colors** — each theme provides its own defaults:
+
+| Token | Light | Dark | Sepia | Purpose |
+|---|---|---|---|---|
+| `--pressy-color-bg` | `#ffffff` | `#1a1a1a` | `#f4ecd8` | Page background |
+| `--pressy-color-bg-subtle` | `#f8f9fa` | `#242424` | `#ebe3cf` | Subtle background (table headers, hover states) |
+| `--pressy-color-bg-muted` | `#e9ecef` | `#2d2d2d` | `#e2d9c5` | Muted background (buttons, inputs) |
+| `--pressy-color-text` | `#212529` | `#e0e0e0` | `#433422` | Body text |
+| `--pressy-color-text-muted` | `#6c757d` | `#a0a0a0` | `#6b5a47` | Secondary text |
+| `--pressy-color-heading` | `#1a1a1a` | `#ffffff` | `#2d2418` | Heading text |
+| `--pressy-color-accent` | `#212529` | `#e0e0e0` | `#433422` | Accent (progress bar, active borders, drop cap default) |
+| `--pressy-color-link` | `#0066cc` | `#66b3ff` | `#8b4513` | Link text |
+| `--pressy-color-link-hover` | `#004499` | `#99ccff` | `#a0522d` | Link hover |
+| `--pressy-color-border` | `#dee2e6` | `#404040` | `#d4c9b5` | Borders and dividers |
+| `--pressy-color-code-bg` | `#f1f3f5` | `#2d2d2d` | `#ebe3cf` | Inline code and code block background |
+| `--pressy-color-success` | `#16a34a` | `#86efac` | `#15803d` | Success states (offline cached indicator) |
+| `--pressy-color-danger` | `#dc2626` | `#fca5a5` | `#b91c1c` | Error/danger states (delete, offline, errors) |
+| `--pressy-color-overlay` | `rgba(0,0,0,0.3)` | `rgba(0,0,0,0.5)` | `rgba(67,52,34,0.3)` | Modal/drawer backdrop |
+| `--pressy-color-selection-bg` | `rgba(0,102,204,0.2)` | `rgba(102,179,255,0.3)` | `rgba(139,69,19,0.2)` | Text selection highlight |
+
+**Shadows:**
+
+| Token | Purpose |
+|---|---|
+| `--pressy-shadow-sm` | Subtle shadow (footer) |
+| `--pressy-shadow-md` | Medium shadow (tooltips, menus) |
+| `--pressy-shadow-lg` | Large shadow (drawers, modals) |
+
+**Typography:**
+
+| Token | Default | Purpose |
+|---|---|---|
+| `--pressy-font-body` | Georgia, 'Times New Roman', serif | Prose body font |
+| `--pressy-font-heading` | system-ui, sans-serif | Heading and UI font |
+| `--pressy-font-mono` | 'SF Mono', monospace | Code font |
+
+**Prose layout:**
+
+| Token | Default | Purpose |
+|---|---|---|
+| `--pressy-prose-max-width` | `65ch` | Maximum width of prose content |
+| `--pressy-prose-padding` | `1.5rem` | Horizontal padding around prose |
+| `--pressy-dropcap-color` | accent color | Drop cap letter color |
+| `--pressy-dropcap-font-size` | `3.5em` | Drop cap letter size |
+
+**Callout colors** (advanced — each theme has sensible defaults):
+
+| Token | Purpose |
+|---|---|
+| `--pressy-callout-note-bg`, `--pressy-callout-note-border` | Note callout |
+| `--pressy-callout-tip-bg`, `--pressy-callout-tip-border` | Tip callout |
+| `--pressy-callout-warning-bg`, `--pressy-callout-warning-border` | Warning callout |
+| `--pressy-callout-important-bg`, `--pressy-callout-important-border` | Important callout |
+
+### Example: Complete Custom Theme
+
+See `examples/flatland/theme/custom.css` for a full working example.
 
 ## License
 

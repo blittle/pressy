@@ -9,10 +9,10 @@ interface CalloutProps {
 }
 
 const icons: Record<CalloutType, string> = {
-  note: '📝',
-  tip: '💡',
-  warning: '⚠️',
-  important: '❗',
+  note: '\u{1F4DD}',
+  tip: '\u{1F4A1}',
+  warning: '\u{26A0}\u{FE0F}',
+  important: '\u{2757}',
 }
 
 const defaultTitles: Record<CalloutType, string> = {
@@ -39,23 +39,23 @@ export function Callout({ type = 'note', title, children }: CalloutProps) {
         }
 
         .pressy-callout-note {
-          background: #eff6ff;
-          border: 1px solid #bfdbfe;
+          background: var(--color-callout-note-bg);
+          border: 1px solid var(--color-callout-note-border);
         }
 
         .pressy-callout-tip {
-          background: #f0fdf4;
-          border: 1px solid #bbf7d0;
+          background: var(--color-callout-tip-bg);
+          border: 1px solid var(--color-callout-tip-border);
         }
 
         .pressy-callout-warning {
-          background: #fffbeb;
-          border: 1px solid #fde68a;
+          background: var(--color-callout-warning-bg);
+          border: 1px solid var(--color-callout-warning-border);
         }
 
         .pressy-callout-important {
-          background: #fef2f2;
-          border: 1px solid #fecaca;
+          background: var(--color-callout-important-bg);
+          border: 1px solid var(--color-callout-important-border);
         }
 
         .pressy-callout-header {
@@ -84,49 +84,6 @@ export function Callout({ type = 'note', title, children }: CalloutProps) {
 
         .pressy-callout-content p:last-child {
           margin-bottom: 0;
-        }
-
-        /* Dark mode adjustments */
-        @media (prefers-color-scheme: dark) {
-          .pressy-callout-note {
-            background: #1e3a5f;
-            border-color: #1e40af;
-          }
-
-          .pressy-callout-tip {
-            background: #052e16;
-            border-color: #166534;
-          }
-
-          .pressy-callout-warning {
-            background: #422006;
-            border-color: #854d0e;
-          }
-
-          .pressy-callout-important {
-            background: #450a0a;
-            border-color: #991b1b;
-          }
-        }
-
-        [data-theme="dark"] .pressy-callout-note {
-          background: #1e3a5f;
-          border-color: #1e40af;
-        }
-
-        [data-theme="dark"] .pressy-callout-tip {
-          background: #052e16;
-          border-color: #166534;
-        }
-
-        [data-theme="dark"] .pressy-callout-warning {
-          background: #422006;
-          border-color: #854d0e;
-        }
-
-        [data-theme="dark"] .pressy-callout-important {
-          background: #450a0a;
-          border-color: #991b1b;
         }
       `}</style>
     </div>

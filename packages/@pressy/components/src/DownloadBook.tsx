@@ -146,7 +146,7 @@ const STYLES = `
     align-items: center;
     gap: 0.5rem;
     font-size: var(--font-size-sm, 0.875rem);
-    color: #16a34a;
+    color: var(--color-success);
   }
 
   .pressy-download-remove {
@@ -194,9 +194,4 @@ const STYLES = `
     text-align: right;
   }
 
-  @media (prefers-color-scheme: dark) {
-    .pressy-download-status {
-      color: #86efac;
-    }
-  }
 `
