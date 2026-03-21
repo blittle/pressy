@@ -1,0 +1,43 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "18be3952af60",
+  "strategy": "manual-commit",
+  "branch": "remove-shopify",
+  "checkpoints_count": 2,
+  "files_touched": [
+    ".gitignore",
+    "README.md",
+    "packages/@pressy/components/src/Paywall.tsx",
+    "packages/@pressy/components/tsup.config.ts",
+    "packages/@pressy/shopify/package.json",
+    "packages/@pressy/shopify/src/checkout.ts",
+    "packages/@pressy/shopify/src/client.ts",
+    "packages/@pressy/shopify/src/index.ts",
+    "packages/@pressy/shopify/src/types.ts",
+    "packages/@pressy/shopify/src/unlock.ts",
+    "packages/@pressy/shopify/tsconfig.json",
+    "packages/@pressy/shopify/tsup.config.ts",
+    "packages/pressy/src/config.ts",
+    "packages/pressy/src/index.ts",
+    "packages/pressy/src/types.ts",
+    "packages/pressy/src/vite/plugin.ts",
+    "server-side-paywall-plan.md",
+    "tsconfig.json"
+  ],
+  "sessions": [
+    {
+      "metadata": "/18/be3952af60/0/metadata.json",
+      "transcript": "/18/be3952af60/0/full.jsonl",
+      "context": "/18/be3952af60/0/context.md",
+      "content_hash": "/18/be3952af60/0/content_hash.txt",
+      "prompt": "/18/be3952af60/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 93,
+    "cache_creation_tokens": 41085,
+    "cache_read_tokens": 507374,
+    "output_tokens": 5944,
+    "api_call_count": 13
+  }
+}

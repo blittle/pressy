@@ -1,0 +1,155 @@
+Why do I have this error when trying to publish the packages?
+
+---
+
+[Request interrupted by user]
+
+---
+
+Why do I have this error when trying to publish the packages?
+
+---
+
+[Request interrupted by user]
+
+---
+
+Why do I have this error when trying to publish?
+
+pnpm publish-packages                        130 ↵
+
+> pressy-monorepo@0.0.0 publish-packages /Users/blittle/dev/pressy
+> pnpm -r --filter './packages/**' build && pnpm -r --filter './packages/**' publish --no-git-checks
+
+Scope: 5 of 9 workspace projects
+packages/@pressy/cloudflare build$ tsup
+│ CLI Building entry: src/index.ts
+│ CLI Using tsconfig: tsconfig.json
+│ CLI tsup v8.5.1
+│ CLI Using tsup config: /Users/blittle/dev/pressy/packages/@pressy/cloudflare/tsup.config.ts
+│ CLI Target: es2022
+│ CLI Cleaning output folder
+│ ESM Build start
+└─ Running...
+packages/@pressy/components build$ tsup
+│ CLI Building entry: {"index":"src/index.ts","content/index":"src/content/index.ts"}
+│ ESM dist/index.js     26.76 KBson
+└─ Running...
+packages/@pressy/components build$ tsup
+│ CLI Building entry: {"index":"src/index.ts","content/index":"src/content/index.ts"}
+│ ESM dist/index.js.map 49.34 KBson
+└─ Running...
+packages/@pressy/components build$ tsup
+│ CLI Building entry: {"index":"src/index.ts","content/index":"src/content/index.ts"}
+│ ESM ⚡️ Build success in 21ms.json
+└─ Running...
+packages/@pressy/components build$ tsup
+│ CLI Building entry: {"index":"src/index.ts","content/index":"src/content/index.ts"}
+│ CLI Using tsconfig: tsconfig.json
+│ CLI tsup v8.5.1
+│ CLI Using tsup config: /Users/blittle/dev/pressy/packages/@pressy/components/tsup.config.ts
+[1 lines collapsed]
+│ CLI Cleaning output folderdex.ts
+│ ESM Build startfig: tsconfig.json
+│ ESM dist/content/index.js     8.98 KB
+│ ESM dist/index.js             146.93 KB
+│3ESM dist/content/index.js.map 13.14 KB
+│ CLI Using tsup config: /Users/blittle/dev/pressy/packages/@pressy/components/tsup.config.ts
+[1 lines collapsed]
+│ CLI Cleaning output folder
+│ ESM Build start
+│ ESM dist/content/index.js     8.98 KB
+│ ESM dist/index.js             146.93 KB
+│ ESM dist/content/index.js.map 13.14 KB
+[1 lines collapsed]
+│ ESM ⚡️ Build success in 45ms
+│ DTS Build start
+│ CLI Using tsup config: /Users/blittle/dev/pressy/packages/@pressy/shopify/tsup.config.ts
+│ DTS Build start022
+└─ Running...
+packages/@pressy/components build$ tsup
+[3 lines collapsed]
+│ CLI Using tsup config: /Users/blittle/dev/pressy/packages/@pressy/components/tsup.config.ts
+│ CLI Target: es2022
+│ CLI Cleaning output folder
+│ ESM Build start
+│ ESM dist/content/index.js     8.98 KB
+│ ESM dist/index.js             146.93 KB
+└6 Done in 1.9sent/index.js.map 13.14 KB
+│ ESM Build start
+│ ESM dist/content/index.js     8.98 KB
+│ ESM dist/index.js             146.93 KB
+└─ Done in 2.6sent/index.js.map 13.14 KB
+│ ESM dist/index.js.map         212.68 KB
+│ ESM ⚡️ Build success in 45ms
+│ DTS Build start
+│ DTS ⚡️ Build success in 1942ms
+│ DTS dist/index.d.ts         5.51 KB
+│ DTS dist/content/index.d.ts 1.29 KB
+│ ESM dist/index.js     5.56 KB
+│ ESM dist/index.js.map 12.63 KB
+│ ESM ⚡️ Build success in 18ms
+│ DTS Build start
+│ DTS ⚡️ Build success in 829ms
+│ DTS dist/index.d.ts 2.00 KB
+└─ Done in 1.5s
+packages/@pressy/typography build$ tsup
+[3 lines collapsed]
+│ CLI Using tsup config: /Users/blittle/dev/pressy/packages/@pressy/typography/tsup.config.ts
+│ CLI Target: es2022
+│ CLI Cleaning output folder
+│ ESM Build start
+│ ESM dist/index.js     155.00 B
+│ ESM dist/index.js.map 380.00 B
+│ ESM ⚡️ Build success in 16ms
+│ DTS Build start
+│ DTS ⚡️ Build success in 735ms
+│ DTS dist/index.d.ts 176.00 B
+└─ Done in 1.4s
+packages/pressy build$ tsup
+[20 lines collapsed]
+│ DTS Build start
+│ DTS ⚡️ Build success in 2034ms
+│ DTS dist/index.d.ts           329.00 B
+│ DTS dist/cli/index.d.ts       20.00 B
+│ DTS dist/vite/plugin.d.ts     180.00 B
+│ DTS dist/runtime/client.d.ts  1.70 KB
+│ DTS dist/runtime/offline.d.ts 1.20 KB
+│ DTS dist/runtime/sw.d.ts      13.00 B
+│ DTS dist/types-CM-9t9Sl.d.ts  1.90 KB
+│ DTS dist/config-M8fI46fg.d.ts 1.56 KB
+└─ Done in 2.5s
+npm notice
+npm notice 📦  @pressy-pub/cloudflare@0.1.6
+npm notice Tarball Contents
+npm notice 3.7kB dist/index.d.ts
+npm notice 27.4kB dist/index.js
+npm notice 51.2kB dist/index.js.map
+npm notice 714B package.json
+npm notice Tarball Details
+npm notice name: @pressy-pub/cloudflare
+npm notice version: 0.1.6
+npm notice filename: pressy-pub-cloudflare-0.1.6.tgz
+npm notice package size: 19.9 kB
+npm notice unpacked size: 83.0 kB
+npm notice shasum: 21e86064cf63aedb8d69abb8f21f8f1fa15bc456
+npm notice integrity: sha512-Q2kz0Jcux0p+n[...]S3H+iR4T8b09A==
+npm notice total files: 4
+npm notice
+npm notice Publishing to https://registry.npmjs.org/ with tag latest and public access
+npm error code E404
+npm error 404 Not Found - PUT https://registry.npmjs.org/@pressy-pub%2fcloudflare - Not found
+npm error 404
+npm error 404  '@pressy-pub/cloudflare@0.1.6' is not in this registry.
+npm error 404
+npm error 404 Note that you can also install from a
+npm error 404 tarball, folder, http url, or git url.
+npm error A complete log of this run can be found in: /Users/blittle/.npm/_logs/2026-03-21T02_10_06_592Z-debug-0.log
+
+---
+
+Remove all the shopify stuff, because I don't think any of it is used
+
+---
+
+create a PR
