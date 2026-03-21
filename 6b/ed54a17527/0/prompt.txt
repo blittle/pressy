@@ -1,0 +1,190 @@
+Implement the following plan:
+
+# Bookmarking Feature
+
+## Context
+
+The reader currently only persists the user's last-read position. We want to add bookmarking so users can save multiple positions and jump back to them. The UX: a bookmark ribbon icon in the footer bar that opens an expandable panel (matching the existing settings panel pattern) showing saved bookmarks + a "Bookmark this page" button.
+
+## Files to Modify
+
+1. `packages/pressy/src/types.ts` — Add `Bookmark` interface
+2. `packages/@pressy/components/src/reader/types.ts` — Add `BookmarkData` and `BookmarkProps` types
+3. `packages/pressy/src/runtime/client.tsx` — DB_VERSION bump, IndexedDB helpers, bookmark callbacks, wire props to Reader
+4. `packages/@pressy/components/src/Reader.tsx` — Pass `bookmarkProps` through to both readers
+5. `packages/@pressy/components/src/index.ts` — Re-export new types
+6. `packages/@pressy/components/src/reader/ScrollReader.tsx` — `bookmarksOpen` state, toggle button, panel UI
+7. `packages/@pressy/components/src/reader/PaginatedReader.tsx` — Same as ScrollReader, adapted for paginated context
+8. `packages/@pressy/components/src/reader/scroll-reader-styles.ts` — Bookmark panel CSS
+9. `packages/@pressy/components/src/reader/paginated-reader-styles.ts` — Bookmark panel CSS
+
+## Step 1: Types
+
+**`packages/pressy/src/types.ts`** — Add after `ReadingProgress` (line 77):
+
+```ts
+export interface Bookmark {
+  id: string              // "bookSlug:chapterSlug:timestamp"
+  bookSlug: string
+  chapterSlug: string
+  chapterTitle: string
+  page: number
+  totalPages: number
+  scrollPosition: number
+  createdAt: number
+}
+```
+
+**`packages/@pressy/components/src/reader/types.ts`** — Add after `OfflineProps` (line 36). Duplicated at the component boundary (same pattern as `ProgressData` mirroring `ReadingProgress`):
+
+```ts
+export interface BookmarkData {
+  id: string
+  bookSlug: string
+  chapterSlug: string
+  chapterTitle: string
+  page: number
+  totalPages: number
+  scrollPosition: number
+  createdAt: number
+}
+
+export interface BookmarkProps {
+  bookmarks: BookmarkData[]
+  onAddBookmark: (data: {
+    chapterSlug: string
+    chapterTitle: string
+    page: number
+    totalPages: number
+    scrollPosition: number
+  }) => void
+  onDeleteBookmark: (id: string) => void
+  onNavigateBookmark: (bookmark: BookmarkData) => void
+}
+```
+
+## Step 2: IndexedDB + callbacks in `client.tsx`
+
+**2a.** Bump `DB_VERSION` from `1` to `2`. Add `const BOOKMARKS_STORE = 'bookmarks'`.
+
+**2b.** In `initDB`'s `onupgradeneeded`, add the new store with the existing `if (!contains)` guard pattern:
+```ts
+if (!database.objectStoreNames.contains(BOOKMARKS_STORE)) {
+  database.createObjectStore(BOOKMARKS_STORE, { keyPath: 'id' })
+}
+```
+
+**2c.** Add helpers after `unlockBook()` (~line 112) following the exact same IDB transaction pattern as `saveReadingProgress`/`getAllReadingProgress`:
+- `saveBookmark(bookmark: Bookmark): Promise<void>` — `store.put(bookmark)`
+- `deleteBookmark(id: string): Promise<void>` — `store.delete(id)`
+- `getBookmarksByBook(bookSlug: string): Promise<Bookmark[]>` — `store.getAll()` then filter by bookSlug, sort by createdAt desc
+
+**2d.** In `ChapterReaderWithProgress`, add:
+- `const [bookmarks, setBookmarks] = useState<Bookmark[]>([])`
+- `useEffect` to load bookmarks on mount via `getBookmarksByBook(book.slug)`
+- `handleAddBookmark` — creates Bookmark with id `${book.slug}:${data.chapterSlug}:${Date.now()}`, saves, refreshes state
+- `handleDeleteBookmark` — deletes by id, refreshes state
+- `handleNavigateBookmark` — same-chapter: scroll/page jump directly; cross-chapter: store restore data in `localStorage('pressy-bookmark-restore')` then `window.location.href`
+
+**2e.** Pass `bookmarkProps` to `<Reader>`:
+```tsx
+bookmarkProps={{ bookmarks, onAddBookmark: handleAddBookmark,
+  onDeleteBookmark: handleDeleteBookmark, onNavigateBookmark: handleNavigateBookmark }}
+```
+
+**2f.** In `handleRestoreProgress`, check `pressy-bookmark-restore` from localStorage BEFORE the existing `pressy-last-read` check, and remove the key after reading.
+
+## Step 3: Props passthrough in `Reader.tsx` and `index.ts`
+
+- Add `bookmarkProps?: import("./reader/types.js").BookmarkProps` to `ReaderProps`
+- Destructure and pass `bookmarkProps={bookmarkProps}` to both `<PaginatedReader>` and `<ScrollReader>`
+- Re-export `BookmarkProps, BookmarkData` from `Reader.tsx` and `index.ts`
+
+## Step 4: Bookmark UI in `ScrollReader.tsx`
+
+Replicates the existing settings panel pattern exactly:
+
+- Add `bookmarkProps?: BookmarkProps` to `ScrollReaderProps` (line 99)
+- Add `const [bookmarksOpen, setBookmarksOpen] = useState(false)`
+- Update footer visibility: `footerVisible || settingsOpen || tocOpen || bookmarksOpen`
+- Update `handleReaderClick` — close bookmarksOpen on outside click; add `.pressy-bookmarks-panel, .pressy-bookmarks-toggle` to `closest()` guard
+- Update TOC and settings toggle `onClick` to also `setBookmarksOpen(false)`
+- Add bookmark ribbon toggle button between offline icon and settings gear:
+  ```tsx
+  <button class="pressy-bookmarks-toggle" aria-label="Bookmarks">
+    <svg viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" /></svg>
+  </button>
+  ```
+- Add expandable panel after settings panel:
+  - Empty state: "No bookmarks yet"
+  - Bookmark list: each row = chapter title + page/position + relative time + X delete button
+  - "Bookmark this page" button (uses `window.scrollY`)
+  - `formatRelativeTime(timestamp)` helper at module level
+- Clicking a bookmark calls `onNavigateBookmark` and closes panel
+
+## Step 5: Bookmark UI in `PaginatedReader.tsx`
+
+Same changes as Step 4, adapted:
+- "Bookmark this page" uses `currentPage`, `totalPages`, `activeChapterSlug` from paginated state
+- Chapter title resolved from `allChapters` prop
+- Also update `handleMouseMove`/`handleMouseLeave` to check `bookmarksOpen`
+
+## Step 6: CSS in both style files
+
+Add bookmark panel styles following the settings panel pattern:
+- `.pressy-bookmarks-toggle` — same sizing as `.pressy-settings-toggle` (2rem × 2rem, transparent bg)
+- `.pressy-bookmarks-panel` / `--open` — same `max-height: 0 → 300px` + `opacity 0 → 1` transition
+- `.pressy-bookmarks-list`, `.pressy-bookmark-item`, `.pressy-bookmark-info`, `.pressy-bookmark-chapter`, `.pressy-bookmark-detail`, `.pressy-bookmark-delete`, `.pressy-bookmark-add`
+- Scoped under `.pressy-page-footer--scroll` in scroll-reader-styles.ts; unscoped in paginated-reader-styles.ts (matching existing conventions)
+
+## Verification
+
+- `pnpm test` — all existing tests pass
+- Manual: open a chapter → tap footer → bookmark icon visible between offline and settings
+- Manual: tap bookmark icon → panel expands with "No bookmarks yet" + "Bookmark this page"
+- Manual: add bookmark → appears in list with chapter name, page, "just now"
+- Manual: navigate to different chapter → add another → both visible in panel
+- Manual: tap a bookmark → navigates to that chapter/position
+- Manual: delete via X → removed from list
+- Manual: settings and bookmarks panels are mutually exclusive
+
+
+If you need specific details from before exiting plan mode (like exact code snippets, error messages, or content you generated), read the full transcript at: /Users/blittle/.REDACTED.jsonl
+
+---
+
+Are there any tests that should be updated?
+
+---
+
+yes
+
+---
+
+commit the changes on a branch and push them
+
+---
+
+Look at the screenshot in ~/Desktop/screenshots/screenshot2.png 
+
+Why would the button to start reading not be there in the flatland example?
+
+---
+
+could we also add a test that makes sure this doesn't regress
+
+---
+
+yes, commit and push
+
+---
+
+[Request interrupted by user]
+
+---
+
+I'm also noticing that the PWA offline cache doesn't include URLs that have `?page=last`. This means when I'm offline, and try to navigate from a chapter backwards, I hit an error page saying the page can't be loaded.
+
+---
+
+Can we add a test that makes sure this doesn't regress again?

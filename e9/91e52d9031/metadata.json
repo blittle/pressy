@@ -1,0 +1,54 @@
+{
+  "cli_version": "0.4.2",
+  "checkpoint_id": "e991e52d9031",
+  "strategy": "manual-commit",
+  "branch": "server-side-paywall",
+  "checkpoints_count": 4,
+  "files_touched": [
+    ".github/workflows/deploy-pages.yml",
+    "examples/moby-dick/content/books/moby-dick/_book.yaml",
+    "examples/moby-dick/functions/_middleware.ts",
+    "examples/moby-dick/package.json",
+    "examples/moby-dick/wrangler.toml",
+    "packages/@pressy/cloudflare/package.json",
+    "packages/@pressy/cloudflare/src/auth.ts",
+    "packages/@pressy/cloudflare/src/email.ts",
+    "packages/@pressy/cloudflare/src/index.ts",
+    "packages/@pressy/cloudflare/src/middleware.ts",
+    "packages/@pressy/cloudflare/src/stripe.ts",
+    "packages/@pressy/cloudflare/src/types.ts",
+    "packages/@pressy/cloudflare/tsconfig.json",
+    "packages/@pressy/cloudflare/tsup.config.ts",
+    "packages/@pressy/components/src/Reader.tsx",
+    "packages/@pressy/components/src/index.ts",
+    "packages/@pressy/components/src/reader/PaginatedReader.tsx",
+    "packages/@pressy/components/src/reader/types.ts",
+    "packages/pressy/src/runtime/client.tsx",
+    "packages/pressy/src/types.ts",
+    "packages/pressy/src/vite/plugin.ts",
+    "server-side-paywall-plan.md"
+  ],
+  "sessions": [
+    {
+      "metadata": "/e9/91e52d9031/0/metadata.json",
+      "transcript": "/e9/91e52d9031/0/full.jsonl",
+      "context": "/e9/91e52d9031/0/context.md",
+      "content_hash": "/e9/91e52d9031/0/content_hash.txt",
+      "prompt": "/e9/91e52d9031/0/prompt.txt"
+    },
+    {
+      "metadata": "/e9/91e52d9031/1/metadata.json",
+      "transcript": "/e9/91e52d9031/1/full.jsonl",
+      "context": "/e9/91e52d9031/1/context.md",
+      "content_hash": "/e9/91e52d9031/1/content_hash.txt",
+      "prompt": "/e9/91e52d9031/1/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 136,
+    "cache_creation_tokens": 321942,
+    "cache_read_tokens": 9207317,
+    "output_tokens": 11964,
+    "api_call_count": 118
+  }
+}

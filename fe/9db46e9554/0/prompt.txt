@@ -1,0 +1,55 @@
+Commit the changes we have made so far and push
+
+---
+
+Could we setup a deploy to cloudflare on merge to main for the moby-dick example?
+
+---
+
+[Request interrupted by user for tool use]
+
+---
+
+Should we have a new workflow file instead of combining it with the gh pages deploy?
+
+---
+
+[Request interrupted by user for tool use]
+
+---
+
+What permissions do I need to give the cloudflare_api_token?
+
+---
+
+Yes
+
+---
+
+yes
+
+---
+
+I think there are still two problems:
+
+1. When I haven't purchased a book, and attempt to go to a chapter beyond the paywall, I just get redirected. It would be nice to show some UX saying, something about purchasing the book to read more with a call to action
+
+2. After I purchase a book, the app sometimes gets into a weird state where attempting to load a chapter results in this console error:
+
+```
+books-moby-dick-y450l3w-.js:1 Failed to load module script: Expected a JavaScript-or-Wasm module script but the server responded with a MIME type of "text/html". Strict MIME type checking is enforced for module scripts per HTML spec.
+```
+
+I think it might have to do with the server worker cache. Let's make sure that before the whole service worker cache gets revalidated when the book is purchased.
+
+---
+
+[Request interrupted by user for tool use]
+
+---
+
+We should be able to automatically detect if they have already purchased correct? So if they end up on this page, but we know they have purchased it, we need to almost do a refresh (if the cache has been cleared)? But we still should have a similar ux as on home, where they can invoke the magic link.
+
+---
+
+[Request interrupted by user for tool use]

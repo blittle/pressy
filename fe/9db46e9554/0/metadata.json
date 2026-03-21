@@ -1,0 +1,32 @@
+{
+  "cli_version": "0.4.2",
+  "checkpoint_id": "fe9db46e9554",
+  "session_id": "4ae3e52d-4d01-44df-9aa3-f74595e38635",
+  "strategy": "manual-commit",
+  "created_at": "2026-02-28T04:15:18.648122Z",
+  "branch": "main",
+  "checkpoints_count": 0,
+  "files_touched": [
+    ".github/workflows/deploy-moby-dick.yml"
+  ],
+  "agent": "Claude Code",
+  "transcript_identifier_at_start": "aa7a4f7b-fa9e-42b1-ad89-2326ba2194aa",
+  "checkpoint_transcript_start": 176,
+  "transcript_lines_at_start": 176,
+  "token_usage": {
+    "input_tokens": 15,
+    "cache_creation_tokens": 29567,
+    "cache_read_tokens": 430022,
+    "output_tokens": 8414,
+    "api_call_count": 9
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-02-28T04:15:18.563876Z",
+    "agent_lines": 0,
+    "human_added": 253,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 253,
+    "agent_percentage": 0
+  }
+}
