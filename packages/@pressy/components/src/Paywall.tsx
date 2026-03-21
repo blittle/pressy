@@ -143,7 +143,7 @@ export function Paywall({
         .pressy-paywall {
           position: fixed;
           inset: 0;
-          background: rgba(0, 0, 0, 0.8);
+          background: var(--color-overlay);
           display: flex;
           align-items: center;
           justify-content: center;
@@ -197,7 +197,7 @@ export function Paywall({
         .pressy-paywall-input:focus {
           outline: none;
           border-color: var(--color-accent);
-          box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.1);
+          box-shadow: 0 0 0 3px var(--color-selection-bg);
         }
 
         .pressy-paywall-button {
@@ -223,7 +223,7 @@ export function Paywall({
         }
 
         .pressy-paywall-error {
-          color: #dc2626;
+          color: var(--color-danger);
           font-size: var(--font-size-sm);
           margin-top: 0.75rem;
         }

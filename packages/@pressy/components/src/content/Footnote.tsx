@@ -75,7 +75,7 @@ export function Footnote({ id, children }: FootnoteProps) {
           border: 1px solid var(--color-border);
           width: 300px;
           max-width: 80vw;
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+          box-shadow: var(--shadow-md);
         }
 
         .pressy-footnote-close {

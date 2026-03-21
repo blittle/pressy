@@ -39,6 +39,9 @@ export function pressyPlugin(config: PressyConfig): Plugin[] {
   const faviconPath = config.pwa?.favicon || config.pwa?.icon192 || config.pwa?.icon
   const hasCustomFavicon = !!faviconPath
 
+  // Auto-discover user custom CSS at theme/custom.css
+  let customCssPath: string | null = null
+
   const contentDiscovery = {
     async discoverContent(): Promise<ContentManifest> {
       const books = await this.discoverBooks()
@@ -262,7 +265,7 @@ export function pressyPlugin(config: PressyConfig): Plugin[] {
   <link rel="stylesheet" href="/@pressy-pub/typography/fluid.css">
   <link rel="stylesheet" href="/@pressy-pub/typography/themes/light.css">
   <link rel="stylesheet" href="/@pressy-pub/typography/themes/dark.css">
-  <link rel="stylesheet" href="/@pressy-pub/typography/themes/sepia.css">${pwaTags}
+  <link rel="stylesheet" href="/@pressy-pub/typography/themes/sepia.css">${customCssPath ? `\n  <link rel="stylesheet" href="/${relative(root, customCssPath).split('\\').join('/')}">` : ''}${pwaTags}
 </head>
 <body>
   <div id="app"></div>
@@ -323,6 +326,8 @@ export function pressyPlugin(config: PressyConfig): Plugin[] {
           // Discover content early so we can set rollup inputs
           const tempContentDir = resolve(config.contentDir || 'content')
           contentDir = tempContentDir
+          const candidateCss = resolve('theme/custom.css')
+          customCssPath = existsSync(candidateCss) ? candidateCss : null
           manifest = await contentDiscovery.discoverContent()
           routes = generateRoutes(manifest)
 
@@ -357,6 +362,8 @@ export function pressyPlugin(config: PressyConfig): Plugin[] {
       configResolved(resolvedConfig) {
         root = resolvedConfig.root
         contentDir = resolve(root, config.contentDir || 'content')
+        const candidateCss = resolve(root, 'theme/custom.css')
+        customCssPath = existsSync(candidateCss) ? candidateCss : null
       },
     },
     {
@@ -404,14 +411,18 @@ export const routes = ${JSON.stringify(routes)};
 export const config = ${JSON.stringify(config)};`
         }
         if (id === RESOLVED_VIRTUAL_ENTRY_ID) {
-          return [
+          const imports = [
             `import '@pressy-pub/typography/prose.css'`,
             `import '@pressy-pub/typography/fluid.css'`,
             `import '@pressy-pub/typography/themes/light.css'`,
             `import '@pressy-pub/typography/themes/dark.css'`,
             `import '@pressy-pub/typography/themes/sepia.css'`,
-            `export { hydrate } from '/@pressy-pub/client'`,
-          ].join('\n')
+          ]
+          if (customCssPath) {
+            imports.push(`import '${customCssPath}'`)
+          }
+          imports.push(`export { hydrate } from '/@pressy-pub/client'`)
+          return imports.join('\n')
         }
         if (id.startsWith(RESOLVED_ROUTE_PREFIX)) {
           const routePath = id.slice(RESOLVED_ROUTE_PREFIX.length)

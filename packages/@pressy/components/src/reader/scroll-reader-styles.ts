@@ -24,7 +24,7 @@ export const SCROLL_STYLES = `
     transition: transform 0.25s ease, opacity 0.25s ease;
     z-index: 15;
     background: var(--color-bg, #ffffff);
-    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
+    box-shadow: var(--shadow-sm);
   }
 
   .pressy-page-footer--scroll.pressy-page-footer--visible {
@@ -198,7 +198,7 @@ export const SCROLL_STYLES = `
   .pressy-toc-backdrop--scroll {
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.3);
+    background: var(--color-overlay);
     z-index: 20;
     display: flex;
     align-items: flex-end;
@@ -213,7 +213,7 @@ export const SCROLL_STYLES = `
     display: flex;
     flex-direction: column;
     animation: pressy-scroll-toc-slide-up 0.25s ease-out;
-    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
+    box-shadow: var(--shadow-lg);
   }
 
   .pressy-toc-backdrop--scroll .pressy-toc-header {
@@ -336,11 +336,11 @@ export const SCROLL_STYLES = `
   }
 
   .pressy-page-footer--scroll .pressy-offline-icon--cached {
-    color: #16a34a;
+    color: var(--color-success);
   }
 
   .pressy-page-footer--scroll .pressy-offline-icon--cached:hover {
-    color: #dc2626;
+    color: var(--color-danger);
   }
 
   .pressy-page-footer--scroll .pressy-offline-check {
@@ -465,7 +465,7 @@ export const SCROLL_STYLES = `
   }
 
   .pressy-page-footer--scroll .pressy-bookmark-delete:hover {
-    color: #dc2626;
+    color: var(--color-danger);
     background: var(--color-bg-subtle, #f8f9fa);
   }
 
