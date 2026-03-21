@@ -10,11 +10,6 @@ export interface PaginationConfig {
   defaultMode: 'scroll' | 'paginated'
 }
 
-export interface ShopifyConfig {
-  shopDomain: string
-  storefrontAccessToken: string
-}
-
 export interface PWAConfig {
   /** Enable PWA support (service worker, manifest, offline). Defaults to true. */
   enabled?: boolean
@@ -39,7 +34,6 @@ export interface PWAConfig {
 export interface PressyConfig {
   site: SiteConfig
   pagination?: PaginationConfig
-  shopify?: ShopifyConfig
   pwa?: PWAConfig
   outDir?: string
   contentDir?: string

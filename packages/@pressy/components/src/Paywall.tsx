@@ -1,13 +1,11 @@
-import { useSignal } from '@preact/signals'
+import { useSignal } from "@preact/signals";
 
 export interface PaywallProps {
-  bookSlug: string
-  bookTitle: string
-  previewChapters: number
-  currentChapter: number
-  shopifyProductId?: string
-  mode?: 'shopify' | 'email'
-  onUnlock?: () => void
+  bookSlug: string;
+  bookTitle: string;
+  previewChapters: number;
+  currentChapter: number;
+  onUnlock?: () => void;
 }
 
 export function Paywall({
@@ -15,79 +13,57 @@ export function Paywall({
   bookTitle,
   previewChapters,
   currentChapter,
-  shopifyProductId,
-  mode = 'email',
   onUnlock,
 }: PaywallProps) {
-  const email = useSignal('')
-  const isLoading = useSignal(false)
-  const error = useSignal('')
-  const isUnlocked = useSignal(false)
+  const email = useSignal("");
+  const isLoading = useSignal(false);
+  const error = useSignal("");
+  const isUnlocked = useSignal(false);
 
   // Check if already unlocked
-  if (typeof window !== 'undefined') {
-    const unlocked = localStorage.getItem(`pressy-unlocked-${bookSlug}`)
+  if (typeof window !== "undefined") {
+    const unlocked = localStorage.getItem(`pressy-unlocked-${bookSlug}`);
     if (unlocked) {
-      isUnlocked.value = true
+      isUnlocked.value = true;
     }
   }
 
   if (isUnlocked.value) {
-    return null
+    return null;
   }
 
   // Show paywall if past preview chapters
   if (currentChapter <= previewChapters) {
-    return null
+    return null;
   }
 
   const handleEmailSubmit = async (e: Event) => {
-    e.preventDefault()
+    e.preventDefault();
 
-    if (!email.value || !email.value.includes('@')) {
-      error.value = 'Please enter a valid email address'
-      return
+    if (!email.value || !email.value.includes("@")) {
+      error.value = "Please enter a valid email address";
+      return;
     }
 
-    isLoading.value = true
-    error.value = ''
+    isLoading.value = true;
+    error.value = "";
 
     try {
       // In a real implementation, this would send to a backend
       // For now, just unlock locally
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+      await new Promise((resolve) => setTimeout(resolve, 1000));
 
-      localStorage.setItem(`pressy-unlocked-${bookSlug}`, 'email')
-      localStorage.setItem(`pressy-email-${bookSlug}`, email.value)
+      localStorage.setItem(`pressy-unlocked-${bookSlug}`, "email");
+      localStorage.setItem(`pressy-email-${bookSlug}`, email.value);
 
-      isUnlocked.value = true
-      onUnlock?.()
+      isUnlocked.value = true;
+      onUnlock?.();
     } catch (err) {
-      error.value = 'Something went wrong. Please try again.'
+      error.value = "Something went wrong. Please try again.";
     } finally {
-      isLoading.value = false
+      isLoading.value = false;
     }
-  }
-
-  const handleShopifyPurchase = async () => {
-    if (!shopifyProductId) {
-      error.value = 'Purchase not available'
-      return
-    }
-
-    isLoading.value = true
-
-    try {
-      // This would integrate with @pressy-pub/shopify
-      // For now, just show that it would redirect
-      const { createCheckout } = await import('@pressy-pub/shopify' as string)
-      const checkoutUrl = await createCheckout(shopifyProductId)
-      window.location.href = checkoutUrl
-    } catch (err) {
-      error.value = 'Failed to create checkout. Please try again.'
-      isLoading.value = false
-    }
-  }
+  };
 
   return (
     <div class="pressy-paywall">
@@ -101,41 +77,33 @@ export function Paywall({
         <h2 class="pressy-paywall-title">Continue Reading</h2>
         <p class="pressy-paywall-description">
           You've enjoyed the first {previewChapters} chapters of "{bookTitle}".
-          {mode === 'shopify'
-            ? ' Purchase the full book to continue reading.'
-            : ' Enter your email to unlock the full book.'}
+          Enter your email to unlock the full book.
         </p>
 
-        {mode === 'email' ? (
-          <form class="pressy-paywall-form" onSubmit={handleEmailSubmit}>
-            <input
-              type="email"
-              placeholder="Enter your email"
-              value={email.value}
-              onInput={(e) => (email.value = (e.target as HTMLInputElement).value)}
-              class="pressy-paywall-input"
-              disabled={isLoading.value}
-            />
-            <button type="submit" class="pressy-paywall-button" disabled={isLoading.value}>
-              {isLoading.value ? 'Unlocking...' : 'Unlock Full Book'}
-            </button>
-          </form>
-        ) : (
+        <form class="pressy-paywall-form" onSubmit={handleEmailSubmit}>
+          <input
+            type="email"
+            placeholder="Enter your email"
+            value={email.value}
+            onInput={(e) =>
+              (email.value = (e.target as HTMLInputElement).value)
+            }
+            class="pressy-paywall-input"
+            disabled={isLoading.value}
+          />
           <button
-            class="pressy-paywall-button pressy-paywall-purchase"
-            onClick={handleShopifyPurchase}
+            type="submit"
+            class="pressy-paywall-button"
             disabled={isLoading.value}
           >
-            {isLoading.value ? 'Processing...' : 'Purchase Now'}
+            {isLoading.value ? "Unlocking..." : "Unlock Full Book"}
           </button>
-        )}
+        </form>
 
         {error.value && <p class="pressy-paywall-error">{error.value}</p>}
 
         <p class="pressy-paywall-note">
-          {mode === 'email'
-            ? "We'll never share your email with anyone."
-            : 'Secure checkout powered by Shopify.'}
+          We'll never share your email with anyone.
         </p>
       </div>
 
@@ -235,5 +203,5 @@ export function Paywall({
         }
       `}</style>
     </div>
-  )
+  );
 }

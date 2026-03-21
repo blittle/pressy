@@ -352,7 +352,7 @@ export function pressyPlugin(config: PressyConfig): Plugin[] {
               rollupOptions: {
                 input,
                 preserveEntrySignatures: 'exports-only',
-                external: ['@pressy-pub/shopify'],
+                external: [],
               },
             },
           }
@@ -390,11 +390,6 @@ export function pressyPlugin(config: PressyConfig): Plugin[] {
         }
         if (id.startsWith(VIRTUAL_CHAPTER_MAP_PREFIX)) {
           return '\0' + id
-        }
-        // @pressy-pub/shopify is optional — mark as external so Vite doesn't
-        // error on the dynamic import in Paywall.tsx when shopify isn't installed
-        if (id === '@pressy-pub/shopify') {
-          return { id, external: true }
         }
         if (id === '/@pressy-pub/client') {
           return resolve(__dirname, '../runtime/client.js')

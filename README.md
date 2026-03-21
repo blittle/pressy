@@ -11,7 +11,7 @@ A web framework for self-publishing books and articles. Write in MDX, get a pagi
 - **Fluid typography** — responsive font sizing with reader-adjustable scale (80%–150%)
 - **Reading progress** — per-chapter and book-wide progress saved to IndexedDB
 - **PWA / Offline** — service worker support, download books for offline reading
-- **Paywall** — optional gating via Shopify, Stripe, or email unlock
+- **Paywall** — optional gating via Stripe or email unlock
 - **Static output** — builds to static HTML, deploy anywhere
 
 ## Install
@@ -20,12 +20,11 @@ A web framework for self-publishing books and articles. Write in MDX, get a pagi
 npm install pressy @pressy-pub/components @pressy-pub/typography
 ```
 
-| Package | Description |
-|---|---|
-| [`pressy`](https://www.npmjs.com/package/pressy) | Core framework — Vite plugin, CLI, client runtime |
+| Package                                                                          | Description                                        |
+| -------------------------------------------------------------------------------- | -------------------------------------------------- |
+| [`pressy`](https://www.npmjs.com/package/pressy)                                 | Core framework — Vite plugin, CLI, client runtime  |
 | [`@pressy-pub/components`](https://www.npmjs.com/package/@pressy-pub/components) | Preact UI — Reader, Navigation, BookProgress, etc. |
 | [`@pressy-pub/typography`](https://www.npmjs.com/package/@pressy-pub/typography) | CSS — prose styles, fluid type scale, themes |
-| [`@pressy-pub/shopify`](https://www.npmjs.com/package/@pressy-pub/shopify) | Optional Shopify Storefront API integration |
 | [`@pressy-pub/cloudflare`](https://www.npmjs.com/package/@pressy-pub/cloudflare) | Optional Cloudflare Workers middleware for server-side paywall |
 
 ## Quick Start
@@ -52,7 +51,6 @@ packages/
   pressy/                  # Core framework — Vite plugin, CLI, client runtime
   @pressy/components/      # @pressy-pub/components — Preact UI (Reader, Navigation, etc.)
   @pressy/typography/      # @pressy-pub/typography — CSS prose styles, fluid type, themes
-  @pressy/shopify/         # @pressy-pub/shopify — Shopify Storefront API integration
   @pressy/cloudflare/      # @pressy-pub/cloudflare — Cloudflare Workers paywall middleware
 
 examples/
@@ -78,18 +76,18 @@ npm install pressy @pressy-pub/components @pressy-pub/typography
 Create `pressy.config.ts`:
 
 ```ts
-import { defineConfig } from 'pressy'
+import { defineConfig } from "pressy";
 
 export default defineConfig({
   site: {
-    title: 'My Book',
-    url: 'https://mybook.example.com',
-    author: 'Your Name',
+    title: "My Book",
+    url: "https://mybook.example.com",
+    author: "Your Name",
   },
   pagination: {
-    defaultMode: 'paginated',
+    defaultMode: "paginated",
   },
-})
+});
 ```
 
 ### 3. Add content
@@ -129,8 +127,7 @@ description: A brief description
 paywall:
   enabled: true
   previewChapters: 3       # free chapters before the gate
-  mode: email              # 'email', 'shopify', or 'stripe'
-  # shopifyProductId: ''   # required for mode: shopify
+  mode: email              # 'email' or 'stripe'
   # stripePriceId: ''      # required for mode: stripe
   # price: '$9.99'         # displayed to the reader
 ```
@@ -230,12 +227,12 @@ Create a `theme/custom.css` file in your project root. Pressy auto-discovers it 
 ### Fonts
 
 ```css
-@import url('https://fonts.googleapis.com/css2?family=Crimson+Pro:ital,wght@0,400;0,600;1,400&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Crimson+Pro:ital,wght@0,400;0,600;1,400&display=swap");
 
 :root {
-  --pressy-font-body: 'Crimson Pro', Georgia, 'Times New Roman', serif;
-  --pressy-font-heading: 'My Heading Font', system-ui, sans-serif;
-  --pressy-font-mono: 'Fira Code', monospace;
+  --pressy-font-body: "Crimson Pro", Georgia, "Times New Roman", serif;
+  --pressy-font-heading: "My Heading Font", system-ui, sans-serif;
+  --pressy-font-mono: "Fira Code", monospace;
 }
 ```
 
@@ -249,12 +246,12 @@ Override colors globally or per-theme. Values set on `:root` apply to all themes
   --pressy-color-link: #7c3aed;
 }
 
-[data-theme='dark'] {
+[data-theme="dark"] {
   --pressy-color-accent: #a78bfa;
   --pressy-color-link: #c4b5fd;
 }
 
-[data-theme='sepia'] {
+[data-theme="sepia"] {
   --pressy-color-accent: #92400e;
 }
 ```
@@ -267,7 +264,7 @@ Override colors globally or per-theme. Values set on `:root` apply to all themes
   --pressy-dropcap-font-size: 4em;
 }
 
-[data-theme='dark'] {
+[data-theme="dark"] {
   --pressy-dropcap-color: #a78bfa;
 }
 ```
@@ -276,8 +273,8 @@ Override colors globally or per-theme. Values set on `:root` apply to all themes
 
 ```css
 :root {
-  --pressy-prose-max-width: 70ch;   /* default: 65ch */
-  --pressy-prose-padding: 2rem;     /* default: 1.5rem */
+  --pressy-prose-max-width: 70ch; /* default: 65ch */
+  --pressy-prose-padding: 2rem; /* default: 1.5rem */
 }
 ```
 
@@ -287,56 +284,56 @@ Every token below can be prefixed with `--pressy-` and set in your `custom.css` 
 
 **Colors** — each theme provides its own defaults:
 
-| Token | Light | Dark | Sepia | Purpose |
-|---|---|---|---|---|
-| `--pressy-color-bg` | `#ffffff` | `#1a1a1a` | `#f4ecd8` | Page background |
-| `--pressy-color-bg-subtle` | `#f8f9fa` | `#242424` | `#ebe3cf` | Subtle background (table headers, hover states) |
-| `--pressy-color-bg-muted` | `#e9ecef` | `#2d2d2d` | `#e2d9c5` | Muted background (buttons, inputs) |
-| `--pressy-color-text` | `#212529` | `#e0e0e0` | `#433422` | Body text |
-| `--pressy-color-text-muted` | `#6c757d` | `#a0a0a0` | `#6b5a47` | Secondary text |
-| `--pressy-color-heading` | `#1a1a1a` | `#ffffff` | `#2d2418` | Heading text |
-| `--pressy-color-accent` | `#212529` | `#e0e0e0` | `#433422` | Accent (progress bar, active borders, drop cap default) |
-| `--pressy-color-link` | `#0066cc` | `#66b3ff` | `#8b4513` | Link text |
-| `--pressy-color-link-hover` | `#004499` | `#99ccff` | `#a0522d` | Link hover |
-| `--pressy-color-border` | `#dee2e6` | `#404040` | `#d4c9b5` | Borders and dividers |
-| `--pressy-color-code-bg` | `#f1f3f5` | `#2d2d2d` | `#ebe3cf` | Inline code and code block background |
-| `--pressy-color-success` | `#16a34a` | `#86efac` | `#15803d` | Success states (offline cached indicator) |
-| `--pressy-color-danger` | `#dc2626` | `#fca5a5` | `#b91c1c` | Error/danger states (delete, offline, errors) |
-| `--pressy-color-overlay` | `rgba(0,0,0,0.3)` | `rgba(0,0,0,0.5)` | `rgba(67,52,34,0.3)` | Modal/drawer backdrop |
-| `--pressy-color-selection-bg` | `rgba(0,102,204,0.2)` | `rgba(102,179,255,0.3)` | `rgba(139,69,19,0.2)` | Text selection highlight |
+| Token                         | Light                 | Dark                    | Sepia                 | Purpose                                                 |
+| ----------------------------- | --------------------- | ----------------------- | --------------------- | ------------------------------------------------------- |
+| `--pressy-color-bg`           | `#ffffff`             | `#1a1a1a`               | `#f4ecd8`             | Page background                                         |
+| `--pressy-color-bg-subtle`    | `#f8f9fa`             | `#242424`               | `#ebe3cf`             | Subtle background (table headers, hover states)         |
+| `--pressy-color-bg-muted`     | `#e9ecef`             | `#2d2d2d`               | `#e2d9c5`             | Muted background (buttons, inputs)                      |
+| `--pressy-color-text`         | `#212529`             | `#e0e0e0`               | `#433422`             | Body text                                               |
+| `--pressy-color-text-muted`   | `#6c757d`             | `#a0a0a0`               | `#6b5a47`             | Secondary text                                          |
+| `--pressy-color-heading`      | `#1a1a1a`             | `#ffffff`               | `#2d2418`             | Heading text                                            |
+| `--pressy-color-accent`       | `#212529`             | `#e0e0e0`               | `#433422`             | Accent (progress bar, active borders, drop cap default) |
+| `--pressy-color-link`         | `#0066cc`             | `#66b3ff`               | `#8b4513`             | Link text                                               |
+| `--pressy-color-link-hover`   | `#004499`             | `#99ccff`               | `#a0522d`             | Link hover                                              |
+| `--pressy-color-border`       | `#dee2e6`             | `#404040`               | `#d4c9b5`             | Borders and dividers                                    |
+| `--pressy-color-code-bg`      | `#f1f3f5`             | `#2d2d2d`               | `#ebe3cf`             | Inline code and code block background                   |
+| `--pressy-color-success`      | `#16a34a`             | `#86efac`               | `#15803d`             | Success states (offline cached indicator)               |
+| `--pressy-color-danger`       | `#dc2626`             | `#fca5a5`               | `#b91c1c`             | Error/danger states (delete, offline, errors)           |
+| `--pressy-color-overlay`      | `rgba(0,0,0,0.3)`     | `rgba(0,0,0,0.5)`       | `rgba(67,52,34,0.3)`  | Modal/drawer backdrop                                   |
+| `--pressy-color-selection-bg` | `rgba(0,102,204,0.2)` | `rgba(102,179,255,0.3)` | `rgba(139,69,19,0.2)` | Text selection highlight                                |
 
 **Shadows:**
 
-| Token | Purpose |
-|---|---|
-| `--pressy-shadow-sm` | Subtle shadow (footer) |
+| Token                | Purpose                         |
+| -------------------- | ------------------------------- |
+| `--pressy-shadow-sm` | Subtle shadow (footer)          |
 | `--pressy-shadow-md` | Medium shadow (tooltips, menus) |
-| `--pressy-shadow-lg` | Large shadow (drawers, modals) |
+| `--pressy-shadow-lg` | Large shadow (drawers, modals)  |
 
 **Typography:**
 
-| Token | Default | Purpose |
-|---|---|---|
-| `--pressy-font-body` | Georgia, 'Times New Roman', serif | Prose body font |
-| `--pressy-font-heading` | system-ui, sans-serif | Heading and UI font |
-| `--pressy-font-mono` | 'SF Mono', monospace | Code font |
+| Token                   | Default                           | Purpose             |
+| ----------------------- | --------------------------------- | ------------------- |
+| `--pressy-font-body`    | Georgia, 'Times New Roman', serif | Prose body font     |
+| `--pressy-font-heading` | system-ui, sans-serif             | Heading and UI font |
+| `--pressy-font-mono`    | 'SF Mono', monospace              | Code font           |
 
 **Prose layout:**
 
-| Token | Default | Purpose |
-|---|---|---|
-| `--pressy-prose-max-width` | `65ch` | Maximum width of prose content |
-| `--pressy-prose-padding` | `1.5rem` | Horizontal padding around prose |
-| `--pressy-dropcap-color` | accent color | Drop cap letter color |
-| `--pressy-dropcap-font-size` | `3.5em` | Drop cap letter size |
+| Token                        | Default      | Purpose                         |
+| ---------------------------- | ------------ | ------------------------------- |
+| `--pressy-prose-max-width`   | `65ch`       | Maximum width of prose content  |
+| `--pressy-prose-padding`     | `1.5rem`     | Horizontal padding around prose |
+| `--pressy-dropcap-color`     | accent color | Drop cap letter color           |
+| `--pressy-dropcap-font-size` | `3.5em`      | Drop cap letter size            |
 
 **Callout colors** (advanced — each theme has sensible defaults):
 
-| Token | Purpose |
-|---|---|
-| `--pressy-callout-note-bg`, `--pressy-callout-note-border` | Note callout |
-| `--pressy-callout-tip-bg`, `--pressy-callout-tip-border` | Tip callout |
-| `--pressy-callout-warning-bg`, `--pressy-callout-warning-border` | Warning callout |
+| Token                                                                | Purpose           |
+| -------------------------------------------------------------------- | ----------------- |
+| `--pressy-callout-note-bg`, `--pressy-callout-note-border`           | Note callout      |
+| `--pressy-callout-tip-bg`, `--pressy-callout-tip-border`             | Tip callout       |
+| `--pressy-callout-warning-bg`, `--pressy-callout-warning-border`     | Warning callout   |
 | `--pressy-callout-important-bg`, `--pressy-callout-important-border` | Important callout |
 
 ### Example: Complete Custom Theme

@@ -17,10 +17,15 @@
     "jsxImportSource": "preact",
     "paths": {
       "pressy": ["./packages/pressy/src/index.ts"],
-      "@pressy-pub/components": ["./packages/@pressy-pub/components/src/index.ts"],
-      "@pressy-pub/components/content": ["./packages/@pressy-pub/components/src/content/index.ts"],
-      "@pressy-pub/typography": ["./packages/@pressy-pub/typography/src/index.ts"],
-      "@pressy-pub/shopify": ["./packages/@pressy-pub/shopify/src/index.ts"]
+      "@pressy-pub/components": [
+        "./packages/@pressy-pub/components/src/index.ts"
+      ],
+      "@pressy-pub/components/content": [
+        "./packages/@pressy-pub/components/src/content/index.ts"
+      ],
+      "@pressy-pub/typography": [
+        "./packages/@pressy-pub/typography/src/index.ts"
+      ]
     }
   },
   "exclude": ["node_modules", "dist", "**/dist"]
