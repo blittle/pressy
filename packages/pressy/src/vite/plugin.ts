@@ -279,6 +279,7 @@ export function pressyPlugin(config: PressyConfig): Plugin[] {
   <meta name="description" content="${description}">
   <link rel="stylesheet" href="/@pressy-pub/typography/prose.css">
   <link rel="stylesheet" href="/@pressy-pub/typography/fluid.css">
+  <link rel="stylesheet" href="/@pressy-pub/typography/components.css">
   <link rel="stylesheet" href="/@pressy-pub/typography/themes/light.css">
   <link rel="stylesheet" href="/@pressy-pub/typography/themes/dark.css">
   <link rel="stylesheet" href="/@pressy-pub/typography/themes/sepia.css">${customCssPath ? `\n  <link rel="stylesheet" href="/${relative(root, customCssPath).split('\\').join('/')}">` : ''}${pwaTags}
@@ -425,6 +426,7 @@ export const config = ${JSON.stringify(config)};`
           const imports = [
             `import '@pressy-pub/typography/prose.css'`,
             `import '@pressy-pub/typography/fluid.css'`,
+            `import '@pressy-pub/typography/components.css'`,
             `import '@pressy-pub/typography/themes/light.css'`,
             `import '@pressy-pub/typography/themes/dark.css'`,
             `import '@pressy-pub/typography/themes/sepia.css'`,
