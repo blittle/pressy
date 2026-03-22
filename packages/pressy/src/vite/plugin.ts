@@ -434,6 +434,16 @@ export const config = ${JSON.stringify(config)};`
           if (customCssPath) {
             imports.push(`import '${customCssPath}'`)
           }
+          // Inject user-provided custom components before hydration
+          if (config.components) {
+            const componentsPath = resolve(root, config.components)
+            imports.push(
+              `import { setMDXComponents, getDefaultMDXComponents } from '@pressy-pub/components/content'`,
+              `import _userComponents from '${componentsPath}'`,
+              `if (typeof _userComponents === 'function') { setMDXComponents(_userComponents(getDefaultMDXComponents())) }`,
+              `else { setMDXComponents(_userComponents) }`,
+            )
+          }
           imports.push(`export { hydrate } from '/@pressy-pub/client'`)
           return imports.join('\n')
         }

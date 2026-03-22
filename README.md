@@ -198,6 +198,7 @@ npx pressy build
 | `pwa.icon192` | Path to 192x192 icon (overrides `pwa.icon`) |
 | `pwa.icon512` | Path to 512x512 icon (overrides `pwa.icon`) |
 | `pwa.favicon` | Path to favicon (falls back to `icon192`, then `icon`) |
+| `components` | Path to a module exporting custom MDX components (object or function) |
 | `outDir` | Build output directory (default: `"dist"`) |
 | `contentDir` | Content directory (default: `"content"`) |
 
@@ -210,6 +211,70 @@ npx pressy build
 | `<Callout>` | `type?` `title?` | Highlighted block. Types: `note`, `tip`, `warning`, `important`. |
 | `<Figure>` | `src` `alt?` `caption?` `wide?` | Image with caption. `wide` extends past prose width on large screens. |
 | `<SceneBreak>` | `variant?` | Scene/section divider. Variants: `asterisks` (default), `line`, `ornament`. |
+
+## Custom Components
+
+You can add your own components or override the built-in ones. There are two approaches.
+
+### Via config (recommended)
+
+Point `components` in your config to a module that exports custom components:
+
+```ts
+// pressy.config.ts
+export default defineConfig({
+  site: { title: 'My Book', url: 'https://example.com' },
+  components: './src/components.tsx',
+})
+```
+
+The module can default-export either an **object** or a **function**:
+
+```tsx
+// src/components.tsx — object form (adds/overrides)
+export default {
+  // Brand-new component, usable as <VideoEmbed url="..." /> in MDX
+  VideoEmbed: ({ url }: { url: string }) => (
+    <iframe src={url} allowFullScreen style={{ width: '100%', aspectRatio: '16/9' }} />
+  ),
+  // Override how <a> tags render
+  a: ({ href, children }: any) => (
+    <a href={href} target="_blank" rel="noopener">{children}</a>
+  ),
+}
+```
+
+```tsx
+// src/components.tsx — function form (wrap defaults)
+import type { MDXComponents } from '@pressy-pub/components/content'
+
+export default (defaults: MDXComponents) => ({
+  Figure: (props: any) => (
+    <div class="my-figure-wrapper">
+      {defaults.Figure(props)}
+    </div>
+  ),
+})
+```
+
+### Via runtime API
+
+Call `setMDXComponents` before `hydrate()` in your entry point:
+
+```ts
+import { setMDXComponents } from '@pressy-pub/components/content'
+
+setMDXComponents({
+  Banner: ({ children }) => <div class="banner">{children}</div>,
+})
+```
+
+| Function | Description |
+|---|---|
+| `setMDXComponents(components, options?)` | Register custom components. Merges by default; pass `{ merge: false }` to replace. |
+| `resetMDXComponents()` | Remove all custom overrides, revert to defaults. |
+| `useMDXComponents()` | Get the merged component map (defaults + custom). |
+| `getDefaultMDXComponents()` | Get only the built-in defaults (unaffected by overrides). |
 
 ## Themes
 
