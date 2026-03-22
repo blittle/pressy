@@ -12,7 +12,6 @@
 
   /* Readable word wrapping */
   overflow-wrap: break-word;
-  hyphens: auto;
 
   /* Book-style numeric figures */
   font-variant-numeric: oldstyle-nums;
