@@ -13,6 +13,7 @@
     },
     "./prose.css": "./src/prose.css",
     "./fluid.css": "./src/fluid.css",
+    "./components.css": "./src/components.css",
     "./themes/*.css": "./src/themes/*.css"
   },
   "publishConfig": {

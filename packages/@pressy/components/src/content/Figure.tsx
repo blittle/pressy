@@ -9,44 +9,17 @@ interface FigureProps {
 }
 
 export function Figure({ src, alt, caption, wide, children }: FigureProps) {
+  // Plain img when used as a simple image replacement (no caption)
+  if (!caption && !children) {
+    return <img src={src} alt={alt || ''} loading="lazy" decoding="async" />
+  }
+
+  const classes = ['pressy-figure', wide && 'pressy-figure-wide'].filter(Boolean).join(' ')
+
   return (
-    <figure class={`pressy-figure ${wide ? 'pressy-figure-wide' : ''}`}>
+    <figure class={classes}>
       <img src={src} alt={alt || caption || ''} loading="lazy" decoding="async" />
-      {(caption || children) && (
-        <figcaption class="pressy-figure-caption">{caption || children}</figcaption>
-      )}
-
-      <style>{`
-        .pressy-figure {
-          margin-block: 2em;
-          margin-inline: 0;
-        }
-
-        .pressy-figure img {
-          width: 100%;
-          height: auto;
-          border-radius: 0.5em;
-        }
-
-        .pressy-figure-caption {
-          font-size: var(--font-size-sm);
-          color: var(--color-text-muted);
-          text-align: center;
-          margin-top: 0.75em;
-          font-style: italic;
-        }
-
-        .pressy-figure-wide {
-          margin-inline: 0;
-        }
-
-        @media (min-width: 80ch) {
-          .pressy-figure-wide {
-            margin-inline: calc(-1 * ((100vw - 65ch) / 4));
-            max-width: none;
-          }
-        }
-      `}</style>
+      <figcaption class="pressy-figure-caption">{caption || children}</figcaption>
     </figure>
   )
 }

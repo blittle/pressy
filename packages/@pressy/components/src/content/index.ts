@@ -20,7 +20,7 @@ const defaultComponents: Record<string, ComponentType<any>> = {
   SceneBreak,
   // Override default elements
   img: Figure,
-  hr: SceneBreak,
+  hr: (props: any) => SceneBreak({ variant: 'line', ...props }),
 }
 
 let customComponents: Record<string, ComponentType<any>> = {}
