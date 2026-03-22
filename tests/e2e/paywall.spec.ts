@@ -10,7 +10,7 @@ async function enablePaywall(page: import('@playwright/test').Page) {
     const response = await route.fetch()
     let body = await response.text()
     body = body.replaceAll(
-      'paywall:{enabled:!1}',
+      'paywall:{enabled:!1,previewChapters:0}',
       'paywall:{enabled:!0,previewChapters:2,price:"$9.99",stripePriceId:"price_test"}',
     )
     await route.fulfill({ response, body })
