@@ -11,11 +11,15 @@
     h1 { font-size: 1.5rem; font-weight: 600; margin-bottom: 0.5rem; }
     p { color: #666; margin-bottom: 2rem; }
     .books { display: flex; flex-direction: column; gap: 1rem; }
-    a.book { display: block; padding: 1.25rem 1.5rem; background: #fff; border: 1px solid #e0e0e0; border-radius: 8px; text-decoration: none; color: inherit; transition: border-color 0.15s, box-shadow 0.15s; }
-    a.book:hover { border-color: #999; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+    .book-card { padding: 1.25rem 1.5rem; background: #fff; border: 1px solid #e0e0e0; border-radius: 8px; transition: border-color 0.15s, box-shadow 0.15s; }
+    .book-card:hover { border-color: #999; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+    a.book-link { text-decoration: none; color: inherit; display: block; }
     .book-title { font-weight: 600; font-size: 1.1rem; }
     .book-author { color: #666; font-size: 0.9rem; margin-top: 0.25rem; }
     .book-meta { color: #999; font-size: 0.8rem; margin-top: 0.25rem; }
+    .book-actions { display: flex; gap: 0.75rem; margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid #f0f0f0; }
+    a.action { font-size: 0.85rem; color: #1a5276; text-decoration: none; padding: 0.3rem 0.6rem; border: 1px solid #d0d0d0; border-radius: 4px; transition: background 0.15s; }
+    a.action:hover { background: #f0f4f8; }
   </style>
 </head>
 <body>
@@ -23,19 +27,37 @@
     <h1>Pressy Examples</h1>
     <p>Example books built with Pressy, a web framework for self-publishing.</p>
     <div class="books">
-      <a class="book" href="flatland/">
-        <div class="book-title">Flatland: A Romance of Many Dimensions</div>
-        <div class="book-author">Edwin A. Abbott</div>
-      </a>
-      <a class="book" href="frankenstein/">
-        <div class="book-title">Frankenstein; or, The Modern Prometheus</div>
-        <div class="book-author">Mary Wollstonecraft Shelley</div>
-      </a>
-      <a class="book" href="moby-dick/">
-        <div class="book-title">Moby-Dick; or, The Whale</div>
-        <div class="book-author">Herman Melville</div>
-        <div class="book-meta">135 chapters &middot; 211,000+ words</div>
-      </a>
+      <div class="book-card">
+        <a class="book-link" href="flatland/">
+          <div class="book-title">Flatland: A Romance of Many Dimensions</div>
+          <div class="book-author">Edwin A. Abbott</div>
+        </a>
+        <div class="book-actions">
+          <a class="action" href="flatland/">Read online</a>
+          <a class="action" href="epub/flatland.epub" download>Download EPUB</a>
+        </div>
+      </div>
+      <div class="book-card">
+        <a class="book-link" href="frankenstein/">
+          <div class="book-title">Frankenstein; or, The Modern Prometheus</div>
+          <div class="book-author">Mary Wollstonecraft Shelley</div>
+        </a>
+        <div class="book-actions">
+          <a class="action" href="frankenstein/">Read online</a>
+          <a class="action" href="epub/frankenstein.epub" download>Download EPUB</a>
+        </div>
+      </div>
+      <div class="book-card">
+        <a class="book-link" href="moby-dick/">
+          <div class="book-title">Moby-Dick; or, The Whale</div>
+          <div class="book-author">Herman Melville</div>
+          <div class="book-meta">135 chapters &middot; 211,000+ words</div>
+        </a>
+        <div class="book-actions">
+          <a class="action" href="moby-dick/">Read online</a>
+          <a class="action" href="epub/moby-dick.epub" download>Download EPUB</a>
+        </div>
+      </div>
     </div>
   </div>
 </body>
