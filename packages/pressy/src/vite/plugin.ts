@@ -494,7 +494,7 @@ export const config = ${JSON.stringify(config)};`
           // Serve favicon in dev
           if (url === '/favicon.ico' || url === '/favicon.png') {
             if (faviconPath) {
-              const fullPath = resolve(faviconPath)
+              const fullPath = resolve(root, faviconPath)
               if (existsSync(fullPath)) {
                 res.setHeader('Content-Type', url === '/favicon.ico' ? 'image/x-icon' : 'image/png')
                 res.end(readFileSync(fullPath))
@@ -548,7 +548,7 @@ export const config = ${JSON.stringify(config)};`
               ? (config.pwa?.icon192 || config.pwa?.icon)
               : (config.pwa?.icon512 || config.pwa?.icon)
             if (customPath) {
-              const fullPath = resolve(customPath)
+              const fullPath = resolve(root, customPath)
               if (existsSync(fullPath)) {
                 const ext = fullPath.split('.').pop()?.toLowerCase()
                 const mimeTypes: Record<string, string> = {
@@ -773,8 +773,8 @@ ${cssLinks}${buildPwaTags}
 
         // Emit icons — use custom files if provided, otherwise generate placeholders
         if (hasCustomIcons) {
-          const icon192Path = resolve(resolvedIcon192!)
-          const icon512Path = resolve(resolvedIcon512!)
+          const icon192Path = resolve(root, resolvedIcon192!)
+          const icon512Path = resolve(root, resolvedIcon512!)
           this.emitFile({
             type: 'asset',
             fileName: 'icon-192.png',
@@ -803,7 +803,7 @@ ${cssLinks}${buildPwaTags}
           this.emitFile({
             type: 'asset',
             fileName: 'favicon.png',
-            source: readFileSync(resolve(faviconPath!)),
+            source: readFileSync(resolve(root, faviconPath!)),
           })
         } else {
           this.emitFile({
