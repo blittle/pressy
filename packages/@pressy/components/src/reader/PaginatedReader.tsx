@@ -208,7 +208,7 @@ export function PaginatedReader({
   // Drag/swipe state
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState(0);
-  const [chapterHint, setChapterHint] = useState<"next" | "prev" | null>(null);
+  const [chapterHint, setChapterHint] = useState<"next" | "prev" | "paywall" | null>(null);
 
   // Touch tracking refs (avoid re-renders during drag)
   const touchStartXRef = useRef(0);
@@ -697,6 +697,26 @@ export function PaginatedReader({
     };
   })();
 
+  // Detect if we're at the paywall boundary: last free chapter, no next chapter due to paywall
+  const atPaywallBoundary = (() => {
+    if (!paywall || paywall.authorized || !isMultiChapter || !chapterMapData) return false;
+    if (effectiveNextChapter) return false; // next chapter is available, not at boundary
+    const { chapterOrder } = chapterMapData;
+    const lastLoadedSlug = loadedChapters[loadedChapters.length - 1]?.slug;
+    const lastLoadedIdx = chapterOrder.indexOf(lastLoadedSlug);
+    // We're at the boundary if the next chapter exists but is paywalled
+    return lastLoadedIdx >= 0 && lastLoadedIdx < chapterOrder.length - 1;
+  })();
+
+  const handlePaywallAction = useCallback(() => {
+    if (!paywall) return;
+    if (paywall.mode === 'stripe' || paywall.price) {
+      window.location.href = `/api/checkout?book=${paywall.bookSlug}`;
+    } else if (paywall.bookBasePath) {
+      window.location.href = `${paywall.bookBasePath}?purchase=true`;
+    }
+  }, [paywall]);
+
   const goToPage = useCallback(
     (page: number) => {
       wantsLastPageRef.current = false;
@@ -712,11 +732,13 @@ export function PaginatedReader({
       if (effectiveNextChapter) {
         sessionStorage.setItem("pressy-internal-nav", "1");
         window.location.href = effectiveNextChapter.slug;
+      } else if (atPaywallBoundary) {
+        handlePaywallAction();
       }
       return;
     }
     goToPage(currentPage + 1);
-  }, [currentPage, totalPages, effectiveNextChapter, goToPage]);
+  }, [currentPage, totalPages, effectiveNextChapter, atPaywallBoundary, handlePaywallAction, goToPage]);
 
   const goPrev = useCallback(() => {
     if (currentPage <= 0) {
@@ -981,6 +1003,8 @@ export function PaginatedReader({
           setChapterHint("prev");
         } else if (dx < -40 && atEnd && effectiveNextChapter) {
           setChapterHint("next");
+        } else if (dx < -40 && atEnd && atPaywallBoundary) {
+          setChapterHint("paywall");
         } else {
           setChapterHint(null);
         }
@@ -1017,6 +1041,13 @@ export function PaginatedReader({
         setChapterHint(null);
         sessionStorage.setItem("pressy-internal-nav", "1");
         window.location.href = effectiveNextChapter.slug;
+        return;
+      }
+      if (atEnd && dx < -chapterThreshold && atPaywallBoundary) {
+        setIsDragging(false);
+        setDragOffset(0);
+        setChapterHint(null);
+        handlePaywallAction();
         return;
       }
       if (atStart && dx > chapterThreshold && effectivePrevChapter) {
@@ -1068,6 +1099,8 @@ export function PaginatedReader({
     goPrev,
     effectiveNextChapter,
     effectivePrevChapter,
+    atPaywallBoundary,
+    handlePaywallAction,
   ]);
 
   // Compute per-chapter page indicator values
@@ -1220,6 +1253,22 @@ export function PaginatedReader({
         >
           <span class="pressy-chapter-hint-text">
             {effectiveNextChapter.title}
+          </span>
+          <span class="pressy-chapter-hint-arrow">{"\u2192"}</span>
+        </div>
+      )}
+      {chapterHint === "paywall" && atPaywallBoundary && (
+        <div
+          class="pressy-chapter-hint pressy-chapter-hint--next pressy-chapter-hint--paywall"
+          aria-live="polite"
+        >
+          <span class="pressy-chapter-hint-icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z" />
+            </svg>
+          </span>
+          <span class="pressy-chapter-hint-text">
+            {paywall?.price ? `Purchase — ${paywall.price}` : "Unlock full book"}
           </span>
           <span class="pressy-chapter-hint-arrow">{"\u2192"}</span>
         </div>
