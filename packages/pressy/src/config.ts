@@ -43,6 +43,34 @@ export interface PressyConfig {
   pwa?: PWAConfig
   outDir?: string
   contentDir?: string
+  /**
+   * Path to a module that exports custom MDX components.
+   *
+   * The module should have a default export that is either:
+   * - An `MDXComponents` object mapping component names to Preact components, or
+   * - A function that receives the default components and returns an `MDXComponents` object.
+   *
+   * @example
+   * ```ts
+   * // pressy.config.ts
+   * export default defineConfig({
+   *   site: { ... },
+   *   components: './src/components.tsx',
+   * })
+   *
+   * // src/components.tsx
+   * export default {
+   *   VideoEmbed: ({ url }) => <iframe src={url} />,
+   * }
+   *
+   * // Or with a function to wrap defaults:
+   * export default (defaults) => ({
+   *   ...defaults,
+   *   Figure: (props) => <div class="custom">{defaults.Figure(props)}</div>,
+   * })
+   * ```
+   */
+  components?: string
 }
 
 export function defineConfig(config: PressyConfig): PressyConfig {
