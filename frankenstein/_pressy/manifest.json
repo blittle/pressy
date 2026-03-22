@@ -3,7 +3,8 @@
     {
       "slug": "frankenstein",
       "paywall": {
-        "enabled": false
+        "enabled": false,
+        "previewChapters": 0
       },
       "chapters": [
         {
