@@ -39,7 +39,7 @@ npx pressy dev
 Or clone the repo and run an example:
 
 ```bash
-git clone <repo-url> && cd pressy
+git clone https://github.com/nicholasgasior/pressy.git && cd pressy
 pnpm install
 pnpm dev:flatland
 ```
@@ -84,7 +84,7 @@ export default defineConfig({
     url: "https://mybook.example.com",
     author: "Your Name",
   },
-  book: {
+  books: [{
     slug: "my-book",
     title: "My Book",
     author: "Your Name",
@@ -93,7 +93,7 @@ export default defineConfig({
     publishDate: "2025-01-15", // optional
     isbn: "978-0-000000-00-0", // optional
     language: "en",            // optional
-  },
+  }],
   pagination: {
     defaultMode: "paginated",
   },
@@ -103,7 +103,7 @@ export default defineConfig({
 To gate chapters behind a paywall, add a `paywall` block to the `book` config:
 
 ```ts
-book: {
+books: [{
   slug: "my-book",
   title: "My Book",
   author: "Your Name",
@@ -115,7 +115,7 @@ book: {
     // stripePriceId: "",      // required for mode: stripe
     // price: "$9.99",         // displayed to the reader
   },
-},
+}],
 ```
 
 ### 3. Add content
@@ -174,15 +174,16 @@ npx pressy build
 | `site.description` | Site description (used in meta tags) |
 | `site.author` | Author name |
 | `site.language` | Language code (default: `"en"`) |
-| `book.slug` | Directory name under `content/books/` |
-| `book.title` | Book title |
-| `book.author` | Book author |
-| `book.description` | Book description |
-| `book.cover` | Cover image filename (auto-detected if named `cover.{jpg,png,svg}`) |
-| `book.publishDate` | Publication date |
-| `book.isbn` | ISBN |
-| `book.language` | Book language code |
-| `book.paywall` | Paywall configuration (see above) |
+| `books` | Array of book configs (supports multiple books) |
+| `books[].slug` | Directory name under `content/books/` |
+| `books[].title` | Book title |
+| `books[].author` | Book author |
+| `books[].description` | Book description |
+| `books[].cover` | Cover image filename (auto-detected if named `cover.{jpg,png,svg}`) |
+| `books[].publishDate` | Publication date |
+| `books[].isbn` | ISBN |
+| `books[].language` | Book language code |
+| `books[].paywall` | Paywall configuration (see above) |
 | `pagination.defaultMode` | `"paginated"` or `"scroll"` (default: `"scroll"`) |
 | `pwa.enabled` | Enable PWA/offline support (default: `true`) |
 | `pwa.shortName` | App name on home screen |
@@ -214,6 +215,23 @@ Pressy ships with three themes plus system auto-detection:
 - **Dark** — reduced eye strain for low light
 - **Sepia** — warm paper tones for extended reading
 - **System** — follows OS light/dark preference
+
+## Custom MDX Components
+
+You can override or extend the built-in MDX components using `setMDXComponents` from `@pressy-pub/components/content`:
+
+```ts
+import { setMDXComponents } from "@pressy-pub/components/content";
+
+setMDXComponents({
+  // Override the built-in Callout
+  Callout: MyCustomCallout,
+  // Add a new component usable in any MDX file
+  Quiz: QuizComponent,
+});
+```
+
+The default components (Aside, Footnote, Callout, Figure, SceneBreak) are always available. Your overrides merge on top, so you only need to specify what you want to change.
 
 ## Customizing Look & Feel
 

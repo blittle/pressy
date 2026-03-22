@@ -2,6 +2,27 @@
   "name": "@pressy-pub/typography",
   "version": "0.1.1",
   "description": "Typography CSS preset for Pressy",
+  "license": "MIT",
+  "author": "Pressy Contributors",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nicholasgasior/pressy.git",
+    "directory": "packages/@pressy/typography"
+  },
+  "homepage": "https://github.com/nicholasgasior/pressy#readme",
+  "bugs": {
+    "url": "https://github.com/nicholasgasior/pressy/issues"
+  },
+  "keywords": [
+    "pressy",
+    "typography",
+    "css",
+    "themes",
+    "dark-mode",
+    "sepia",
+    "fluid-typography",
+    "ebook"
+  ],
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
@@ -14,7 +35,9 @@
     "./prose.css": "./src/prose.css",
     "./fluid.css": "./src/fluid.css",
     "./components.css": "./src/components.css",
-    "./themes/*.css": "./src/themes/*.css"
+    "./themes/light.css": "./src/themes/light.css",
+    "./themes/dark.css": "./src/themes/dark.css",
+    "./themes/sepia.css": "./src/themes/sepia.css"
   },
   "publishConfig": {
     "access": "public"

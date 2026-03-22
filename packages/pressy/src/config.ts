@@ -49,17 +49,19 @@ export interface PressyConfig {
 
 export function defineConfig(config: PressyConfig): PressyConfig {
   return {
+    ...config,
     pagination: {
       defaultMode: 'scroll',
+      ...config.pagination,
     },
     pwa: {
       enabled: true,
       themeColor: '#ffffff',
       backgroundColor: '#ffffff',
       display: 'standalone',
+      ...config.pwa,
     },
-    outDir: 'dist',
-    contentDir: 'content',
-    ...config,
+    outDir: config.outDir ?? 'dist',
+    contentDir: config.contentDir ?? 'content',
   }
 }

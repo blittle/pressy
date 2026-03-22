@@ -2,6 +2,26 @@
   "name": "@pressy-pub/cloudflare",
   "version": "0.1.0",
   "description": "Cloudflare Workers middleware for Pressy server-side paywall",
+  "license": "MIT",
+  "author": "Pressy Contributors",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nicholasgasior/pressy.git",
+    "directory": "packages/@pressy/cloudflare"
+  },
+  "homepage": "https://github.com/nicholasgasior/pressy#readme",
+  "bugs": {
+    "url": "https://github.com/nicholasgasior/pressy/issues"
+  },
+  "keywords": [
+    "pressy",
+    "cloudflare",
+    "workers",
+    "paywall",
+    "stripe",
+    "middleware",
+    "ebook"
+  ],
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",

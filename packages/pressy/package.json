@@ -2,6 +2,31 @@
   "name": "pressy",
   "version": "0.1.1",
   "description": "A self-publishing web framework for books and articles",
+  "license": "MIT",
+  "author": "Pressy Contributors",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nicholasgasior/pressy.git",
+    "directory": "packages/pressy"
+  },
+  "homepage": "https://github.com/nicholasgasior/pressy#readme",
+  "bugs": {
+    "url": "https://github.com/nicholasgasior/pressy/issues"
+  },
+  "keywords": [
+    "self-publishing",
+    "ebook",
+    "book",
+    "mdx",
+    "vite",
+    "pwa",
+    "offline",
+    "reader",
+    "static-site",
+    "preact",
+    "publishing",
+    "epub"
+  ],
   "type": "module",
   "bin": {
     "pressy": "./dist/cli/index.js"
@@ -60,8 +85,8 @@
     "typescript": "^5.3.0"
   },
   "peerDependencies": {
-    "@pressy-pub/components": "workspace:*",
-    "@pressy-pub/typography": "workspace:*"
+    "@pressy-pub/components": ">=0.1.0",
+    "@pressy-pub/typography": ">=0.1.0"
   },
   "peerDependenciesMeta": {
     "@pressy-pub/components": {
