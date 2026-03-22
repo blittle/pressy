@@ -33,13 +33,14 @@ npm install pressy @pressy-pub/components @pressy-pub/typography
 mkdir my-book && cd my-book
 npm init -y
 npm install pressy @pressy-pub/components @pressy-pub/typography
+npx pressy init --title "My Book" --author "Your Name"
 npx pressy dev
 ```
 
 Or clone the repo and run an example:
 
 ```bash
-git clone <repo-url> && cd pressy
+git clone https://github.com/nicholasgriffintn/pressy.git && cd pressy
 pnpm install
 pnpm dev:flatland
 ```
@@ -174,7 +175,9 @@ npx pressy build
 | `site.description` | Site description (used in meta tags) |
 | `site.author` | Author name |
 | `site.language` | Language code (default: `"en"`) |
-| `book.slug` | Directory name under `content/books/` |
+| `book` | Shorthand for a single book (equivalent to `books: [book]`) |
+| `books` | Array of book configs — use when your project contains multiple books |
+| `book.slug` / `books[].slug` | Directory name under `content/books/` |
 | `book.title` | Book title |
 | `book.author` | Book author |
 | `book.description` | Book description |
@@ -196,6 +199,7 @@ npx pressy build
 | `components` | Path to a module exporting custom MDX components (object or function) |
 | `outDir` | Build output directory (default: `"dist"`) |
 | `contentDir` | Content directory (default: `"content"`) |
+| `hooks` | Lifecycle hooks — `onBuildStart`, `onContentReady`, `onChapterProcessed`, `onBuildEnd` (reserved for future use) |
 
 ## MDX Components
 

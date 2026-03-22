@@ -1,7 +1,24 @@
 {
   "name": "@pressy-pub/components",
   "version": "0.1.1",
-  "description": "Preact UI components for Pressy",
+  "description": "Preact UI components for Pressy — Reader, Navigation, Paywall, and MDX content components",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nicholasgriffintn/pressy.git",
+    "directory": "packages/@pressy/components"
+  },
+  "homepage": "https://github.com/nicholasgriffintn/pressy#readme",
+  "bugs": "https://github.com/nicholasgriffintn/pressy/issues",
+  "keywords": [
+    "pressy",
+    "preact",
+    "reader",
+    "mdx",
+    "components",
+    "ebook",
+    "paginated-reader"
+  ],
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
