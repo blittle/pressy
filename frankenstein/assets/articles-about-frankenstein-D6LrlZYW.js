@@ -1,0 +1,32 @@
+import{u as t,k as s,h as l}from"./client-DEJ4-lp1.js";function r(i){const e={em:"em",h1:"h1",h2:"h2",li:"li",p:"p",strong:"strong",ul:"ul",...i.components},{Callout:n,Footnote:o}=e;return n||a("Callout"),o||a("Footnote"),t(s,{children:[t(e.h1,{id:"about-this-digital-edition",children:"About This Digital Edition"}),`
+`,t(e.p,{children:["This digital edition of ",t(e.em,{children:"Frankenstein; or, The Modern Prometheus"})," by Mary Wollstonecraft Shelley has been prepared from the public domain text available through Project Gutenberg. The text has been lightly adapted for presentation as a modern web publication using the Pressy framework."]}),`
+`,t(n,{type:"note",title:"Public Domain",children:t(e.p,{children:[t(e.em,{children:"Frankenstein"})," was first published anonymously in 1818 and is in the public domain. This edition draws primarily on the original 1818 text, with the Author's Introduction from the revised 1831 third edition."]})}),`
+`,t(e.h2,{id:"about-the-original-work",children:"About the Original Work"}),`
+`,t(e.p,{children:["Mary Wollstonecraft Shelley (1797-1851) began writing ",t(e.em,{children:"Frankenstein"})," in the summer of 1816, when she was just eighteen years old. The novel was conceived during a stay at the Villa Diodati on Lake Geneva, where Lord Byron proposed that each member of the party write a ghost story. The result was one of the most influential novels in the English language — widely considered the first true work of science fiction."]}),`
+`,t(e.p,{children:"The novel tells the story of Victor Frankenstein, a young Swiss scientist who creates a living creature from assembled body parts, only to be horrified by what he has made. Abandoned by his creator, the creature educates himself but is rejected by all who see him, leading to a tragic spiral of vengeance and despair."}),`
+`,t(e.h2,{id:"the-two-editions",children:"The Two Editions"}),`
+`,t(e.p,{children:[t(e.em,{children:"Frankenstein"})," exists in two major editions with significant differences:"]}),`
+`,t(e.ul,{children:[`
+`,t(e.li,{children:[t(e.strong,{children:"The 1818 Edition"})," — Published anonymously in three volumes. This version is generally considered more radical and morally ambiguous, with Victor bearing greater responsibility for the tragedy."]}),`
+`,t(e.li,{children:[t(e.strong,{children:"The 1831 Edition"})," — Revised by Shelley for a single-volume reprint. This version adds the famous Author's Introduction, softens some characterizations, and introduces more elements of fate and destiny."]}),`
+`]}),`
+`,t(o,{id:"ed-1",children:t(e.p,{children:"Scholars continue to debate which edition best represents Shelley's intentions. The 1818 text is often preferred by academics, while the 1831 text has historically been the more widely read version."})}),`
+`,t(e.h2,{id:"about-this-edition",children:"About This Edition"}),`
+`,t(e.p,{children:"This digital edition serves as a demonstration of the Pressy publishing framework. It showcases several features:"}),`
+`,t(e.ul,{children:[`
+`,t(e.li,{children:[t(e.strong,{children:"Paginated reading mode"})," for a book-like experience"]}),`
+`,t(e.li,{children:[t(e.strong,{children:"Responsive typography"})," optimized for extended reading"]}),`
+`,t(e.li,{children:[t(e.strong,{children:"Interactive components"})," such as asides, footnotes, and callouts"]}),`
+`,t(e.li,{children:[t(e.strong,{children:"Theme customization"})," with light and dark reading modes"]}),`
+`,t(e.li,{children:[t(e.strong,{children:"Chapter navigation"})," for moving between sections"]}),`
+`]}),`
+`,t(e.h2,{id:"editorial-choices",children:"Editorial Choices"}),`
+`,t(e.p,{children:"The text includes Shelley's four introductory letters from Captain Walton to his sister, followed by the opening chapters of Victor Frankenstein's narrative, through the iconic creation scene in Chapter 5. Annotations have been added throughout in the form of asides, callouts, and footnotes to provide historical context, biographical connections, and literary analysis."}),`
+`,t(e.p,{children:"We hope this edition introduces new readers to Shelley's remarkable novel — a work that, more than two centuries after its creation, continues to raise urgent questions about the ethics of scientific ambition, the responsibilities of creators toward their creations, and what it means to be human."})]})}function d(i={}){const{wrapper:e}=i.components||{};return e?t(e,{...i,children:t(r,{...i})}):r(i)}function a(i,e){throw new Error("Expected component `"+i+"` to be defined: you likely forgot to import, pass, or provide it.")}const h={route:"/articles/about-frankenstein",routeType:"article",manifest:{books:[{slug:"frankenstein",metadata:{title:"Frankenstein; or, The Modern Prometheus",author:"Mary Wollstonecraft Shelley",description:`Frankenstein is an 1818 Gothic novel by Mary Shelley. It tells the story of
+Victor Frankenstein, a young scientist who creates a sapient creature in an
+unorthodox experiment. Considered one of the first works of science fiction,
+the novel explores themes of ambition, creation, responsibility, and the
+consequences of playing God.
+`,publishDate:"1818-01-01",language:"en",cover:"cover.svg",paywall:{enabled:!1}},chapters:[{slug:"authors-introduction",title:"Author's Introduction (1831)",order:0,wordCount:715,readingTime:4},{slug:"letter-1",title:"Letter 1",order:1,wordCount:724,readingTime:4},{slug:"letter-2",title:"Letter 2",order:2,wordCount:617,readingTime:4},{slug:"letter-3",title:"Letter 3",order:3,wordCount:407,readingTime:3},{slug:"letter-4",title:"Letter 4",order:4,wordCount:765,readingTime:4},{slug:"chapter-1",title:"Chapter 1",order:5,wordCount:771,readingTime:4},{slug:"chapter-2",title:"Chapter 2",order:6,wordCount:852,readingTime:5},{slug:"chapter-3",title:"Chapter 3",order:7,wordCount:869,readingTime:5},{slug:"chapter-4",title:"Chapter 4",order:8,wordCount:957,readingTime:5},{slug:"chapter-5",title:"Chapter 5",order:9,wordCount:981,readingTime:5}],coverUrl:"/books/frankenstein/cover.svg"}],articles:[{slug:"about-frankenstein",metadata:{title:"About This Digital Edition",author:"The Pressy Team",description:`Notes on this digital edition of Frankenstein, including the history of the text,
+the two major editions, and the technology behind this publication.
+`,publishDate:"2024-01-15",tags:["editorial","about","frankenstein"]},wordCount:488,readingTime:3}]},pagination:{defaultMode:"paginated"}};l(h,d);
