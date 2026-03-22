@@ -3,12 +3,12 @@
 :root,
 [data-theme="light"] {
   /* Background colors */
-  --color-bg: var(--pressy-color-bg, #ffffff);
-  --color-bg-subtle: var(--pressy-color-bg-subtle, #f8f9fa);
+  --color-bg: var(--pressy-color-bg, #fafafa);
+  --color-bg-subtle: var(--pressy-color-bg-subtle, #f4f5f6);
   --color-bg-muted: var(--pressy-color-bg-muted, #e9ecef);
 
-  /* Text colors */
-  --color-text: var(--pressy-color-text, #212529);
+  /* Text colors — softer than pure black for reduced eye strain */
+  --color-text: var(--pressy-color-text, #374151);
   --color-text-muted: var(--pressy-color-text-muted, #6c757d);
   --color-heading: var(--pressy-color-heading, #1a1a1a);
 

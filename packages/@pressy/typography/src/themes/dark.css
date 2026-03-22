@@ -2,12 +2,12 @@
 
 [data-theme="dark"] {
   /* Background colors */
-  --color-bg: var(--pressy-color-bg, #1a1a1a);
-  --color-bg-subtle: var(--pressy-color-bg-subtle, #242424);
-  --color-bg-muted: var(--pressy-color-bg-muted, #2d2d2d);
+  --color-bg: var(--pressy-color-bg, #1c1c1e);
+  --color-bg-subtle: var(--pressy-color-bg-subtle, #252528);
+  --color-bg-muted: var(--pressy-color-bg-muted, #2e2e32);
 
-  /* Text colors */
-  --color-text: var(--pressy-color-text, #e0e0e0);
+  /* Text colors — slightly muted to reduce halation on dark backgrounds */
+  --color-text: var(--pressy-color-text, #d1d1d6);
   --color-text-muted: var(--pressy-color-text-muted, #a0a0a0);
   --color-heading: var(--pressy-color-heading, #ffffff);
 
