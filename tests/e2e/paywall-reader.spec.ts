@@ -207,9 +207,7 @@ test.describe('paywall boundary navigation', () => {
 
   test('clicking paywall hint navigates to checkout', async ({ page }) => {
     // Intercept checkout redirect so we can verify it was attempted
-    let checkoutRequested = false
     await page.route('**/api/checkout*', async (route) => {
-      checkoutRequested = true
       await route.fulfill({ status: 200, body: 'checkout' })
     })
 
@@ -226,12 +224,16 @@ test.describe('paywall boundary navigation', () => {
     await page.keyboard.press('ArrowRight')
     await page.waitForTimeout(400)
 
-    // Click the paywall hint
+    // Click the paywall hint and wait for the checkout request
+    const checkoutRequestPromise = page.waitForRequest(
+      req => req.url().includes('/api/checkout'),
+      { timeout: 5000 }
+    )
     await page.locator('.pressy-chapter-hint--paywall').click()
-    await page.waitForTimeout(500)
+    const checkoutReq = await checkoutRequestPromise
 
     // Should have navigated to checkout
-    expect(checkoutRequested).toBe(true)
+    expect(checkoutReq.url()).toContain('/api/checkout')
   })
 
   test('authorized user does not see paywall boundary', async ({ page }) => {
