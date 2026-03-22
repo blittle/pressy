@@ -49,70 +49,76 @@ export function pressyPlugin(config: PressyConfig): Plugin[] {
     },
 
     async discoverBooks(): Promise<Book[]> {
-      if (!config.book) return []
+      if (!config.books || config.books.length === 0) return []
 
       const booksDir = join(contentDir, 'books')
-      const bookSlug = config.book.slug
-      const bookPath = join(booksDir, bookSlug)
-      if (!existsSync(bookPath)) return []
+      const results: Book[] = []
 
-      const { slug: _, ...metadata } = config.book
+      for (const bookConfig of config.books) {
+        const bookSlug = bookConfig.slug
+        const bookPath = join(booksDir, bookSlug)
+        if (!existsSync(bookPath)) continue
 
-      // Find chapters
-      const chapterFiles = await fastGlob('*.mdx', {
-        cwd: bookPath,
-        ignore: ['_*.mdx'],
-      })
+        const { slug: _, ...metadata } = bookConfig
 
-      const chapters: Chapter[] = chapterFiles
-        .map((file): Chapter | null => {
-          const match = file.match(/^(\d+)-(.+)\.mdx$/)
-          if (!match) return null
-
-          const order = parseInt(match[1], 10)
-          const slug = match[2]
-          const filePath = join(bookPath, file)
-          const content = readFileSync(filePath, 'utf-8')
-          const { data } = matter(content)
-
-          return {
-            slug,
-            title: data.title || slug.replace(/-/g, ' '),
-            order,
-            filePath,
-            wordCount: content.split(/\s+/).length,
-            readingTime: Math.ceil(content.split(/\s+/).length / 200),
-          }
+        // Find chapters
+        const chapterFiles = await fastGlob('*.mdx', {
+          cwd: bookPath,
+          ignore: ['_*.mdx'],
         })
-        .filter((c): c is Chapter => c !== null)
-        .sort((a, b) => a.order - b.order)
 
-      // Resolve cover image: prefer metadata.cover, then fall back to common filenames
-      let coverPath: string | undefined
-      if (metadata.cover && existsSync(join(bookPath, metadata.cover))) {
-        coverPath = join(bookPath, metadata.cover)
-      } else {
-        for (const ext of ['jpg', 'png', 'svg']) {
-          const candidate = join(bookPath, `cover.${ext}`)
-          if (existsSync(candidate)) {
-            coverPath = candidate
-            break
+        const chapters: Chapter[] = chapterFiles
+          .map((file): Chapter | null => {
+            const match = file.match(/^(\d+)-(.+)\.mdx$/)
+            if (!match) return null
+
+            const order = parseInt(match[1], 10)
+            const slug = match[2]
+            const filePath = join(bookPath, file)
+            const content = readFileSync(filePath, 'utf-8')
+            const { data } = matter(content)
+
+            return {
+              slug,
+              title: data.title || slug.replace(/-/g, ' '),
+              order,
+              filePath,
+              wordCount: content.split(/\s+/).length,
+              readingTime: Math.ceil(content.split(/\s+/).length / 200),
+            }
+          })
+          .filter((c): c is Chapter => c !== null)
+          .sort((a, b) => a.order - b.order)
+
+        // Resolve cover image: prefer metadata.cover, then fall back to common filenames
+        let coverPath: string | undefined
+        if (metadata.cover && existsSync(join(bookPath, metadata.cover))) {
+          coverPath = join(bookPath, metadata.cover)
+        } else {
+          for (const ext of ['jpg', 'png', 'svg', 'webp']) {
+            const candidate = join(bookPath, `cover.${ext}`)
+            if (existsSync(candidate)) {
+              coverPath = candidate
+              break
+            }
           }
         }
+
+        const coverUrl = coverPath
+          ? `/books/${bookSlug}/${coverPath.split('/').pop()}`
+          : undefined
+
+        results.push({
+          slug: bookSlug,
+          metadata,
+          chapters,
+          basePath: bookPath,
+          coverPath,
+          coverUrl,
+        })
       }
 
-      const coverUrl = coverPath
-        ? `/books/${bookSlug}/${coverPath.split('/').pop()}`
-        : undefined
-
-      return [{
-        slug: bookSlug,
-        metadata,
-        chapters,
-        basePath: bookPath,
-        coverPath,
-        coverUrl,
-      }]
+      return results
     },
 
     async discoverArticles(): Promise<Article[]> {

@@ -8,7 +8,7 @@ export default defineConfig({
     author: 'Herman Melville',
     language: 'en',
   },
-  book: {
+  books: [{
     slug: 'moby-dick',
     title: 'Moby-Dick; or, The Whale',
     author: 'Herman Melville',
@@ -30,7 +30,7 @@ export default defineConfig({
       stripePriceId: 'price_1T4ocU2dQHTmJq5nyoaWMPti',
       mode: 'stripe',
     },
-  },
+  }],
   pagination: {
     defaultMode: 'paginated',
   },

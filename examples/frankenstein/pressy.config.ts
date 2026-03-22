@@ -8,7 +8,7 @@ export default defineConfig({
     author: 'Mary Wollstonecraft Shelley',
     language: 'en',
   },
-  book: {
+  books: [{
     slug: 'frankenstein',
     title: 'Frankenstein; or, The Modern Prometheus',
     author: 'Mary Wollstonecraft Shelley',
@@ -25,7 +25,7 @@ export default defineConfig({
       enabled: false,
       previewChapters: 0,
     },
-  },
+  }],
   pagination: {
     defaultMode: 'paginated',
   },

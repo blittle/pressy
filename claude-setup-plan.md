@@ -9,7 +9,6 @@ The plan specifies using *Flatland* by Edwin A. Abbott (public domain, Project G
 ## What Already Exists
 
 - `examples/flatland/package.json` — deps on pressy, @pressy/components, @pressy/typography
-- `examples/flatland/pressy.config.ts` — configured for paginated mode
 - `examples/flatland/pressy.config.ts` — configured for paginated mode, book metadata included
 - `examples/flatland/content/books/flatland/00-preface.mdx` — one chapter using `<Aside>`
 - `examples/flatland/theme/` — empty directory

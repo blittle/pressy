@@ -8,7 +8,7 @@ export default defineConfig({
     author: 'Edwin A. Abbott',
     language: 'en',
   },
-  book: {
+  books: [{
     slug: 'flatland',
     title: 'Flatland: A Romance of Many Dimensions',
     author: 'Edwin A. Abbott',
@@ -23,7 +23,7 @@ export default defineConfig({
       enabled: false,
       previewChapters: 0,
     },
-  },
+  }],
   pagination: {
     defaultMode: 'paginated',
   },
