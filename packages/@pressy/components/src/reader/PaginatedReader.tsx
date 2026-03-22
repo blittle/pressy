@@ -733,12 +733,13 @@ export function PaginatedReader({
         sessionStorage.setItem("pressy-internal-nav", "1");
         window.location.href = effectiveNextChapter.slug;
       } else if (atPaywallBoundary) {
-        handlePaywallAction();
+        // Show paywall hint instead of auto-redirecting
+        setChapterHint("paywall");
       }
       return;
     }
     goToPage(currentPage + 1);
-  }, [currentPage, totalPages, effectiveNextChapter, atPaywallBoundary, handlePaywallAction, goToPage]);
+  }, [currentPage, totalPages, effectiveNextChapter, atPaywallBoundary, goToPage]);
 
   const goPrev = useCallback(() => {
     if (currentPage <= 0) {
