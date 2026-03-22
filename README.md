@@ -164,7 +164,15 @@ npx pressy dev
 
 # Production build (static HTML)
 npx pressy build
+
+# Export EPUB (all books)
+npx pressy export-epub
+
+# Export a specific book
+npx pressy export-epub --book my-book
 ```
+
+EPUB files are written to `<outDir>/epub/<slug>.epub` (default: `dist/epub/`). Use `--outDir` to override the output directory.
 
 ## Configuration
 
