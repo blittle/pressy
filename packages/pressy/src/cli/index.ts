@@ -184,6 +184,47 @@ Start writing here.
     console.log('    npx pressy dev\n')
   })
 
+cli
+  .command('export-epub [root]', 'Export books as EPUB files')
+  .option('--outDir <dir>', 'Output directory for EPUB files')
+  .option('--book <slug>', 'Export a specific book by slug')
+  .action(async (root: string = '.', options: { outDir?: string; book?: string }) => {
+    const cwd = resolve(process.cwd(), root)
+    const config = await loadConfig(cwd)
+
+    const { discoverContent } = await import('../content/discovery.js')
+    const { buildEpub } = await import('../epub/builder.js')
+
+    const contentDir = resolve(cwd, config.contentDir || 'content')
+    const manifest = await discoverContent(contentDir, config.books)
+
+    const outputDir = resolve(cwd, options.outDir || config.outDir || 'dist', 'epub')
+
+    let books = manifest.books
+    if (options.book) {
+      books = books.filter(b => b.slug === options.book)
+      if (books.length === 0) {
+        console.error(`Book "${options.book}" not found. Available books: ${manifest.books.map(b => b.slug).join(', ')}`)
+        process.exit(1)
+      }
+    }
+
+    if (books.length === 0) {
+      console.log('No books found to export.')
+      return
+    }
+
+    console.log(`Exporting ${books.length} book(s) to EPUB...\n`)
+
+    for (const book of books) {
+      console.log(`  ${book.metadata.title} (${book.chapters.length} chapters)...`)
+      const outputPath = await buildEpub(book, { outputDir })
+      console.log(`  -> ${outputPath}\n`)
+    }
+
+    console.log('EPUB export complete!')
+  })
+
 cli.help()
 // Read version from package.json at build time; fall back for dev
 const CLI_VERSION = '0.1.1'
