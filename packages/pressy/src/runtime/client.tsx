@@ -775,6 +775,9 @@ function ChapterReaderWithProgress({
         previewChapters: book.metadata.paywall.previewChapters,
         authorized: paywallAuthorized ?? false,
         bookSlug: book.slug,
+        price: book.metadata.paywall.price,
+        mode: book.metadata.paywall.mode,
+        bookBasePath: `${basePath}/books/${book.slug}`,
       } : undefined}
       bookmarkProps={{
         bookmarks,

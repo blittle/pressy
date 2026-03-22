@@ -22,6 +22,9 @@ export interface ReaderPaywallConfig {
   previewChapters: number;
   authorized: boolean;
   bookSlug: string;
+  price?: string;
+  mode?: 'email' | 'stripe';
+  bookBasePath?: string;
 }
 
 export interface OfflineProps {

@@ -147,6 +147,20 @@ export const PAGINATED_STYLES = `
     text-overflow: ellipsis;
   }
 
+  .pressy-chapter-hint--paywall {
+    background: var(--color-accent, #4a90d9);
+    color: white;
+    border-color: var(--color-accent, #4a90d9);
+    cursor: pointer;
+    pointer-events: auto;
+  }
+
+  .pressy-chapter-hint-icon {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+  }
+
   @keyframes pressy-hint-fade-in {
     from { opacity: 0; transform: translateY(-50%) scale(0.95); }
     to { opacity: 1; transform: translateY(-50%) scale(1); }
