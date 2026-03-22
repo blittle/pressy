@@ -12,6 +12,7 @@
 
   /* Readable word wrapping */
   overflow-wrap: break-word;
+  text-wrap: pretty;
 
   /* Book-style numeric figures */
   font-variant-numeric: oldstyle-nums;
