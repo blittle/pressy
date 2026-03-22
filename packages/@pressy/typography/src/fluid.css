@@ -12,8 +12,8 @@
   --font-size-2xl: clamp(1.728rem, 1.512rem + 0.86vw, 2.16rem);
   --font-size-3xl: clamp(2.074rem, 1.815rem + 1.03vw, 2.592rem);
 
-  /* Line height for prose reading */
-  --line-height-prose: 1.6;
+  /* Line height for prose reading — 1.7 suits a 65ch measure with serif text */
+  --line-height-prose: 1.7;
 
   /* Font stacks — override with --pressy-font-* in your custom.css */
   --font-prose: var(--pressy-font-body, Georgia, 'Times New Roman', Times, serif);

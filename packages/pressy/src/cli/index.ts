@@ -2,7 +2,7 @@
 import { cac } from 'cac'
 import { createServer, build, preview } from 'vite'
 import { resolve } from 'path'
-import { existsSync, writeFileSync, rmSync } from 'fs'
+import { existsSync, writeFileSync, rmSync, mkdirSync } from 'fs'
 import { transform } from 'esbuild'
 import { readFileSync } from 'fs'
 import { pressyPlugin } from '../vite/plugin.js'
@@ -116,7 +116,77 @@ cli
     server.printUrls()
   })
 
+cli
+  .command('init [dir]', 'Scaffold a new Pressy project')
+  .option('--title <title>', 'Book title', { default: 'My Book' })
+  .option('--author <author>', 'Author name', { default: 'Author Name' })
+  .action(async (dir: string = '.', options: { title: string; author: string }) => {
+    const cwd = resolve(process.cwd(), dir)
+
+    if (existsSync(resolve(cwd, 'pressy.config.ts'))) {
+      console.error('A pressy.config.ts already exists in this directory.')
+      process.exit(1)
+    }
+
+    // Create directory structure
+    mkdirSync(resolve(cwd, 'content/books/my-book'), { recursive: true })
+    mkdirSync(resolve(cwd, 'theme'), { recursive: true })
+
+    // Generate slug from title
+    const slug = options.title
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '') || 'my-book'
+
+    // Write config
+    writeFileSync(resolve(cwd, 'pressy.config.ts'), `import { defineConfig } from 'pressy'
+
+export default defineConfig({
+  site: {
+    title: '${options.title.replace(/'/g, "\\'")}',
+    url: 'http://localhost:3000',
+    author: '${options.author.replace(/'/g, "\\'")}',
+  },
+  book: {
+    slug: '${slug}',
+    title: '${options.title.replace(/'/g, "\\'")}',
+    author: '${options.author.replace(/'/g, "\\'")}',
+    description: '',
+  },
+  pagination: {
+    defaultMode: 'paginated',
+  },
+})
+`)
+
+    // Write a starter chapter
+    const chapterDir = resolve(cwd, `content/books/${slug}`)
+    mkdirSync(chapterDir, { recursive: true })
+    writeFileSync(resolve(chapterDir, '01-chapter-one.mdx'), `---
+title: Chapter One
+---
+
+# Chapter One
+
+Start writing here.
+
+<Callout type="tip" title="Getting Started">
+  Edit this file or add more chapters. Files are ordered by their numeric prefix.
+</Callout>
+`)
+
+    // Write empty custom theme
+    writeFileSync(resolve(cwd, 'theme/custom.css'), `/* Custom theme overrides — loaded after Pressy defaults */\n`)
+
+    console.log(`\n  Pressy project scaffolded in ${dir === '.' ? 'current directory' : dir}\n`)
+    console.log('  Next steps:')
+    console.log('    npm install pressy @pressy-pub/components @pressy-pub/typography')
+    console.log('    npx pressy dev\n')
+  })
+
 cli.help()
-cli.version('0.1.0')
+// Read version from package.json at build time; fall back for dev
+const CLI_VERSION = '0.1.1'
+cli.version(CLI_VERSION)
 
 cli.parse()

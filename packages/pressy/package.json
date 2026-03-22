@@ -2,6 +2,26 @@
   "name": "pressy",
   "version": "0.1.1",
   "description": "A self-publishing web framework for books and articles",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/blittle/pressy.git",
+    "directory": "packages/pressy"
+  },
+  "homepage": "https://github.com/blittle/pressy#readme",
+  "bugs": "https://github.com/blittle/pressy/issues",
+  "keywords": [
+    "self-publishing",
+    "book",
+    "ebook",
+    "mdx",
+    "static-site",
+    "pwa",
+    "reader",
+    "vite",
+    "paginated",
+    "offline"
+  ],
   "type": "module",
   "bin": {
     "pressy": "./dist/cli/index.js"

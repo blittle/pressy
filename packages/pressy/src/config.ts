@@ -40,7 +40,10 @@ export interface BookConfig extends BookMetadata {
 
 export interface PressyConfig {
   site: SiteConfig
+  /** Multiple books. Use this when your project contains more than one book. */
   books?: BookConfig[]
+  /** Shorthand for a single book — equivalent to `books: [book]`. */
+  book?: BookConfig
   pagination?: PaginationConfig
   pwa?: PWAConfig
   outDir?: string
@@ -73,21 +76,50 @@ export interface PressyConfig {
    * ```
    */
   components?: string
+  /**
+   * Lifecycle hooks for extending the build pipeline.
+   * Reserved for future use — currently a no-op.
+   */
+  hooks?: PressyHooks
+}
+
+/**
+ * Lifecycle hooks for extending the build pipeline.
+ *
+ * These are reserved for future releases. Defining them today is safe — they
+ * are simply ignored until the corresponding feature lands.
+ */
+export interface PressyHooks {
+  /** Called once before the build starts. */
+  onBuildStart?: () => void | Promise<void>
+  /** Called after all content has been discovered and resolved. */
+  onContentReady?: (manifest: { books: unknown[]; articles: unknown[] }) => void | Promise<void>
+  /** Called after each chapter is compiled from MDX. */
+  onChapterProcessed?: (chapter: { slug: string; title: string; wordCount: number }) => void | Promise<void>
+  /** Called after the build is complete. */
+  onBuildEnd?: (output: { outDir: string }) => void | Promise<void>
 }
 
 export function defineConfig(config: PressyConfig): PressyConfig {
+  // Normalise `book` (singular) into `books` (array)
+  const books = config.books ?? (config.book ? [config.book] : undefined)
+
   return {
+    ...config,
+    books,
+    book: undefined,            // canonical form uses `books`
     pagination: {
       defaultMode: 'scroll',
+      ...config.pagination,
     },
     pwa: {
       enabled: true,
       themeColor: '#ffffff',
       backgroundColor: '#ffffff',
       display: 'standalone',
+      ...config.pwa,
     },
-    outDir: 'dist',
-    contentDir: 'content',
-    ...config,
+    outDir: config.outDir ?? 'dist',
+    contentDir: config.contentDir ?? 'content',
   }
 }
