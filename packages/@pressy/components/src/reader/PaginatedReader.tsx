@@ -1027,6 +1027,17 @@ export function PaginatedReader({
 
     const onTouchEnd = (e: TouchEvent) => {
       if (!isSwipingRef.current || !isDraggingRef.current) {
+        // If tapping the paywall hint, trigger the purchase action
+        const target = e.target as HTMLElement;
+        if (
+          chapterHint === "paywall" &&
+          target.closest(".pressy-chapter-hint--paywall")
+        ) {
+          handlePaywallAction();
+          setIsDragging(false);
+          setDragOffset(0);
+          return;
+        }
         setIsDragging(false);
         setDragOffset(0);
         setChapterHint(null);
@@ -1109,6 +1120,7 @@ export function PaginatedReader({
     effectivePrevChapter,
     atPaywallBoundary,
     handlePaywallAction,
+    chapterHint,
   ]);
 
   // Compute per-chapter page indicator values
