@@ -3,7 +3,7 @@
   "checkpoint_id": "a58281f5a200",
   "strategy": "manual-commit",
   "branch": "security/audit-fixes",
-  "checkpoints_count": 0,
+  "checkpoints_count": 2,
   "files_touched": [
     "examples/moby-dick/functions/_middleware.ts",
     "packages/@pressy/cloudflare/src/stripe.ts",
@@ -17,13 +17,20 @@
       "context": "/a5/8281f5a200/0/context.md",
       "content_hash": "/a5/8281f5a200/0/content_hash.txt",
       "prompt": "/a5/8281f5a200/0/prompt.txt"
+    },
+    {
+      "metadata": "/a5/8281f5a200/1/metadata.json",
+      "transcript": "/a5/8281f5a200/1/full.jsonl",
+      "context": "/a5/8281f5a200/1/context.md",
+      "content_hash": "/a5/8281f5a200/1/content_hash.txt",
+      "prompt": "/a5/8281f5a200/1/prompt.txt"
     }
   ],
   "token_usage": {
-    "input_tokens": 8862,
-    "cache_creation_tokens": 176999,
-    "cache_read_tokens": 3898643,
-    "output_tokens": 17844,
-    "api_call_count": 49
+    "input_tokens": 8986,
+    "cache_creation_tokens": 249239,
+    "cache_read_tokens": 5882494,
+    "output_tokens": 33081,
+    "api_call_count": 85
   }
 }
