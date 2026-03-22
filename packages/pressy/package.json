@@ -56,6 +56,7 @@
     "@mdx-js/mdx": "^3.0.0",
     "@preact/signals": "^1.2.0",
     "@pressy-pub/components": "workspace:*",
+    "archiver": "^7.0.1",
     "cac": "^6.7.14",
     "chokidar": "^3.5.3",
     "esbuild": "^0.27.3",
@@ -75,6 +76,7 @@
     "workbox-strategies": "^7.0.0"
   },
   "devDependencies": {
+    "@types/archiver": "^7.0.0",
     "@types/node": "^20.10.0",
     "tsup": "^8.0.0",
     "typescript": "^5.3.0"
