@@ -9,10 +9,9 @@ export interface BookMetadata {
   paywall?: {
     enabled: boolean
     previewChapters: number
-    shopifyProductId?: string
     price?: string
     stripePriceId?: string
-    mode?: 'shopify' | 'email' | 'stripe'
+    mode?: 'email' | 'stripe'
   }
 }
 
