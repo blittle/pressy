@@ -151,6 +151,7 @@ export const PAGINATED_STYLES = `
     background: var(--color-accent, #4a90d9);
     color: white;
     border-color: var(--color-accent, #4a90d9);
+    cursor: pointer;
   }
 
   .pressy-chapter-hint-icon {

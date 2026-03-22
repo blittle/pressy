@@ -808,6 +808,12 @@ export function PaginatedReader({
         return;
       }
 
+      // Dismiss paywall hint on any tap outside it
+      if (chapterHint === "paywall") {
+        setChapterHint(null);
+        return;
+      }
+
       // Touch devices: tap anywhere toggles the footer, nothing else
       if (isTouchDevice) {
         if (footerVisible) {
@@ -865,6 +871,7 @@ export function PaginatedReader({
       bookmarksOpen,
       showFooterTemporarily,
       toggleFullscreen,
+      chapterHint,
     ]
   );
 
@@ -1046,8 +1053,8 @@ export function PaginatedReader({
       if (atEnd && dx < -chapterThreshold && atPaywallBoundary) {
         setIsDragging(false);
         setDragOffset(0);
-        setChapterHint(null);
-        handlePaywallAction();
+        // Keep paywall hint visible so user can tap to purchase
+        setChapterHint("paywall");
         return;
       }
       if (atStart && dx > chapterThreshold && effectivePrevChapter) {
@@ -1261,6 +1268,10 @@ export function PaginatedReader({
         <div
           class="pressy-chapter-hint pressy-chapter-hint--next pressy-chapter-hint--paywall"
           aria-live="polite"
+          onClick={(e: MouseEvent) => {
+            e.stopPropagation();
+            handlePaywallAction();
+          }}
         >
           <span class="pressy-chapter-hint-icon">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
