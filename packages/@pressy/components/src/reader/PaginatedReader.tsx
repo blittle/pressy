@@ -262,7 +262,7 @@ export function PaginatedReader({
     // Force synchronous layout recalculation
     void article.scrollWidth;
 
-    const total = Math.max(1, Math.round(article.scrollWidth / viewportWidth));
+    const total = Math.max(1, Math.ceil(article.scrollWidth / viewportWidth));
     setTotalPages(total);
     setPagesReady(true);
 
