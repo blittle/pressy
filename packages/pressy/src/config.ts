@@ -1,3 +1,5 @@
+import type { BookMetadata } from './types.js'
+
 export interface SiteConfig {
   title: string
   url: string
@@ -31,8 +33,14 @@ export interface PWAConfig {
   favicon?: string
 }
 
+export interface BookConfig extends BookMetadata {
+  /** Directory name under content/books/ containing the book's chapters */
+  slug: string
+}
+
 export interface PressyConfig {
   site: SiteConfig
+  books?: BookConfig[]
   pagination?: PaginationConfig
   pwa?: PWAConfig
   outDir?: string

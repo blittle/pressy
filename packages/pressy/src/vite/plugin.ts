@@ -6,7 +6,6 @@ import { createRequire } from 'module'
 
 const _require = createRequire(import.meta.url)
 import fastGlob from 'fast-glob'
-import yaml from 'yaml'
 import matter from 'gray-matter'
 import type { PressyConfig } from '../config.js'
 import type { Book, Article, Chapter, ContentManifest, Route } from '../types.js'
@@ -50,24 +49,17 @@ export function pressyPlugin(config: PressyConfig): Plugin[] {
     },
 
     async discoverBooks(): Promise<Book[]> {
+      if (!config.books || config.books.length === 0) return []
+
       const booksDir = join(contentDir, 'books')
-      if (!existsSync(booksDir)) return []
+      const results: Book[] = []
 
-      const bookDirs = await fastGlob('*', {
-        cwd: booksDir,
-        onlyDirectories: true,
-      })
-
-      const books: Book[] = []
-
-      for (const bookSlug of bookDirs) {
+      for (const bookConfig of config.books) {
+        const bookSlug = bookConfig.slug
         const bookPath = join(booksDir, bookSlug)
-        const metadataPath = join(bookPath, '_book.yaml')
+        if (!existsSync(bookPath)) continue
 
-        if (!existsSync(metadataPath)) continue
-
-        const metadataContent = readFileSync(metadataPath, 'utf-8')
-        const metadata = yaml.parse(metadataContent)
+        const { slug: _, ...metadata } = bookConfig
 
         // Find chapters
         const chapterFiles = await fastGlob('*.mdx', {
@@ -103,7 +95,7 @@ export function pressyPlugin(config: PressyConfig): Plugin[] {
         if (metadata.cover && existsSync(join(bookPath, metadata.cover))) {
           coverPath = join(bookPath, metadata.cover)
         } else {
-          for (const ext of ['jpg', 'png', 'svg']) {
+          for (const ext of ['jpg', 'png', 'svg', 'webp']) {
             const candidate = join(bookPath, `cover.${ext}`)
             if (existsSync(candidate)) {
               coverPath = candidate
@@ -116,7 +108,7 @@ export function pressyPlugin(config: PressyConfig): Plugin[] {
           ? `/books/${bookSlug}/${coverPath.split('/').pop()}`
           : undefined
 
-        books.push({
+        results.push({
           slug: bookSlug,
           metadata,
           chapters,
@@ -126,7 +118,7 @@ export function pressyPlugin(config: PressyConfig): Plugin[] {
         })
       }
 
-      return books
+      return results
     },
 
     async discoverArticles(): Promise<Article[]> {
@@ -142,21 +134,13 @@ export function pressyPlugin(config: PressyConfig): Plugin[] {
 
       for (const articleSlug of articleDirs) {
         const articlePath = join(articlesDir, articleSlug)
-        const metadataPath = join(articlePath, '_article.yaml')
         const indexPath = join(articlePath, 'index.mdx')
 
         if (!existsSync(indexPath)) continue
 
-        let metadata: Article['metadata']
-        if (existsSync(metadataPath)) {
-          metadata = yaml.parse(readFileSync(metadataPath, 'utf-8'))
-        } else {
-          const content = readFileSync(indexPath, 'utf-8')
-          const { data } = matter(content)
-          metadata = data as Article['metadata']
-        }
-
         const content = readFileSync(indexPath, 'utf-8')
+        const { data } = matter(content)
+        const metadata = data as Article['metadata']
 
         articles.push({
           slug: articleSlug,
@@ -526,7 +510,7 @@ export const config = ${JSON.stringify(config)};`
           // Serve favicon in dev
           if (url === '/favicon.ico' || url === '/favicon.png') {
             if (faviconPath) {
-              const fullPath = resolve(faviconPath)
+              const fullPath = resolve(root, faviconPath)
               if (existsSync(fullPath)) {
                 res.setHeader('Content-Type', url === '/favicon.ico' ? 'image/x-icon' : 'image/png')
                 res.end(readFileSync(fullPath))
@@ -580,7 +564,7 @@ export const config = ${JSON.stringify(config)};`
               ? (config.pwa?.icon192 || config.pwa?.icon)
               : (config.pwa?.icon512 || config.pwa?.icon)
             if (customPath) {
-              const fullPath = resolve(customPath)
+              const fullPath = resolve(root, customPath)
               if (existsSync(fullPath)) {
                 const ext = fullPath.split('.').pop()?.toLowerCase()
                 const mimeTypes: Record<string, string> = {
@@ -805,8 +789,8 @@ ${cssLinks}${buildPwaTags}
 
         // Emit icons — use custom files if provided, otherwise generate placeholders
         if (hasCustomIcons) {
-          const icon192Path = resolve(resolvedIcon192!)
-          const icon512Path = resolve(resolvedIcon512!)
+          const icon192Path = resolve(root, resolvedIcon192!)
+          const icon512Path = resolve(root, resolvedIcon512!)
           this.emitFile({
             type: 'asset',
             fileName: 'icon-192.png',
@@ -835,7 +819,7 @@ ${cssLinks}${buildPwaTags}
           this.emitFile({
             type: 'asset',
             fileName: 'favicon.png',
-            source: readFileSync(resolve(faviconPath!)),
+            source: readFileSync(resolve(root, faviconPath!)),
           })
         } else {
           this.emitFile({

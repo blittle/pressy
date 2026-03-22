@@ -84,10 +84,38 @@ export default defineConfig({
     url: "https://mybook.example.com",
     author: "Your Name",
   },
+  book: {
+    slug: "my-book",
+    title: "My Book",
+    author: "Your Name",
+    description: "A brief description",
+    cover: "cover.jpg",        // optional, auto-detected if named cover.{jpg,png,svg}
+    publishDate: "2025-01-15", // optional
+    isbn: "978-0-000000-00-0", // optional
+    language: "en",            // optional
+  },
   pagination: {
     defaultMode: "paginated",
   },
 });
+```
+
+To gate chapters behind a paywall, add a `paywall` block to the `book` config:
+
+```ts
+book: {
+  slug: "my-book",
+  title: "My Book",
+  author: "Your Name",
+  description: "A brief description",
+  paywall: {
+    enabled: true,
+    previewChapters: 3,        // free chapters before the gate
+    mode: "email",             // 'email' or 'stripe'
+    // stripePriceId: "",      // required for mode: stripe
+    // price: "$9.99",         // displayed to the reader
+  },
+},
 ```
 
 ### 3. Add content
@@ -96,51 +124,9 @@ export default defineConfig({
 content/
   books/
     my-book/
-      _book.yaml          # Book metadata
       cover.jpg            # Cover image (jpg, png, or svg)
       01-chapter-one.mdx  # Chapters (ordered by filename)
       02-chapter-two.mdx
-  articles/               # Optional standalone articles
-    my-article/
-      _article.yaml
-      index.mdx
-```
-
-`_book.yaml`:
-
-```yaml
-title: My Book
-author: Your Name
-description: A brief description
-cover: cover.jpg          # optional, auto-detected if named cover.{jpg,png,svg}
-publishDate: '2025-01-15' # optional
-isbn: '978-0-000000-00-0' # optional
-language: en              # optional
-```
-
-To gate chapters behind a paywall, add a `paywall` block:
-
-```yaml
-title: My Book
-author: Your Name
-description: A brief description
-paywall:
-  enabled: true
-  previewChapters: 3       # free chapters before the gate
-  mode: email              # 'email' or 'stripe'
-  # stripePriceId: ''      # required for mode: stripe
-  # price: '$9.99'         # displayed to the reader
-```
-
-`_article.yaml`:
-
-```yaml
-title: About This Project
-author: Your Name
-description: A standalone article   # optional
-publishDate: '2025-01-15'           # optional
-tags: [writing, tutorial]           # optional
-cover: hero.jpg                     # optional
 ```
 
 ### 4. Write chapters in MDX
@@ -188,6 +174,15 @@ npx pressy build
 | `site.description` | Site description (used in meta tags) |
 | `site.author` | Author name |
 | `site.language` | Language code (default: `"en"`) |
+| `book.slug` | Directory name under `content/books/` |
+| `book.title` | Book title |
+| `book.author` | Book author |
+| `book.description` | Book description |
+| `book.cover` | Cover image filename (auto-detected if named `cover.{jpg,png,svg}`) |
+| `book.publishDate` | Publication date |
+| `book.isbn` | ISBN |
+| `book.language` | Book language code |
+| `book.paywall` | Paywall configuration (see above) |
 | `pagination.defaultMode` | `"paginated"` or `"scroll"` (default: `"scroll"`) |
 | `pwa.enabled` | Enable PWA/offline support (default: `true`) |
 | `pwa.shortName` | App name on home screen |

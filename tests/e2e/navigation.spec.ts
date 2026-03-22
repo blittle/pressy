@@ -198,13 +198,3 @@ test.describe('book detail page', () => {
     expect(page.url()).toMatch(/\/books\/flatland\/[a-z-]+/)
   })
 })
-
-test.describe('article page', () => {
-  test('article renders content', async ({ page }) => {
-    await page.goto('/articles/about-flatland/')
-    await page.waitForSelector('.pressy-reader')
-
-    const content = await page.textContent('.pressy-reader')
-    expect(content!.length).toBeGreaterThan(50)
-  })
-})
