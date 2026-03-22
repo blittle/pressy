@@ -249,7 +249,7 @@ export async function handleRecoverPurchase(
   // Always return the same success message to prevent email enumeration.
   const record = await env.PRESSY_KV.get(`purchase:${email}:${bookSlug}`)
 
-  if (record) {
+  if (record && sendEmail) {
     // Purchase exists — send magic link email
     const baseUrl = getBaseUrl(request)
     const token = await signMagicToken(
@@ -263,13 +263,6 @@ export async function handleRecoverPurchase(
       ? bookSlug // We don't have the book title in the manifest, use slug
       : undefined
 
-    if (!sendEmail) {
-      return new Response(JSON.stringify({ error: 'Email sending is not configured' }), {
-        status: 500,
-        headers: { 'Content-Type': 'application/json', ...NO_CACHE },
-      })
-    }
-
     try {
       await sendEmail({
         to: email,
@@ -279,10 +272,7 @@ export async function handleRecoverPurchase(
         bookTitle,
       })
     } catch {
-      return new Response(JSON.stringify({ error: 'Failed to send email. Please try again.' }), {
-        status: 500,
-        headers: { 'Content-Type': 'application/json', ...NO_CACHE },
-      })
+      // Swallow error — always return the same response to prevent email enumeration
     }
   }
 

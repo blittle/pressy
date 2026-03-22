@@ -588,7 +588,7 @@ function ChapterReaderWithProgress({
         setPaywallAuthorized(data.authorized)
         if (data.authorized) invalidateBookPages(book.slug)
       })
-      .catch(() => setPaywallAuthorized(true)) // fail open on network error
+      .catch(() => setPaywallAuthorized(false)) // fail closed on network error
   }, [book.slug, book.metadata.paywall?.enabled])
 
   // Load initial global book progress

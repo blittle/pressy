@@ -207,6 +207,22 @@ export function pressyPlugin(config: PressyConfig): Plugin[] {
     return routes
   }
 
+  /** Escape a JSON string for safe embedding inside an HTML <script> tag. */
+  function escapeJsonForScript(json: string): string {
+    return json.replace(/</g, '\\u003c')
+  }
+
+  /** Strip build-time-only paths from the manifest before sending to the client. */
+  function clientManifest(m: ContentManifest): unknown {
+    return {
+      books: m.books.map(({ basePath: _bp, coverPath: _cp, ...book }) => ({
+        ...book,
+        chapters: book.chapters.map(({ filePath: _fp, ...ch }) => ch),
+      })),
+      articles: m.articles.map(({ filePath: _fp, basePath: _bp, ...article }) => article),
+    }
+  }
+
   function escapeHtmlAttr(str: string): string {
     return str.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
   }
@@ -235,12 +251,12 @@ export function pressyPlugin(config: PressyConfig): Plugin[] {
       contentArg = ', Content'
     }
 
-    const dataJson = JSON.stringify({
+    const dataJson = escapeJsonForScript(JSON.stringify({
       route: route.path,
       routeType: route.type,
-      manifest,
+      manifest: clientManifest(manifest),
       pagination: config.pagination,
-    })
+    }))
 
     const faviconTag = `\n  <link rel="icon" href="/favicon.png" type="image/png">`
     const pwaTags = pwaEnabled
@@ -401,7 +417,7 @@ export function pressyPlugin(config: PressyConfig): Plugin[] {
       },
       load(id) {
         if (id === RESOLVED_VIRTUAL_MODULE_ID) {
-          return `export const manifest = ${JSON.stringify(manifest)};
+          return `export const manifest = ${JSON.stringify(clientManifest(manifest))};
 export const routes = ${JSON.stringify(routes)};
 export const config = ${JSON.stringify(config)};`
         }
@@ -427,7 +443,7 @@ export const config = ${JSON.stringify(config)};`
           const dataJson = JSON.stringify({
             route: route.path,
             routeType: route.type,
-            manifest,
+            manifest: clientManifest(manifest),
             pagination: config.pagination,
           })
 

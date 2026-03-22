@@ -2,11 +2,6 @@ import { createPressyMiddleware } from "@pressy-pub/cloudflare";
 
 export const onRequest = createPressyMiddleware((env) => ({
   sendEmail: async ({ to, subject, html }) => {
-    console.log("Sending email to:", to);
-    console.log("Subject:", subject);
-    console.log("HTML:", html);
-    console.log("RESEND_API_KEY:", env.RESEND_API_KEY);
-
     const resp = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: {
