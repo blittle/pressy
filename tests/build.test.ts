@@ -71,11 +71,6 @@ describe('pressy build (flatland example)', () => {
       }
     })
 
-    it('generates HTML for the article', () => {
-      const articlePath = join(DIST, 'articles/about-flatland/index.html')
-      expect(existsSync(articlePath)).toBe(true)
-    })
-
     it('includes correct title and meta description in HTML', () => {
       const html = readFileSync(join(DIST, 'index.html'), 'utf-8')
 
@@ -201,17 +196,6 @@ describe('pressy build (flatland example)', () => {
       expect(chapterDirs.length).toBe(8)
     })
 
-    it('discovered the article', () => {
-      const articlesDir = join(DIST, 'articles')
-      expect(existsSync(articlesDir)).toBe(true)
-
-      const articleDirs = readdirSync(articlesDir).filter(f => {
-        const fullPath = join(articlesDir, f)
-        return existsSync(join(fullPath, 'index.html'))
-      })
-
-      expect(articleDirs).toContain('about-flatland')
-    })
   })
 })
 

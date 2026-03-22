@@ -8,6 +8,22 @@ export default defineConfig({
     author: 'Edwin A. Abbott',
     language: 'en',
   },
+  book: {
+    slug: 'flatland',
+    title: 'Flatland: A Romance of Many Dimensions',
+    author: 'Edwin A. Abbott',
+    description:
+      'Flatland is an 1884 satirical novella by the English schoolmaster Edwin Abbott Abbott. ' +
+      'Writing pseudonymously as "A Square", Abbott uses the fictional two-dimensional world ' +
+      'of Flatland to offer pointed observations on the social hierarchy of Victorian culture.',
+    publishDate: '1884-01-01',
+    language: 'en',
+    cover: 'cover.jpg',
+    paywall: {
+      enabled: false,
+      previewChapters: 0,
+    },
+  },
   pagination: {
     defaultMode: 'paginated',
   },

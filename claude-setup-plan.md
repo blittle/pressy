@@ -10,7 +10,7 @@ The plan specifies using *Flatland* by Edwin A. Abbott (public domain, Project G
 
 - `examples/flatland/package.json` — deps on pressy, @pressy/components, @pressy/typography
 - `examples/flatland/pressy.config.ts` — configured for paginated mode
-- `examples/flatland/content/books/flatland/_book.yaml` — book metadata (paywall disabled)
+- `examples/flatland/pressy.config.ts` — configured for paginated mode, book metadata included
 - `examples/flatland/content/books/flatland/00-preface.mdx` — one chapter using `<Aside>`
 - `examples/flatland/theme/` — empty directory
 
@@ -38,17 +38,11 @@ Each chapter will have:
 
 - `content/books/flatland/07-concerning-a-stranger.mdx` — Start of Part II, uses `<Callout type="important">`, `<Aside>`, demonstrates a part transition
 
-### 3. Add an article example
-
-Create `content/articles/about-flatland/` to demonstrate the articles feature:
-- `_article.yaml` — article metadata with tags
-- `index.mdx` — a short "About This Edition" article using `<Callout>` and `<Footnote>`
-
-### 4. Add theme customization
+### 3. Add theme customization
 
 - `theme/custom.css` — minimal custom CSS showing how to override typography defaults (e.g., custom drop cap color, a custom font import)
 
-### 5. Add a placeholder cover
+### 4. Add a placeholder cover
 
 - `content/books/flatland/cover.svg` — a simple SVG cover image (geometric shapes fitting the Flatland theme)
 
@@ -64,8 +58,6 @@ Create `content/articles/about-flatland/` to demonstrate the articles feature:
 | `examples/flatland/content/books/flatland/06-of-recognition-by-sight.mdx` | Create |
 | `examples/flatland/content/books/flatland/07-concerning-a-stranger.mdx` | Create |
 | `examples/flatland/content/books/flatland/cover.svg` | Create |
-| `examples/flatland/content/articles/about-flatland/_article.yaml` | Create |
-| `examples/flatland/content/articles/about-flatland/index.mdx` | Create |
 | `examples/flatland/theme/custom.css` | Create |
 
 ## Verification
@@ -73,11 +65,10 @@ Create `content/articles/about-flatland/` to demonstrate the articles feature:
 1. Run `pnpm install` from the monorepo root
 2. Run `pnpm --filter flatland-example dev` to start the dev server
 3. Verify:
-   - Home page lists the book and article
+   - Home page lists the book
    - Book page shows all 8 chapters (preface + 7)
    - Chapter navigation (prev/next) works
    - MDX components render (Aside, Footnote, Callout, SceneBreak)
    - Paginated mode works (configured as default)
    - Theme switcher works
-   - Article page renders
    - Custom theme CSS applies

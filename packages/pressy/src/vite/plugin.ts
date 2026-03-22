@@ -6,7 +6,6 @@ import { createRequire } from 'module'
 
 const _require = createRequire(import.meta.url)
 import fastGlob from 'fast-glob'
-import yaml from 'yaml'
 import matter from 'gray-matter'
 import type { PressyConfig } from '../config.js'
 import type { Book, Article, Chapter, ContentManifest, Route } from '../types.js'
@@ -50,83 +49,70 @@ export function pressyPlugin(config: PressyConfig): Plugin[] {
     },
 
     async discoverBooks(): Promise<Book[]> {
-      const booksDir = join(contentDir, 'books')
-      if (!existsSync(booksDir)) return []
+      if (!config.book) return []
 
-      const bookDirs = await fastGlob('*', {
-        cwd: booksDir,
-        onlyDirectories: true,
+      const booksDir = join(contentDir, 'books')
+      const bookSlug = config.book.slug
+      const bookPath = join(booksDir, bookSlug)
+      if (!existsSync(bookPath)) return []
+
+      const { slug: _, ...metadata } = config.book
+
+      // Find chapters
+      const chapterFiles = await fastGlob('*.mdx', {
+        cwd: bookPath,
+        ignore: ['_*.mdx'],
       })
 
-      const books: Book[] = []
+      const chapters: Chapter[] = chapterFiles
+        .map((file): Chapter | null => {
+          const match = file.match(/^(\d+)-(.+)\.mdx$/)
+          if (!match) return null
 
-      for (const bookSlug of bookDirs) {
-        const bookPath = join(booksDir, bookSlug)
-        const metadataPath = join(bookPath, '_book.yaml')
+          const order = parseInt(match[1], 10)
+          const slug = match[2]
+          const filePath = join(bookPath, file)
+          const content = readFileSync(filePath, 'utf-8')
+          const { data } = matter(content)
 
-        if (!existsSync(metadataPath)) continue
-
-        const metadataContent = readFileSync(metadataPath, 'utf-8')
-        const metadata = yaml.parse(metadataContent)
-
-        // Find chapters
-        const chapterFiles = await fastGlob('*.mdx', {
-          cwd: bookPath,
-          ignore: ['_*.mdx'],
+          return {
+            slug,
+            title: data.title || slug.replace(/-/g, ' '),
+            order,
+            filePath,
+            wordCount: content.split(/\s+/).length,
+            readingTime: Math.ceil(content.split(/\s+/).length / 200),
+          }
         })
+        .filter((c): c is Chapter => c !== null)
+        .sort((a, b) => a.order - b.order)
 
-        const chapters: Chapter[] = chapterFiles
-          .map((file): Chapter | null => {
-            const match = file.match(/^(\d+)-(.+)\.mdx$/)
-            if (!match) return null
-
-            const order = parseInt(match[1], 10)
-            const slug = match[2]
-            const filePath = join(bookPath, file)
-            const content = readFileSync(filePath, 'utf-8')
-            const { data } = matter(content)
-
-            return {
-              slug,
-              title: data.title || slug.replace(/-/g, ' '),
-              order,
-              filePath,
-              wordCount: content.split(/\s+/).length,
-              readingTime: Math.ceil(content.split(/\s+/).length / 200),
-            }
-          })
-          .filter((c): c is Chapter => c !== null)
-          .sort((a, b) => a.order - b.order)
-
-        // Resolve cover image: prefer metadata.cover, then fall back to common filenames
-        let coverPath: string | undefined
-        if (metadata.cover && existsSync(join(bookPath, metadata.cover))) {
-          coverPath = join(bookPath, metadata.cover)
-        } else {
-          for (const ext of ['jpg', 'png', 'svg']) {
-            const candidate = join(bookPath, `cover.${ext}`)
-            if (existsSync(candidate)) {
-              coverPath = candidate
-              break
-            }
+      // Resolve cover image: prefer metadata.cover, then fall back to common filenames
+      let coverPath: string | undefined
+      if (metadata.cover && existsSync(join(bookPath, metadata.cover))) {
+        coverPath = join(bookPath, metadata.cover)
+      } else {
+        for (const ext of ['jpg', 'png', 'svg']) {
+          const candidate = join(bookPath, `cover.${ext}`)
+          if (existsSync(candidate)) {
+            coverPath = candidate
+            break
           }
         }
-
-        const coverUrl = coverPath
-          ? `/books/${bookSlug}/${coverPath.split('/').pop()}`
-          : undefined
-
-        books.push({
-          slug: bookSlug,
-          metadata,
-          chapters,
-          basePath: bookPath,
-          coverPath,
-          coverUrl,
-        })
       }
 
-      return books
+      const coverUrl = coverPath
+        ? `/books/${bookSlug}/${coverPath.split('/').pop()}`
+        : undefined
+
+      return [{
+        slug: bookSlug,
+        metadata,
+        chapters,
+        basePath: bookPath,
+        coverPath,
+        coverUrl,
+      }]
     },
 
     async discoverArticles(): Promise<Article[]> {
@@ -142,21 +128,13 @@ export function pressyPlugin(config: PressyConfig): Plugin[] {
 
       for (const articleSlug of articleDirs) {
         const articlePath = join(articlesDir, articleSlug)
-        const metadataPath = join(articlePath, '_article.yaml')
         const indexPath = join(articlePath, 'index.mdx')
 
         if (!existsSync(indexPath)) continue
 
-        let metadata: Article['metadata']
-        if (existsSync(metadataPath)) {
-          metadata = yaml.parse(readFileSync(metadataPath, 'utf-8'))
-        } else {
-          const content = readFileSync(indexPath, 'utf-8')
-          const { data } = matter(content)
-          metadata = data as Article['metadata']
-        }
-
         const content = readFileSync(indexPath, 'utf-8')
+        const { data } = matter(content)
+        const metadata = data as Article['metadata']
 
         articles.push({
           slug: articleSlug,
