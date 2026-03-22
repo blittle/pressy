@@ -377,6 +377,67 @@ describe('/api/auth/recover', () => {
     expect(body.error).toContain('Invalid book slug')
   })
 
+  it('sendEmail throws → still returns 200 (anti-enumeration)', async () => {
+    const kv = new Map<string, string>()
+    const purchase: PurchaseRecord = {
+      sessionId: 'sess_original',
+      email: 'buyer@example.com',
+      bookSlug: 'test-book',
+      amount: 999,
+      purchasedAt: '2024-01-01T00:00:00.000Z',
+    }
+    kv.set('purchase:buyer@example.com:test-book', JSON.stringify(purchase))
+
+    const sendEmail = vi.fn(async () => { throw new Error('SMTP down') })
+    const env = createMockEnv(kv)
+    const middleware = createPressyMiddleware({ sendEmail })
+    const next = vi.fn()
+
+    const response = await middleware({
+      request: new Request('https://example.com/api/auth/recover', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: 'buyer@example.com', book: 'test-book' }),
+      }),
+      env,
+      next,
+    })
+
+    expect(response.status).toBe(200)
+    const body = await response.json()
+    expect(body.sent).toBe(true)
+  })
+
+  it('sendEmail not configured → still returns 200 (anti-enumeration)', async () => {
+    const kv = new Map<string, string>()
+    const purchase: PurchaseRecord = {
+      sessionId: 'sess_original',
+      email: 'buyer@example.com',
+      bookSlug: 'test-book',
+      amount: 999,
+      purchasedAt: '2024-01-01T00:00:00.000Z',
+    }
+    kv.set('purchase:buyer@example.com:test-book', JSON.stringify(purchase))
+
+    const env = createMockEnv(kv)
+    const middleware = createPressyMiddleware() // no sendEmail
+    const next = vi.fn()
+
+    const response = await middleware({
+      request: new Request('https://example.com/api/auth/recover', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: 'buyer@example.com', book: 'test-book' }),
+      }),
+      env,
+      next,
+    })
+
+    expect(response.status).toBe(200)
+    const body = await response.json()
+    expect(body.sent).toBe(true)
+  })
+
   it('non-existent book slug → 400', async () => {
     const env = createMockEnv()
     const middleware = createPressyMiddleware()

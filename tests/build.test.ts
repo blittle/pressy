@@ -173,6 +173,20 @@ describe('pressy build (flatland example)', () => {
     })
   })
 
+  describe('security: no build paths in client output', () => {
+    it('JS bundles do not contain absolute file paths', () => {
+      const assetsDir = join(DIST, 'assets')
+      const jsFiles = readdirSync(assetsDir).filter(f => f.endsWith('.js'))
+
+      for (const file of jsFiles) {
+        const content = readFileSync(join(assetsDir, file), 'utf-8')
+        expect(content).not.toMatch(/filePath/)
+        expect(content).not.toMatch(/basePath/)
+        expect(content).not.toMatch(/coverPath/)
+      }
+    })
+  })
+
   describe('content discovery verification', () => {
     it('discovered all 8 chapters in correct order', () => {
       // The book detail page's JS bundle should contain the chapter order
