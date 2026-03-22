@@ -5,11 +5,11 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/nicholasgriffintn/pressy.git",
+    "url": "https://github.com/blittle/pressy.git",
     "directory": "packages/@pressy/typography"
   },
-  "homepage": "https://github.com/nicholasgriffintn/pressy#readme",
-  "bugs": "https://github.com/nicholasgriffintn/pressy/issues",
+  "homepage": "https://github.com/blittle/pressy#readme",
+  "bugs": "https://github.com/blittle/pressy/issues",
   "keywords": [
     "pressy",
     "typography",

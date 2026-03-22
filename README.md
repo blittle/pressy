@@ -40,7 +40,7 @@ npx pressy dev
 Or clone the repo and run an example:
 
 ```bash
-git clone https://github.com/nicholasgriffintn/pressy.git && cd pressy
+git clone https://github.com/blittle/pressy.git && cd pressy
 pnpm install
 pnpm dev:flatland
 ```
